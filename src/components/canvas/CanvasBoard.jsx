@@ -39,6 +39,10 @@ export default function CanvasBoard({
   zoomRef.current = zoom;
   const panRef = useRef(pan);
   panRef.current = pan;
+  const nodesRef = useRef(nodes);
+  nodesRef.current = nodes;
+  const edgesRef = useRef(edges);
+  edgesRef.current = edges;
 
   const [pending, setPending] = useState(null);
   const pendingRef = useRef(null);
@@ -46,6 +50,8 @@ export default function CanvasBoard({
   const [overBin, setOverBin] = useState(false);
   const overBinRef = useRef(false);
   const binRef = useRef(null);
+  const binRectRef = useRef(null);
+  const dragVisual = useRef({ raf: 0, id: null, dx: 0, dy: 0, finalX: 0, finalY: 0 });
   const [vp, setVp] = useState({ w: window.innerWidth, h: window.innerHeight });
 
   // Center origin on mount
@@ -69,11 +75,56 @@ export default function CanvasBoard({
     };
   }, []);
 
-  const socketScreen = (node, type) => {
-    const wx = type === 'output' ? node.x + nodeWidthForTitle(node.title) : node.x;
-    const wy = node.y + TOP_BAR_HEIGHT / 2;
+  const socketScreen = (node, type, override) => {
+    const x = override && override.id === node.id ? override.x : node.x;
+    const y = override && override.id === node.id ? override.y : node.y;
+    const wx = type === 'output' ? x + nodeWidthForTitle(node.title) : x;
+    const wy = y + TOP_BAR_HEIGHT / 2;
     return { x: wx * zoom + pan.x, y: wy * zoom + pan.y };
   };
+
+  const updateDraggedEdges = useCallback(
+    (draggedId, x, y) => {
+      const override = { id: draggedId, x, y };
+      edgesRef.current.forEach((edge) => {
+        if (edge.fromNode !== draggedId && edge.toNode !== draggedId) return;
+        const from = nodesRef.current.find((n) => n.id === edge.fromNode);
+        const to = nodesRef.current.find((n) => n.id === edge.toNode);
+        if (!from || !to) return;
+        let out, inp;
+        if (edge.fromType === 'output') {
+          out = socketScreen(from, 'output', override);
+          inp = socketScreen(to, 'input', override);
+        } else {
+          out = socketScreen(to, 'output', override);
+          inp = socketScreen(from, 'input', override);
+        }
+        const d = bezierPath(out.x, out.y, inp.x, inp.y);
+        boardRef.current
+          ?.querySelectorAll(`[data-edge-id="${edge.id}"]`)
+          .forEach((path) => path.setAttribute('d', d));
+      });
+    },
+    [pan.x, pan.y, zoom]
+  );
+
+  const scheduleDragVisual = useCallback(
+    (drag) => {
+      dragVisual.current = { ...dragVisual.current, ...drag };
+      if (dragVisual.current.raf) return;
+      dragVisual.current.raf = requestAnimationFrame(() => {
+        dragVisual.current.raf = 0;
+        const { id, dx, dy, finalX, finalY } = dragVisual.current;
+        const el = boardRef.current?.querySelector(`[data-note-node="${id}"]`);
+        if (el) {
+          el.style.transition = 'none';
+          el.style.transform = `translate(${dx}px, ${dy}px)`;
+        }
+        updateDraggedEdges(id, finalX, finalY);
+      });
+    },
+    [updateDraggedEdges]
+  );
 
   // --- Background pan / click-to-add / pinch ---
   const onPointerDown = (e) => {
@@ -183,6 +234,15 @@ export default function CanvasBoard({
       const node = nodes.find((n) => n.id === nodeId);
       if (!node) return;
       onBringToFront(nodeId);
+      dragVisual.current = {
+        raf: 0,
+        id: nodeId,
+        dx: 0,
+        dy: 0,
+        finalX: node.x,
+        finalY: node.y,
+      };
+      binRectRef.current = null;
       setDraggingNode({
         id: nodeId,
         startX: e.clientX,
@@ -198,18 +258,23 @@ export default function CanvasBoard({
     if (!draggingNode) {
       overBinRef.current = false;
       setOverBin(false);
+      binRectRef.current = null;
       return;
     }
     const onMove = (e) => {
       const dx = (e.clientX - draggingNode.startX) / zoomRef.current;
       const dy = (e.clientY - draggingNode.startY) / zoomRef.current;
-      onUpdateNode(draggingNode.id, {
-        x: draggingNode.origX + dx,
-        y: draggingNode.origY + dy,
+      scheduleDragVisual({
+        id: draggingNode.id,
+        dx,
+        dy,
+        finalX: draggingNode.origX + dx,
+        finalY: draggingNode.origY + dy,
       });
       const el = binRef.current;
       if (el) {
-        const r = el.getBoundingClientRect();
+        const r = binRectRef.current || el.getBoundingClientRect();
+        binRectRef.current = r;
         const hit = 28;
         const inside =
           e.clientX >= r.left - hit &&
@@ -217,16 +282,34 @@ export default function CanvasBoard({
           e.clientY >= r.top - hit &&
           e.clientY <= r.bottom + hit;
         overBinRef.current = inside;
-        setOverBin(inside);
+        setOverBin((prev) => (prev === inside ? prev : inside));
       }
     };
     const onUp = () => {
+      if (dragVisual.current.raf) {
+        cancelAnimationFrame(dragVisual.current.raf);
+        dragVisual.current.raf = 0;
+      }
+      const { id, finalX, finalY } = dragVisual.current;
+      const el = boardRef.current?.querySelector(`[data-note-node="${id}"]`);
       if (overBinRef.current) {
         onDeleteNode(draggingNode.id);
+      } else {
+        onUpdateNode(draggingNode.id, {
+          x: finalX,
+          y: finalY,
+        });
       }
       overBinRef.current = false;
+      binRectRef.current = null;
       setOverBin(false);
       setDraggingNode(null);
+      requestAnimationFrame(() => {
+        if (el) {
+          el.style.transform = '';
+          el.style.transition = '';
+        }
+      });
     };
     window.addEventListener('pointermove', onMove);
     window.addEventListener('pointerup', onUp);
@@ -234,7 +317,7 @@ export default function CanvasBoard({
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('pointerup', onUp);
     };
-  }, [draggingNode, onUpdateNode, onDeleteNode]);
+  }, [draggingNode, onUpdateNode, onDeleteNode, scheduleDragVisual]);
 
   // --- Socket connection drag ---
   const startConnect = useCallback(
@@ -343,8 +426,9 @@ export default function CanvasBoard({
           const d = bezierPath(out.x, out.y, inp.x, inp.y);
           return (
             <g key={edge.id}>
-              <path d={d} fill="none" stroke="#94a3b8" strokeWidth={2.5} strokeLinecap="round" />
+              <path data-edge-id={edge.id} d={d} fill="none" stroke="#94a3b8" strokeWidth={2.5} strokeLinecap="round" />
               <path
+                data-edge-id={edge.id}
                 d={d}
                 fill="none"
                 stroke="transparent"

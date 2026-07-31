@@ -7,7 +7,7 @@
   "description": "A local-first mind map canvas",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && node generate-sw.mjs",
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc -p ./jsconfig.json",

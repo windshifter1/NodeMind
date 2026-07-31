@@ -1,6 +1,6 @@
 # GitHub Pages must use "GitHub Actions" as the source (Settings → Pages).
 # If Pages is set to "Deploy from a branch", visitors get the raw source
-# index.html which references /src/main.jsx and the app stays blank.
+# index.html instead of Vite's built dist/index.html and the app stays blank.
 
 name: Deploy Vite to GitHub Pages
 
@@ -35,8 +35,14 @@ jobs:
       - name: Verify dist output (not source)
         run: |
           test -f dist/index.html
+          test -f dist/manifest.json
+          test -f dist/favicon.svg
+          test -f dist/.nojekyll
           grep -q '/NodeMind/assets/' dist/index.html
-          ! grep -q 'main.jsx' dist/index.html
+          grep -q './manifest.json' dist/index.html
+          grep -q './favicon.svg' dist/index.html
+          ! grep -q '%BASE_URL%' dist/index.html
+          ! grep -q 'src/main.jsx' dist/index.html
           echo "dist/index.html:"
           cat dist/index.html
 

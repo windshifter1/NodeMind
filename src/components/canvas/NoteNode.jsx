@@ -15,7 +15,7 @@ function Socket({ type, color, nodeId, pending, onStartConnect }) {
         data-socket-type={type}
         onPointerDown={(e) => {
           e.stopPropagation();
-          onStartConnect(nodeId, type);
+          onStartConnect(nodeId, type, e);
         }}
         className="absolute"
         style={{

@@ -34,6 +34,7 @@ export default function CanvasBoard({
   const pointers = useRef(new Map());
   const panState = useRef({ panning: false, lastX: 0, lastY: 0, moved: false });
   const pinch = useRef({ active: false, startDist: 0, startZoom: 1, midX: 0, midY: 0 });
+  const suppressNextMouseAction = useRef(false);
 
   const zoomRef = useRef(zoom);
   zoomRef.current = zoom;
@@ -54,6 +55,28 @@ export default function CanvasBoard({
   const dragVisual = useRef({ raf: 0, id: null, dx: 0, dy: 0, finalX: 0, finalY: 0 });
   const [vp, setVp] = useState({ w: window.innerWidth, h: window.innerHeight });
 
+  const isPrimaryPointerStart = (e) => {
+    if (e.pointerType === 'mouse') return e.button === 0;
+    return e.button === 0 || e.button === -1;
+  };
+
+  const shouldIgnoreMouseFocusRestore = (e) => {
+    if (e.pointerType !== 'mouse' || !suppressNextMouseAction.current) return false;
+    suppressNextMouseAction.current = false;
+    return true;
+  };
+
+  const cancelCanvasInteraction = useCallback(() => {
+    pointers.current.clear();
+    panState.current = { panning: false, lastX: 0, lastY: 0, moved: false };
+    pinch.current.active = false;
+    pendingRef.current = null;
+    setPending(null);
+    setDraggingNode(null);
+    overBinRef.current = false;
+    setOverBin(false);
+  }, []);
+
   // Center origin on mount
   useEffect(() => {
     setPan({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
@@ -66,6 +89,32 @@ export default function CanvasBoard({
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
   }, []);
+
+  useEffect(() => {
+    const onBlur = () => {
+      suppressNextMouseAction.current = true;
+      cancelCanvasInteraction();
+    };
+    const onFocus = () => {
+      suppressNextMouseAction.current = true;
+      cancelCanvasInteraction();
+    };
+    const onVisibilityChange = () => {
+      if (document.hidden) {
+        suppressNextMouseAction.current = true;
+        cancelCanvasInteraction();
+      }
+    };
+
+    window.addEventListener('blur', onBlur);
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => {
+      window.removeEventListener('blur', onBlur);
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
+  }, [cancelCanvasInteraction]);
 
   const screenToWorld = useCallback((clientX, clientY) => {
     const rect = boardRef.current.getBoundingClientRect();
@@ -128,6 +177,10 @@ export default function CanvasBoard({
 
   // --- Background pan / click-to-add / pinch ---
   const onPointerDown = (e) => {
+    if (!isPrimaryPointerStart(e) || shouldIgnoreMouseFocusRestore(e)) {
+      cancelCanvasInteraction();
+      return;
+    }
     try {
       boardRef.current.setPointerCapture(e.pointerId);
     } catch (err) {
@@ -187,6 +240,7 @@ export default function CanvasBoard({
   };
 
   const onPointerUp = (e) => {
+    if (!pointers.current.has(e.pointerId)) return;
     const moved = panState.current.moved;
     pointers.current.delete(e.pointerId);
     if (pointers.current.size < 2) pinch.current.active = false;
@@ -206,6 +260,16 @@ export default function CanvasBoard({
     } catch (err) {
       /* ignore */
     }
+  };
+
+  const onPointerCancel = (e) => {
+    pointers.current.delete(e.pointerId);
+    if (pointers.current.size === 0) cancelCanvasInteraction();
+  };
+
+  const onContextMenu = () => {
+    suppressNextMouseAction.current = true;
+    cancelCanvasInteraction();
   };
 
   // --- Wheel zoom (non-passive) ---
@@ -231,6 +295,7 @@ export default function CanvasBoard({
   // --- Node dragging ---
   const startNodeDrag = useCallback(
     (nodeId, e) => {
+      if (!isPrimaryPointerStart(e) || shouldIgnoreMouseFocusRestore(e)) return;
       const node = nodes.find((n) => n.id === nodeId);
       if (!node) return;
       onBringToFront(nodeId);
@@ -321,7 +386,8 @@ export default function CanvasBoard({
 
   // --- Socket connection drag ---
   const startConnect = useCallback(
-    (nodeId, type) => {
+    (nodeId, type, e) => {
+      if (e && (!isPrimaryPointerStart(e) || shouldIgnoreMouseFocusRestore(e))) return;
       const node = nodes.find((n) => n.id === nodeId);
       if (!node) return;
       const wx = type === 'output' ? node.x + nodeWidthForTitle(node.title) : node.x;
@@ -387,6 +453,8 @@ export default function CanvasBoard({
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
+      onPointerCancel={onPointerCancel}
+      onContextMenu={onContextMenu}
       style={{
         touchAction: 'none',
         cursor,
@@ -435,6 +503,7 @@ export default function CanvasBoard({
                 strokeWidth={16}
                 style={{ pointerEvents: 'stroke', cursor: 'pointer' }}
                 onPointerDown={(e) => {
+                  if (!isPrimaryPointerStart(e) || shouldIgnoreMouseFocusRestore(e)) return;
                   e.stopPropagation();
                   onDeleteEdge(edge.id);
                 }}

@@ -23,3 +23,47 @@ export function bezierPath(x1, y1, x2, y2, reversed = false) {
   }
   return `M ${x1} ${y1} C ${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}`;
 }
+
+export function formatNodeId(num) {
+  return String(num).padStart(3, '0');
+}
+
+export function maxNumericNodeId(nodes) {
+  let max = 0;
+  for (const node of nodes) {
+    const match = String(node.id).match(/^0*(\d+)$/);
+    if (match) max = Math.max(max, Number(match[1]));
+  }
+  return max;
+}
+
+export function nextNumericNodeId(nodes) {
+  return formatNodeId(maxNumericNodeId(nodes) + 1);
+}
+
+export function allocateNumericNodeIds(nodes, count) {
+  let next = maxNumericNodeId(nodes);
+  const ids = [];
+  for (let i = 0; i < count; i += 1) {
+    next += 1;
+    ids.push(formatNodeId(next));
+  }
+  return ids;
+}
+
+export function migrateWorkspaceNodeIds(workspace) {
+  const nodes = workspace.nodes || [];
+  if (!nodes.length || nodes.every((node) => /^0*\d+$/.test(node.id))) return workspace;
+  const idMap = new Map();
+  const migratedNodes = nodes.map((node, index) => {
+    const newId = formatNodeId(index + 1);
+    idMap.set(node.id, newId);
+    return { ...node, id: newId };
+  });
+  const migratedEdges = (workspace.edges || []).map((edge) => ({
+    ...edge,
+    fromNode: idMap.get(edge.fromNode) ?? edge.fromNode,
+    toNode: idMap.get(edge.toNode) ?? edge.toNode,
+  }));
+  return { ...workspace, nodes: migratedNodes, edges: migratedEdges };
+}

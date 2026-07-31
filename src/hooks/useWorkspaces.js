@@ -1,4 +1,5 @@
 import { useReducer, useEffect } from 'react';
+import { migrateWorkspaceNodeIds, nextNumericNodeId } from '@/lib/canvasConstants';
 
 const STORAGE_KEY = 'thoughts-canvas-workspaces-v2';
 const LEGACY_KEY = 'thoughts-canvas-graph-v1';
@@ -25,7 +26,10 @@ function loadInitial() {
     if (raw) {
       const parsed = JSON.parse(raw);
       if (parsed && Array.isArray(parsed.workspaces) && parsed.workspaces.length) {
-        return parsed;
+        return {
+          ...parsed,
+          workspaces: parsed.workspaces.map(migrateWorkspaceNodeIds),
+        };
       }
     }
   } catch (e) {
@@ -36,12 +40,14 @@ function loadInitial() {
     const legacy = localStorage.getItem(LEGACY_KEY);
     if (legacy) {
       const g = JSON.parse(legacy);
-      const ws = newWorkspace({
-        name: 'My Canvas',
-        nodes: g.nodes,
-        edges: g.edges,
-        nextZ: g.nextZ,
-      });
+      const ws = migrateWorkspaceNodeIds(
+        newWorkspace({
+          name: 'My Canvas',
+          nodes: g.nodes,
+          edges: g.edges,
+          nextZ: g.nextZ,
+        })
+      );
       return { workspaces: [ws], activeId: ws.id };
     }
   } catch (e) {
@@ -66,14 +72,16 @@ function reducer(state, action) {
     }
     case 'IMPORT_AS_WORKSPACE': {
       const meta = (action.data && action.data.workspace) || {};
-      const ws = newWorkspace({
-        name: meta.name || 'Imported',
-        colour: meta.colour,
-        icon: meta.icon,
-        nodes: action.data && action.data.nodes,
-        edges: action.data && action.data.edges,
-        nextZ: action.data && action.data.nextZ,
-      });
+      const ws = migrateWorkspaceNodeIds(
+        newWorkspace({
+          name: meta.name || 'Imported',
+          colour: meta.colour,
+          icon: meta.icon,
+          nodes: action.data && action.data.nodes,
+          edges: action.data && action.data.edges,
+          nextZ: action.data && action.data.nextZ,
+        })
+      );
       return { workspaces: [...state.workspaces, ws], activeId: ws.id };
     }
     case 'DELETE_WORKSPACE': {
@@ -103,27 +111,33 @@ function reducer(state, action) {
       }));
 
     case 'ADD_NODE':
-      return withActiveGraph(state, (w) => ({
-        ...w,
-        nodes: [
-          ...w.nodes,
-          {
-            id: uid('n'),
-            x: action.x,
-            y: action.y,
-            title: '',
-            content: '',
-            color: '#6366f1',
-            collapsed: false,
-            parentId: action.parentId || null,
-            z: w.nextZ,
-          },
-        ],
-        nextZ: w.nextZ + 1,
-      }));
+      return withActiveGraph(state, (w) => {
+        const now = new Date().toISOString();
+        return {
+          ...w,
+          nodes: [
+            ...w.nodes,
+            {
+              id: nextNumericNodeId(w.nodes),
+              x: action.x,
+              y: action.y,
+              title: '',
+              content: '',
+              color: '#6366f1',
+              collapsed: false,
+              parentId: action.parentId || null,
+              z: w.nextZ,
+              createdAt: now,
+              updatedAt: now,
+            },
+          ],
+          nextZ: w.nextZ + 1,
+        };
+      });
     case 'ADD_CONNECTED_NODE':
       return withActiveGraph(state, (w) => {
-        const id = uid('n');
+        const now = new Date().toISOString();
+        const id = nextNumericNodeId(w.nodes);
         const node = {
           id,
           x: action.x,
@@ -134,6 +148,8 @@ function reducer(state, action) {
           collapsed: false,
           parentId: action.fromNode || null,
           z: w.nextZ,
+          createdAt: now,
+          updatedAt: now,
         };
         let edge;
         if (action.fromType === 'output') {
@@ -146,7 +162,9 @@ function reducer(state, action) {
     case 'UPDATE_NODE':
       return withActiveGraph(state, (w) => ({
         ...w,
-        nodes: w.nodes.map((n) => (n.id === action.id ? { ...n, ...action.patch } : n)),
+        nodes: w.nodes.map((n) =>
+          n.id === action.id ? { ...n, ...action.patch, updatedAt: new Date().toISOString() } : n
+        ),
       }));
     case 'DELETE_NODE':
       return withActiveGraph(state, (w) => ({

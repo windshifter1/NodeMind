@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Terminal, X } from 'lucide-react';
-import { nodeWidthForTitle, TOP_BAR_HEIGHT } from '@/lib/canvasConstants';
+import { allocateNumericNodeIds, nextNumericNodeId, nodeWidthForTitle, TOP_BAR_HEIGHT } from '@/lib/canvasConstants';
 
 const COLORS = {
   red: '#ef4444',
@@ -46,15 +46,20 @@ function normaliseTitle(value) {
   return (value || '').trim() || 'Untitled';
 }
 
-function displayId(nodes, id) {
-  const index = nodes.findIndex((node) => node.id === id);
-  return index >= 0 ? String(index + 1).padStart(3, '0') : id;
+function displayId(_nodes, id) {
+  if (/^0*\d+$/.test(id)) return String(Number(id)).padStart(3, '0');
+  return id;
 }
 
 function matchNodeId(nodes, token) {
   if (!token) return null;
-  const numeric = token.match(/^\d+$/) ? Number(token) - 1 : -1;
-  if (numeric >= 0 && nodes[numeric]) return nodes[numeric].id;
+  if (/^\d+$/.test(token)) {
+    const padded = String(Number(token)).padStart(3, '0');
+    const byId = nodes.find((node) => node.id === padded);
+    if (byId) return byId.id;
+    const index = Number(token) - 1;
+    if (index >= 0 && nodes[index]) return nodes[index].id;
+  }
   const exact = nodes.find((node) => node.id === token);
   if (exact) return exact.id;
   const titled = nodes.find((node) => normaliseTitle(node.title).toLowerCase() === token.toLowerCase());
@@ -161,7 +166,8 @@ function layoutBranch(nodes, rootId, origin) {
 
 function cloneBranch(nodes, rootId, parentId, origin) {
   const ids = branchIds(nodes, rootId);
-  const idMap = new Map([...ids].map((id) => [id, uid('n')]));
+  const newIds = allocateNumericNodeIds(nodes, ids.size);
+  const idMap = new Map([...ids].map((id, index) => [id, newIds[index]]));
   const clones = nodes
     .filter((node) => ids.has(node.id))
     .map((node) => ({
@@ -175,46 +181,237 @@ function cloneBranch(nodes, rootId, parentId, origin) {
   return layoutBranch([...nodes, ...clones], idMap.get(rootId), origin);
 }
 
+function normalizeCommandLine(input) {
+  return input.trim().replace(/^cd\.\./i, 'cd ..');
+}
+
+function commandKey(token) {
+  const key = token.toLowerCase();
+  if (key === 'description') return 'desc';
+  if (key === 'colour') return 'color';
+  return key;
+}
+
 function formatNode(nodes, node) {
+  const id = displayId(nodes, node.id);
   return [
-    `${displayId(nodes, node.id)} ${normaliseTitle(node.title)}`,
-    `ID: ${node.id}`,
+    `Title: ${normaliseTitle(node.title)}`,
+    `ID: ${id}`,
     `Path: \\${nodePath(nodes, node.id).join('\\')}`,
     `Colour: ${node.color || '#6366f1'}`,
     node.content ? `Description: ${node.content}` : 'Description: (empty)',
   ];
 }
 
-const HELP = {
-  help: 'help [command] - Show command reference.',
-  cd: 'cd <node|..|\\|path> - Change current hierarchy path.',
-  dir: 'dir - List child nodes.',
-  open: 'open <node> - Open a child/title/id as the current node.',
-  info: 'info [/title text|/id id] - Show node information.',
-  find: 'find [/title|/desc|/id|/date] <text> - Search nodes.',
-  title: 'title "Text" - Replace the current node title.',
-  desc: 'desc "Text" - Replace the current node description.',
-  append: 'append "Text" - Append to the current node description.',
-  prepend: 'prepend "Text" - Prepend to the current node description.',
-  clear: 'clear title|desc - Clear title or description.',
-  color: 'color "Red"|#hex - Change current node colour.',
-  new: 'new "Title" - Create a child beneath the current path.',
-  duplicate: 'duplicate - Duplicate the current node and its children.',
-  move: 'move <path> - Move current branch beneath another node/root.',
-  copy: 'copy <path> - Copy current branch beneath another node/root.',
-  delete: 'delete - Delete current node and children. Run twice to confirm.',
-  link: 'link <id> - Add graph link from current node to target.',
-  unlink: 'unlink <id> - Remove graph link to/from target.',
-  links: 'links - Show incoming and outgoing graph links.',
-  export: 'export - Download this workspace as JSON.',
-  import: 'import - Open the existing JSON import picker.',
-  exit: 'exit - Close Terminal Mode.',
+function unquote(value) {
+  const trimmed = (value || '').trim();
+  if (trimmed.startsWith('"') && trimmed.endsWith('"') && trimmed.length >= 2) {
+    return trimmed.slice(1, -1);
+  }
+  return trimmed;
+}
+
+function isQuoted(value) {
+  const trimmed = (value || '').trim();
+  return trimmed.startsWith('"') && trimmed.endsWith('"') && trimmed.length >= 2;
+}
+
+function requireQuoted(rest, write) {
+  if (!isQuoted(rest)) {
+    write('Expected ""');
+    return false;
+  }
+  return true;
+}
+
+function requireQuotedOrHex(rest, write) {
+  const trimmed = (rest || '').trim();
+  if (trimmed.startsWith('#')) return true;
+  return requireQuoted(rest, write);
+}
+
+function formatUtcNow() {
+  const now = new Date();
+  const dd = String(now.getUTCDate()).padStart(2, '0');
+  const mm = String(now.getUTCMonth() + 1).padStart(2, '0');
+  const yyyy = String(now.getUTCFullYear());
+  const hh = String(now.getUTCHours()).padStart(2, '0');
+  const min = String(now.getUTCMinutes()).padStart(2, '0');
+  const ss = String(now.getUTCSeconds()).padStart(2, '0');
+  return `${dd}/${mm}/${yyyy} ${hh}:${min}:${ss} UTC`;
+}
+
+function nodeDates(node) {
+  return [node.createdAt, node.updatedAt]
+    .filter(Boolean)
+    .map((value) => new Date(value))
+    .filter((date) => !Number.isNaN(date.getTime()));
+}
+
+function formatDDMMYY(date) {
+  const dd = String(date.getDate()).padStart(2, '0');
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const yy = String(date.getFullYear() % 100).padStart(2, '0');
+  return `${dd}/${mm}/${yy}`;
+}
+
+function formatMMYY(date) {
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const yy = String(date.getFullYear() % 100).padStart(2, '0');
+  return `${mm}/${yy}`;
+}
+
+function formatYY(date) {
+  return String(date.getFullYear() % 100).padStart(2, '0');
+}
+
+function normalizeDateToken(value) {
+  return value
+    .split('/')
+    .map((part) => part.padStart(2, '0'))
+    .join('/');
+}
+
+function matchesDateQuery(node, query) {
+  const q = query.trim();
+  if (!q) return false;
+  const dates = nodeDates(node);
+  if (!dates.length) return false;
+
+  return dates.some((date) => {
+    const ddmmyy = formatDDMMYY(date);
+    const mmyy = formatMMYY(date);
+    const yy = formatYY(date);
+
+    if (/^\d{1,2}$/.test(q)) {
+      return yy === q.padStart(2, '0');
+    }
+    if (/^\d{1,2}\/\d{1,2}$/.test(q)) {
+      return mmyy === normalizeDateToken(q);
+    }
+    if (/^\d{1,2}\/\d{1,2}\/\d{1,2}$/.test(q)) {
+      return ddmmyy === normalizeDateToken(q);
+    }
+    return false;
+  });
+}
+
+const HELP_DIVIDER = '════════════════════════════════════════════';
+
+const HELP_SECTIONS = {
+  help: [
+    'help [command]',
+    '    Show all commands, or detailed help for a specific command.',
+  ],
+  cd: [
+    'cd <node|..|cd..|\\|path>',
+    '    Change the current hierarchy path.',
+  ],
+  dir: ['dir', '    List child nodes.'],
+  open: ['open <node>', '    Open a child node by title or ID and make it the current node.'],
+  info: [
+    'info [all|/title <text>|/id <id>]',
+    '    Display node information.',
+    '    • info            → current node',
+    '    • info all        → every node',
+    '    • info /title ... → search by title',
+    '    • info /id ...    → search by ID',
+  ],
+  find: [
+    'find [/title|/desc|/description|/id|/date] <text>',
+    '    Search nodes using the selected field. [/date] accepts DD/MM/YY, MM/YY, and YY formats.',
+  ],
+  title: ['title "Text"', '    Replace the current node title.'],
+  desc: [
+    'desc "Text"',
+    'description "Text"',
+    '    Replace the current node description.',
+  ],
+  append: ['append "Text"', '    Add text to the end of the description.'],
+  prepend: ['prepend "Text"', '    Add text to the beginning of the description.'],
+  clear: [
+    'clear title',
+    '    Clear the node title.',
+    '',
+    'clear desc',
+    'clear description',
+    '    Clear the node description.',
+  ],
+  color: [
+    'color "Red"',
+    'colour "Red"',
+    'color #RRGGBB',
+    'colour #RRGGBB',
+    '    Change the current node colour.',
+  ],
+  new: ['new "Title"', '    Create a child node.'],
+  duplicate: ['duplicate', '    Duplicate the current node and all descendants.'],
+  move: ['move <path>', '    Move the current branch to another location.'],
+  copy: ['copy <path>', '    Copy the current branch to another location.'],
+  delete: [
+    'delete',
+    '    Delete the current node and its descendants.',
+    '    Run the command twice to confirm.',
+  ],
+  link: ['link <id>', '    Create a graph link to another node.'],
+  unlink: ['unlink <id>', '    Remove a graph link.'],
+  links: ['links', '    Display all incoming and outgoing graph links.'],
+  export: ['export', '    Download the workspace as JSON.'],
+  import: ['import', '    Open the JSON import dialog.'],
+  terminal: [
+    'terminal exit',
+    '    Close Terminal Mode.',
+    '',
+    'terminal clear',
+    '    Clear all terminal output and scroll back to the top.',
+    '',
+    'terminal about',
+    '    Display credits.',
+    '',
+    'terminal date',
+    '    Display the current UTC date and time (DD/MM/YYYY).',
+  ],
 };
+
+const HELP_GROUPS = [
+  { title: null, keys: ['help'] },
+  { title: 'NAVIGATION', keys: ['cd', 'dir', 'open'] },
+  { title: 'VIEW & SEARCH', keys: ['info', 'find'] },
+  { title: 'EDIT', keys: ['title', 'desc', 'append', 'prepend', 'clear', 'color'] },
+  { title: 'NODE MANAGEMENT', keys: ['new', 'duplicate', 'move', 'copy', 'delete'] },
+  { title: 'GRAPH LINKS', keys: ['link', 'unlink', 'links'] },
+  { title: 'WORKSPACE', keys: ['export', 'import'] },
+  { title: 'TERMINAL', keys: ['terminal'] },
+];
+
+function sectionLines(key) {
+  return HELP_SECTIONS[key] || [];
+}
+
+function buildHelpAll() {
+  const lines = [HELP_DIVIDER, 'HELP', HELP_DIVIDER, '', ...sectionLines('help')];
+  HELP_GROUPS.slice(1).forEach(({ title, keys }) => {
+    lines.push('', HELP_DIVIDER, title, HELP_DIVIDER, '');
+    keys.forEach((key, index) => {
+      if (index > 0) lines.push('');
+      lines.push(...sectionLines(key));
+    });
+  });
+  return lines;
+}
+
+const HELP_ALL = buildHelpAll();
+
+function helpFor(topic) {
+  const key = commandKey(topic.trim().split(/\s+/)[0]);
+  return HELP_SECTIONS[key];
+}
 
 export default function TerminalDialog({ open, onClose, workspace, dispatch, onExport, onImport }) {
   const [cwdId, setCwdId] = useState(null);
   const [input, setInput] = useState('');
   const [lines, setLines] = useState([]);
+  const [welcomeHidden, setWelcomeHidden] = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const inputRef = useRef(null);
   const scrollRef = useRef(null);
@@ -225,6 +422,7 @@ export default function TerminalDialog({ open, onClose, workspace, dispatch, onE
 
   useEffect(() => {
     if (open) {
+      setWelcomeHidden(false);
       setTimeout(() => inputRef.current?.focus(), 0);
     }
   }, [open]);
@@ -238,7 +436,7 @@ export default function TerminalDialog({ open, onClose, workspace, dispatch, onE
   }, [cwdId, nodes]);
 
   const welcome = useMemo(
-    () => [`NodeMind Terminal`, `Type "help" for commands.`, ''],
+    () => [`NodeMind Terminal`, `Type help for commands.`, ''],
     []
   );
 
@@ -254,13 +452,20 @@ export default function TerminalDialog({ open, onClose, workspace, dispatch, onE
   };
 
   const run = (raw) => {
-    const commandLine = raw.trim();
-    write(`${prompt} ${commandLine}`);
-    if (!commandLine) return;
+    const commandLine = normalizeCommandLine(raw);
+    if (!commandLine) {
+      write(`${prompt} ${commandLine}`);
+      return;
+    }
     const [command = '', ...args] = quoteAwareSplit(commandLine);
     const rest = commandLine.slice(command.length).trim();
     const current = nodes.find((node) => node.id === cwdId) || null;
-    const cmd = command.toLowerCase();
+    const cmd = commandKey(command);
+    const isTerminalClear = cmd === 'terminal' && args[0]?.toLowerCase() === 'clear';
+
+    if (!isTerminalClear) {
+      write(`${prompt} ${commandLine}`);
+    }
 
     const requireCurrent = () => {
       if (!current) {
@@ -274,12 +479,32 @@ export default function TerminalDialog({ open, onClose, workspace, dispatch, onE
 
     switch (cmd) {
       case 'help':
-        if (args[0]) write(HELP[args[0].toLowerCase()] || `No help for "${args[0]}".`);
-        else write(Object.values(HELP));
+        if (args[0]) write(helpFor(args[0]) || [`No help for "${args[0]}".`]);
+        else write(HELP_ALL);
         break;
-      case 'exit':
-        onClose();
+      case 'terminal': {
+        const sub = args[0]?.toLowerCase();
+        switch (sub) {
+          case 'exit':
+            onClose();
+            break;
+          case 'clear':
+            setLines([]);
+            setWelcomeHidden(true);
+            setConfirmDeleteId(null);
+            requestAnimationFrame(() => scrollRef.current?.scrollTo({ top: 0 }));
+            break;
+          case 'about':
+            write('Developed by windshifter');
+            break;
+          case 'date':
+            write(formatUtcNow());
+            break;
+          default:
+            write('Unknown terminal command. Type help terminal.');
+        }
         break;
+      }
       case 'dir': {
         const kids = childrenOf(nodes, cwdId);
         write(kids.length ? kids.map((node) => `${displayId(nodes, node.id)} ${normaliseTitle(node.title)}`) : '(no child nodes)');
@@ -293,11 +518,14 @@ export default function TerminalDialog({ open, onClose, workspace, dispatch, onE
         break;
       }
       case 'info': {
-        if (args[0] === '/title') {
+        const flag = args[0]?.toLowerCase();
+        if (flag === 'all') {
+          write(nodes.length ? nodes.flatMap((node) => [...formatNode(nodes, node), '']) : 'No nodes.');
+        } else if (flag === '/title') {
           const query = args.slice(1).join(' ').toLowerCase();
           const matches = nodes.filter((node) => normaliseTitle(node.title).toLowerCase().includes(query));
           write(matches.length ? matches.flatMap((node) => [...formatNode(nodes, node), '']) : 'No matches.');
-        } else if (args[0] === '/id') {
+        } else if (flag === '/id') {
           const id = matchNodeId(nodes, args[1]);
           const node = nodes.find((n) => n.id === id);
           write(node ? formatNode(nodes, node) : `ID not found: ${args[1]}`);
@@ -306,13 +534,13 @@ export default function TerminalDialog({ open, onClose, workspace, dispatch, onE
         break;
       }
       case 'find': {
-        const flag = args[0]?.startsWith('/') ? args[0] : null;
+        const flag = args[0]?.startsWith('/') ? args[0].toLowerCase() : null;
         const query = (flag ? args.slice(1) : args).join(' ').toLowerCase();
         const matches = nodes.filter((node) => {
           if (flag === '/title') return normaliseTitle(node.title).toLowerCase().includes(query);
-          if (flag === '/desc') return (node.content || '').toLowerCase().includes(query);
+          if (flag === '/desc' || flag === '/description') return (node.content || '').toLowerCase().includes(query);
           if (flag === '/id') return node.id.includes(query) || displayId(nodes, node.id) === query;
-          if (flag === '/date') return (node.createdAt || node.updatedAt || '').includes(query);
+          if (flag === '/date') return matchesDateQuery(node, query);
           return `${node.title || ''} ${node.content || ''} ${node.id}`.toLowerCase().includes(query);
         });
         write(matches.length ? matches.map((node) => `${displayId(nodes, node.id)} ${normaliseTitle(node.title)}`) : 'No matches.');
@@ -325,22 +553,40 @@ export default function TerminalDialog({ open, onClose, workspace, dispatch, onE
       case 'clear':
       case 'color': {
         if (!requireCurrent()) break;
-        const patch = {};
-        if (cmd === 'title') patch.title = rest;
-        if (cmd === 'desc') patch.content = rest;
-        if (cmd === 'append') patch.content = `${current.content || ''}${current.content ? '\n' : ''}${rest}`;
-        if (cmd === 'prepend') patch.content = `${rest}${current.content ? '\n' : ''}${current.content || ''}`;
-        if (cmd === 'clear') patch[args[0] === 'title' ? 'title' : 'content'] = '';
-        if (cmd === 'color') patch.color = COLORS[rest.toLowerCase()] || rest;
+        const patch = { updatedAt: new Date().toISOString() };
+        if (cmd === 'title') {
+          if (!requireQuoted(rest, write)) break;
+          patch.title = unquote(rest);
+        } else if (cmd === 'desc') {
+          if (!requireQuoted(rest, write)) break;
+          patch.content = unquote(rest);
+        } else if (cmd === 'append') {
+          if (!requireQuoted(rest, write)) break;
+          const text = unquote(rest);
+          patch.content = `${current.content || ''}${current.content ? '\n' : ''}${text}`;
+        } else if (cmd === 'prepend') {
+          if (!requireQuoted(rest, write)) break;
+          const text = unquote(rest);
+          patch.content = `${text}${current.content ? '\n' : ''}${current.content || ''}`;
+        } else if (cmd === 'clear') {
+          const target = args[0]?.toLowerCase();
+          patch[target === 'title' ? 'title' : 'content'] = '';
+        } else if (cmd === 'color') {
+          if (!requireQuotedOrHex(rest, write)) break;
+          const text = unquote(rest);
+          patch.color = COLORS[text.toLowerCase()] || text;
+        }
         replaceWorkspace({ nodes: nodes.map((node) => (node.id === current.id ? { ...node, ...patch } : node)) });
         write('Updated.');
         break;
       }
       case 'new': {
-        const title = rest || 'Untitled';
+        if (!requireQuoted(rest, write)) break;
+        const title = unquote(rest) || 'Untitled';
         const pos = nextChildPosition(nodes, cwdId, title);
+        const now = new Date().toISOString();
         const node = {
-          id: uid('n'),
+          id: nextNumericNodeId(nodes),
           x: pos.x,
           y: pos.y,
           title,
@@ -349,6 +595,8 @@ export default function TerminalDialog({ open, onClose, workspace, dispatch, onE
           collapsed: false,
           parentId: cwdId || null,
           z: workspace.nextZ || 1,
+          createdAt: now,
+          updatedAt: now,
         };
         replaceWorkspace({ nodes: [...nodes, node], nextZ: (workspace.nextZ || 1) + 1 });
         setCwdId(node.id);
@@ -451,7 +699,7 @@ export default function TerminalDialog({ open, onClose, workspace, dispatch, onE
         write('Import picker opened.');
         break;
       default:
-        write(`Unknown command: ${command}. Type "help".`);
+        write(`Unknown command: ${command}. Type help.`);
     }
   };
 
@@ -469,10 +717,14 @@ export default function TerminalDialog({ open, onClose, workspace, dispatch, onE
         </div>
         <div
           ref={scrollRef}
-          className="flex-1 overflow-auto px-4 py-3 text-[13px] leading-relaxed text-emerald-100 bg-[#050806]"
-          onClick={() => inputRef.current?.focus()}
+          className="flex-1 overflow-auto px-4 py-3 text-[13px] leading-relaxed text-emerald-100 bg-[#050806] select-text cursor-text"
+          onClick={() => {
+            const sel = window.getSelection();
+            if (sel && sel.toString().length > 0) return;
+            inputRef.current?.focus();
+          }}
         >
-          {[...welcome, ...lines].map((line, index) => (
+          {[...(welcomeHidden ? [] : welcome), ...lines].map((line, index) => (
             <div key={index} className="whitespace-pre-wrap break-words min-h-[1.4em]">
               {line}
             </div>

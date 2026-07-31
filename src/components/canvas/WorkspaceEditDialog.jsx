@@ -1,24 +1,56 @@
 import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
+import { GRAPH_ORIENTATIONS, normalizeOrientation } from '@/lib/canvasConstants';
 import { WORKSPACE_ICONS, WORKSPACE_ICON_KEYS, WORKSPACE_COLORS } from '@/lib/workspaceIcons';
 
-export default function WorkspaceEditDialog({ workspace, open, onClose, onSave, onDelete }) {
+function OrientationIcon({ orientation }) {
+  const vertical = orientation === GRAPH_ORIENTATIONS.VERTICAL;
+  const nodes = vertical
+    ? [
+        { cx: 18, cy: 9 },
+        { cx: 18, cy: 22 },
+        { cx: 18, cy: 35 },
+      ]
+    : [
+        { cx: 7, cy: 22 },
+        { cx: 18, cy: 22 },
+        { cx: 29, cy: 22 },
+      ];
+
+  return (
+    <svg viewBox="0 0 36 44" className="h-10 w-10" fill="none" aria-hidden="true">
+      <path
+        d={vertical ? 'M18 13V31' : 'M11 22H25'}
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+      {nodes.map((node, index) => (
+        <circle key={index} cx={node.cx} cy={node.cy} r="4.5" fill="currentColor" />
+      ))}
+    </svg>
+  );
+}
+
+export default function WorkspaceEditDialog({ workspace, open, onClose, onSave, onDelete, mode = 'edit' }) {
   const [name, setName] = useState('');
   const [colour, setColour] = useState(WORKSPACE_COLORS[0]);
   const [icon, setIcon] = useState('note');
+  const [orientation, setOrientation] = useState(GRAPH_ORIENTATIONS.HORIZONTAL);
 
   useEffect(() => {
     if (workspace) {
       setName(workspace.name || '');
       setColour(workspace.colour || WORKSPACE_COLORS[0]);
       setIcon(workspace.icon || 'note');
+      setOrientation(normalizeOrientation(workspace.orientation));
     }
   }, [workspace]);
 
   if (!open || !workspace) return null;
 
   const save = () => {
-    onSave(workspace.id, { name: name.trim() || 'Untitled', colour, icon });
+    onSave(workspace.id, { name: name.trim() || 'Untitled', colour, icon, orientation });
     onClose();
   };
 
@@ -26,11 +58,11 @@ export default function WorkspaceEditDialog({ workspace, open, onClose, onSave, 
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-md" onClick={onClose} />
       <div
-        className="relative w-full max-w-sm rounded-2xl bg-zinc-900 border border-white/10 shadow-2xl flex flex-col overflow-hidden"
+        className="relative w-full max-w-sm max-h-[88vh] rounded-2xl bg-zinc-900 border border-white/10 shadow-2xl flex flex-col overflow-hidden"
         onPointerDown={(e) => e.stopPropagation()}
       >
         <div className="flex items-center gap-2 px-3 sm:px-4 py-3 border-b border-white/10 bg-white/5">
-          <h2 className="text-sm font-semibold text-zinc-100">Edit workspace</h2>
+          <h2 className="text-sm font-semibold text-zinc-100">{mode === 'create' ? 'New workspace' : 'Edit workspace'}</h2>
           <div className="flex-1" />
           <button
             onClick={onClose}
@@ -40,7 +72,7 @@ export default function WorkspaceEditDialog({ workspace, open, onClose, onSave, 
           </button>
         </div>
 
-        <div className="px-4 sm:px-5 py-4">
+        <div className="overflow-auto px-4 sm:px-5 py-4">
           <label className="text-sm font-medium text-zinc-300">Name</label>
           <input
             value={name}
@@ -90,18 +122,49 @@ export default function WorkspaceEditDialog({ workspace, open, onClose, onSave, 
             })}
           </div>
 
+          <label className="text-sm font-medium text-zinc-300">Orientation</label>
+          <div className="grid grid-cols-2 gap-2 mt-2 mb-5">
+            {[
+              { value: GRAPH_ORIENTATIONS.HORIZONTAL, label: 'Horizontal' },
+              { value: GRAPH_ORIENTATIONS.VERTICAL, label: 'Vertical' },
+            ].map((option) => {
+              const selected = orientation === option.value;
+              return (
+                <button
+                  key={option.value}
+                  onClick={() => setOrientation(option.value)}
+                  className="rounded-xl border px-3 py-3 text-left transition hover:bg-white/10"
+                  style={{
+                    backgroundColor: selected ? colour + '22' : 'rgba(255,255,255,0.03)',
+                    borderColor: selected ? colour : 'rgba(255,255,255,0.1)',
+                    color: selected ? '#ffffff' : '#d4d4d8',
+                  }}
+                >
+                  <div className="flex items-center gap-3">
+                    <OrientationIcon orientation={option.value} />
+                    <span className="text-sm font-medium">{option.label}</span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
           <div className="flex justify-between items-center">
-            <button
-              onClick={() => {
-                if (window.confirm('Delete this workspace and all its content?')) {
-                  onDelete(workspace.id);
-                  onClose();
-                }
-              }}
-              className="text-sm text-red-300 hover:text-red-200 font-medium transition"
-            >
-              Delete workspace
-            </button>
+            {mode === 'edit' ? (
+              <button
+                onClick={() => {
+                  if (window.confirm('Delete this workspace and all its content?')) {
+                    onDelete(workspace.id);
+                    onClose();
+                  }
+                }}
+                className="text-sm text-red-300 hover:text-red-200 font-medium transition"
+              >
+                Delete workspace
+              </button>
+            ) : (
+              <span />
+            )}
             <div className="flex gap-2">
               <button
                 onClick={onClose}

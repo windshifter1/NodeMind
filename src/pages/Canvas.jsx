@@ -19,6 +19,7 @@ export default function Canvas() {
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [editingNodeId, setEditingNodeId] = useState(null);
   const [editingWorkspace, setEditingWorkspace] = useState(false);
+  const [creatingWorkspace, setCreatingWorkspace] = useState(false);
   const [textExportOpen, setTextExportOpen] = useState(false);
   const [terminalOpen, setTerminalOpen] = useState(false);
   const [nodeTheme, setNodeTheme] = useState(() => {
@@ -48,7 +49,7 @@ export default function Canvas() {
   const addConnectedNode = (x, y, fromNode, fromType) =>
     dispatch({ type: 'ADD_CONNECTED_NODE', x, y, fromNode, fromType });
 
-  const createWorkspace = () => dispatch({ type: 'ADD_WORKSPACE' });
+  const createWorkspace = (workspace) => dispatch({ type: 'ADD_WORKSPACE', workspace });
   const selectWorkspace = (id) => dispatch({ type: 'SET_ACTIVE', id });
   const updateWorkspaceMeta = (id, patch) => dispatch({ type: 'UPDATE_WORKSPACE_META', id, patch });
   const deleteWorkspace = (id) => dispatch({ type: 'DELETE_WORKSPACE', id });
@@ -56,7 +57,7 @@ export default function Canvas() {
   const handleExport = () => {
     const data = JSON.stringify(
       {
-        workspace: { name: active.name, colour: active.colour, icon: active.icon },
+        workspace: { name: active.name, colour: active.colour, icon: active.icon, orientation: active.orientation },
         nodes: active.nodes,
         edges: active.edges,
         nextZ: active.nextZ,
@@ -142,6 +143,7 @@ export default function Canvas() {
         setZoom={setZoom}
         pan={pan}
         setPan={setPan}
+        orientation={active.orientation}
       />
 
       <Toolbar
@@ -163,7 +165,7 @@ export default function Canvas() {
         workspaces={state.workspaces}
         activeId={state.activeId}
         onSelect={selectWorkspace}
-        onCreate={createWorkspace}
+        onCreate={() => setCreatingWorkspace(true)}
         onEdit={() => setEditingWorkspace(true)}
       />
 
@@ -178,9 +180,24 @@ export default function Canvas() {
       <WorkspaceEditDialog
         workspace={active}
         open={editingWorkspace}
+        mode="edit"
         onClose={() => setEditingWorkspace(false)}
         onSave={updateWorkspaceMeta}
         onDelete={deleteWorkspace}
+      />
+
+      <WorkspaceEditDialog
+        workspace={{
+          id: 'new',
+          name: `Workspace ${state.workspaces.length + 1}`,
+          colour: '#6366f1',
+          icon: 'note',
+          orientation: 'horizontal',
+        }}
+        open={creatingWorkspace}
+        mode="create"
+        onClose={() => setCreatingWorkspace(false)}
+        onSave={(_, patch) => createWorkspace(patch)}
       />
 
       <TextExportDialog
@@ -196,6 +213,7 @@ export default function Canvas() {
         onClose={() => setTerminalOpen(false)}
         workspace={active}
         dispatch={dispatch}
+        orientation={active.orientation}
         onExport={handleExport}
         onImport={() => {
           const input = document.querySelector('input[type="file"][accept="application/json"]');

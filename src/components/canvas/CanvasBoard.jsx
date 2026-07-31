@@ -6,7 +6,11 @@ import {
   MIN_ZOOM,
   MAX_ZOOM,
   bezierPath,
+  connectedNodePositionAtSocket,
+  normalizeOrientation,
+  nodeSizeForLayout,
   nodeWidthForTitle,
+  socketWorld,
 } from '@/lib/canvasConstants';
 
 function clampZoom(z) {
@@ -29,7 +33,9 @@ export default function CanvasBoard({
   setZoom,
   pan,
   setPan,
+  orientation,
 }) {
+  const graphOrientation = normalizeOrientation(orientation);
   const boardRef = useRef(null);
   const pointers = useRef(new Map());
   const panState = useRef({ panning: false, lastX: 0, lastY: 0, moved: false });
@@ -127,9 +133,9 @@ export default function CanvasBoard({
   const socketScreen = (node, type, override) => {
     const x = override && override.id === node.id ? override.x : node.x;
     const y = override && override.id === node.id ? override.y : node.y;
-    const wx = type === 'output' ? x + nodeWidthForTitle(node.title) : x;
-    const wy = y + TOP_BAR_HEIGHT / 2;
-    return { x: wx * zoom + pan.x, y: wy * zoom + pan.y };
+    const overridden = { ...node, x, y };
+    const point = socketWorld(overridden, type, graphOrientation, nodeSizeForLayout(overridden));
+    return { x: point.x * zoom + pan.x, y: point.y * zoom + pan.y };
   };
 
   const updateDraggedEdges = useCallback(
@@ -148,13 +154,13 @@ export default function CanvasBoard({
           out = socketScreen(to, 'output', override);
           inp = socketScreen(from, 'input', override);
         }
-        const d = bezierPath(out.x, out.y, inp.x, inp.y);
+        const d = bezierPath(out.x, out.y, inp.x, inp.y, false, graphOrientation);
         boardRef.current
           ?.querySelectorAll(`[data-edge-id="${edge.id}"]`)
           .forEach((path) => path.setAttribute('d', d));
       });
     },
-    [pan.x, pan.y, zoom]
+    [graphOrientation, pan.x, pan.y, zoom]
   );
 
   const scheduleDragVisual = useCallback(
@@ -390,15 +396,14 @@ export default function CanvasBoard({
       if (e && (!isPrimaryPointerStart(e) || shouldIgnoreMouseFocusRestore(e))) return;
       const node = nodes.find((n) => n.id === nodeId);
       if (!node) return;
-      const wx = type === 'output' ? node.x + nodeWidthForTitle(node.title) : node.x;
-      const wy = node.y + TOP_BAR_HEIGHT / 2;
-      const fx = wx * zoomRef.current + panRef.current.x;
-      const fy = wy * zoomRef.current + panRef.current.y;
+      const point = socketWorld(node, type, graphOrientation, nodeSizeForLayout(node));
+      const fx = point.x * zoomRef.current + panRef.current.x;
+      const fy = point.y * zoomRef.current + panRef.current.y;
       const p = { fromNode: nodeId, fromType: type, toX: fx, toY: fy };
       pendingRef.current = p;
       setPending(p);
     },
-    [nodes]
+    [graphOrientation, nodes]
   );
 
   useEffect(() => {
@@ -427,9 +432,8 @@ export default function CanvasBoard({
           }
         } else if (!overNode) {
           const w = screenToWorld(e.clientX, e.clientY);
-          const ny = w.y - TOP_BAR_HEIGHT / 2;
-          const nx = cur.fromType === 'output' ? w.x : w.x - nodeWidthForTitle('');
-          onAddConnectedNode(nx, ny, cur.fromNode, cur.fromType);
+          const pos = connectedNodePositionAtSocket(w, cur.fromType, graphOrientation);
+          onAddConnectedNode(pos.x, pos.y, cur.fromNode, cur.fromType);
         }
       }
       pendingRef.current = null;
@@ -491,7 +495,7 @@ export default function CanvasBoard({
             out = socketScreen(to, 'output');
             inp = socketScreen(from, 'input');
           }
-          const d = bezierPath(out.x, out.y, inp.x, inp.y);
+          const d = bezierPath(out.x, out.y, inp.x, inp.y, false, graphOrientation);
           return (
             <g key={edge.id}>
               <path data-edge-id={edge.id} d={d} fill="none" stroke="#94a3b8" strokeWidth={2.5} strokeLinecap="round" />
@@ -518,7 +522,7 @@ export default function CanvasBoard({
             const from = socketScreen(fn, pending.fromType);
             return (
               <path
-                d={bezierPath(from.x, from.y, pending.toX, pending.toY, pending.fromType === 'input')}
+                d={bezierPath(from.x, from.y, pending.toX, pending.toY, pending.fromType === 'input', graphOrientation)}
                 fill="none"
                 stroke="#818cf8"
                 strokeWidth={2.5}
@@ -542,6 +546,7 @@ export default function CanvasBoard({
             key={node.id}
             node={node}
             pending={pending}
+            orientation={graphOrientation}
             darkNodes={darkNodes}
             ghost={overBin && draggingNode && node.id === draggingNode.id}
             onUpdate={(patch) => onUpdateNode(node.id, patch)}

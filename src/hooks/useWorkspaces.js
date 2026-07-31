@@ -1,5 +1,5 @@
 import { useReducer, useEffect } from 'react';
-import { migrateWorkspaceNodeIds, nextNumericNodeId } from '@/lib/canvasConstants';
+import { migrateWorkspaceNodeIds, nextNumericNodeId, normalizeOrientation } from '@/lib/canvasConstants';
 
 const STORAGE_KEY = 'thoughts-canvas-workspaces-v2';
 const LEGACY_KEY = 'thoughts-canvas-graph-v1';
@@ -8,12 +8,13 @@ function uid(prefix) {
   return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
 }
 
-function newWorkspace({ name, colour, icon, nodes, edges, nextZ } = {}) {
+function newWorkspace({ name, colour, icon, orientation, nodes, edges, nextZ } = {}) {
   return {
     id: uid('w'),
     name: name || 'Untitled',
     colour: colour || '#6366f1',
     icon: icon || 'note',
+    orientation: normalizeOrientation(orientation),
     nodes: Array.isArray(nodes) ? nodes : [],
     edges: Array.isArray(edges) ? edges : [],
     nextZ: typeof nextZ === 'number' ? nextZ : 1,
@@ -67,7 +68,12 @@ function withActiveGraph(state, fn) {
 function reducer(state, action) {
   switch (action.type) {
     case 'ADD_WORKSPACE': {
-      const ws = newWorkspace({ name: `Workspace ${state.workspaces.length + 1}` });
+      const ws = newWorkspace({
+        name: action.workspace?.name || `Workspace ${state.workspaces.length + 1}`,
+        colour: action.workspace?.colour,
+        icon: action.workspace?.icon,
+        orientation: action.workspace?.orientation,
+      });
       return { workspaces: [...state.workspaces, ws], activeId: ws.id };
     }
     case 'IMPORT_AS_WORKSPACE': {
@@ -77,6 +83,7 @@ function reducer(state, action) {
           name: meta.name || 'Imported',
           colour: meta.colour,
           icon: meta.icon,
+          orientation: meta.orientation,
           nodes: action.data && action.data.nodes,
           edges: action.data && action.data.edges,
           nextZ: action.data && action.data.nextZ,

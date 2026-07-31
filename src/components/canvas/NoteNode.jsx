@@ -2,11 +2,46 @@ import React, { useRef, useEffect } from 'react';
 import { ChevronDown, ChevronUp, Pencil } from 'lucide-react';
 import { nodeWidthForTitle, TOP_BAR_HEIGHT, SOCKET_RADIUS } from '@/lib/canvasConstants';
 
-function Socket({ type, color, nodeId, pending, onStartConnect }) {
+function Socket({ type, color, nodeId, pending, orientation, onStartConnect }) {
   const isTarget = pending && pending.fromNode !== nodeId && pending.fromType !== type;
   // Generous, mostly-outward invisible hitbox; visible circle stays half-in/half-out.
   const HIT = 36;
   const OUT = 28;
+  const vertical = orientation === 'vertical';
+  const hitStyle = vertical
+    ? {
+        width: HIT,
+        height: HIT,
+        left: '50%',
+        top: type === 'input' ? -OUT : 'auto',
+        bottom: type === 'output' ? -OUT : 'auto',
+        transform: 'translateX(-50%)',
+      }
+    : {
+        width: HIT,
+        height: HIT,
+        left: type === 'input' ? -OUT : 'auto',
+        right: type === 'output' ? -OUT : 'auto',
+        top: TOP_BAR_HEIGHT / 2,
+        transform: 'translateY(-50%)',
+      };
+  const visibleStyle = vertical
+    ? {
+        width: SOCKET_RADIUS * 2,
+        height: SOCKET_RADIUS * 2,
+        left: '50%',
+        top: type === 'input' ? -SOCKET_RADIUS : 'auto',
+        bottom: type === 'output' ? -SOCKET_RADIUS : 'auto',
+        transform: 'translateX(-50%)',
+      }
+    : {
+        width: SOCKET_RADIUS * 2,
+        height: SOCKET_RADIUS * 2,
+        left: type === 'input' ? -SOCKET_RADIUS : 'auto',
+        right: type === 'output' ? -SOCKET_RADIUS : 'auto',
+        top: TOP_BAR_HEIGHT / 2,
+        transform: 'translateY(-50%)',
+      };
   return (
     <>
       <div
@@ -19,26 +54,16 @@ function Socket({ type, color, nodeId, pending, onStartConnect }) {
         }}
         className="absolute"
         style={{
-          width: HIT,
-          height: HIT,
-          left: type === 'input' ? -OUT : 'auto',
-          right: type === 'output' ? -OUT : 'auto',
-          top: '50%',
-          transform: 'translateY(-50%)',
+          ...hitStyle,
           cursor: 'crosshair',
           zIndex: 20,
         }}
       />
       <div
-        className="absolute rounded-full border-2 border-white transition-shadow"
+        className="absolute rounded-full border-2 border-white transition-all"
         style={{
-          width: SOCKET_RADIUS * 2,
-          height: SOCKET_RADIUS * 2,
+          ...visibleStyle,
           backgroundColor: color,
-          left: type === 'input' ? -SOCKET_RADIUS : 'auto',
-          right: type === 'output' ? -SOCKET_RADIUS : 'auto',
-          top: '50%',
-          transform: 'translateY(-50%)',
           boxShadow: isTarget ? `0 0 0 5px ${color}66` : '0 1px 3px rgba(0,0,0,0.3)',
           pointerEvents: 'none',
           zIndex: 21,
@@ -51,6 +76,7 @@ function Socket({ type, color, nodeId, pending, onStartConnect }) {
 export default function NoteNode({
   node,
   pending,
+  orientation,
   darkNodes,
   ghost,
   onUpdate,
@@ -92,6 +118,24 @@ export default function NoteNode({
         transition: 'left 200ms ease, top 200ms ease, opacity 180ms ease, width 200ms ease',
       }}
     >
+      <Socket
+        type="input"
+        color={node.color}
+        nodeId={node.id}
+        pending={pending}
+        orientation={orientation}
+        onStartConnect={onStartConnect}
+      />
+
+      <Socket
+        type="output"
+        color={node.color}
+        nodeId={node.id}
+        pending={pending}
+        orientation={orientation}
+        onStartConnect={onStartConnect}
+      />
+
       {/* Top bar */}
       <div
         className="relative flex items-center gap-1 px-2"
@@ -103,14 +147,6 @@ export default function NoteNode({
         }}
         onPointerDown={startDrag}
       >
-        <Socket
-          type="input"
-          color={node.color}
-          nodeId={node.id}
-          pending={pending}
-          onStartConnect={onStartConnect}
-        />
-
         <button
           onPointerDown={(e) => e.stopPropagation()}
           onClick={() => onUpdate({ collapsed: !node.collapsed })}
@@ -140,13 +176,6 @@ export default function NoteNode({
           <Pencil size={14} />
         </button>
 
-        <Socket
-          type="output"
-          color={node.color}
-          nodeId={node.id}
-          pending={pending}
-          onStartConnect={onStartConnect}
-        />
       </div>
 
       {/* Adaptive text field */}

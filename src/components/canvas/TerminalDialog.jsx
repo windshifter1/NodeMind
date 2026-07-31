@@ -1,6 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Terminal, X } from 'lucide-react';
-import { allocateNumericNodeIds, nextNumericNodeId, nodeWidthForTitle, TOP_BAR_HEIGHT } from '@/lib/canvasConstants';
+import {
+  allocateNumericNodeIds,
+  layoutBranchByOrientation,
+  nextChildGraphPosition,
+  nextNumericNodeId,
+  normalizeOrientation,
+} from '@/lib/canvasConstants';
 
 const COLORS = {
   red: '#ef4444',
@@ -120,51 +126,7 @@ function resolvePath(nodes, cwdId, rawPath) {
   return current;
 }
 
-function nextChildPosition(nodes, parentId, title = '') {
-  const parent = nodes.find((node) => node.id === parentId);
-  const siblings = childrenOf(nodes, parentId);
-  const baseX = parent ? parent.x + nodeWidthForTitle(parent.title) + 120 : 0;
-  const baseY = parent ? parent.y : 0;
-  let y = baseY + Math.max(0, siblings.length) * 96;
-  const width = nodeWidthForTitle(title);
-  while (
-    nodes.some(
-      (node) =>
-        Math.abs(node.x - baseX) < Math.max(width, nodeWidthForTitle(node.title)) + 24 &&
-        Math.abs(node.y - y) < TOP_BAR_HEIGHT + 64
-    )
-  ) {
-    y += 96;
-  }
-  return { x: baseX, y };
-}
-
-function layoutBranch(nodes, rootId, origin) {
-  const byParent = new Map();
-  nodes.forEach((node) => {
-    const key = node.parentId || '';
-    if (!byParent.has(key)) byParent.set(key, []);
-    byParent.get(key).push(node);
-  });
-
-  const updates = new Map([[rootId, origin]]);
-  const walk = (id, depth, yStart) => {
-    const kids = byParent.get(id) || [];
-    kids.forEach((child, index) => {
-      const parentPos = updates.get(id) || origin;
-      const pos = {
-        x: parentPos.x + nodeWidthForTitle(nodes.find((n) => n.id === id)?.title) + 120,
-        y: yStart + index * 96,
-      };
-      updates.set(child.id, pos);
-      walk(child.id, depth + 1, pos.y);
-    });
-  };
-  walk(rootId, 0, origin.y);
-  return nodes.map((node) => (updates.has(node.id) ? { ...node, ...updates.get(node.id) } : node));
-}
-
-function cloneBranch(nodes, rootId, parentId, origin) {
+function cloneBranch(nodes, rootId, parentId, origin, orientation) {
   const ids = branchIds(nodes, rootId);
   const newIds = allocateNumericNodeIds(nodes, ids.size);
   const idMap = new Map([...ids].map((id, index) => [id, newIds[index]]));
@@ -178,7 +140,7 @@ function cloneBranch(nodes, rootId, parentId, origin) {
       y: node.y + 80,
       z: node.z || 1,
     }));
-  return layoutBranch([...nodes, ...clones], idMap.get(rootId), origin);
+  return layoutBranchByOrientation([...nodes, ...clones], idMap.get(rootId), origin, orientation);
 }
 
 function normalizeCommandLine(input) {
@@ -407,7 +369,7 @@ function helpFor(topic) {
   return HELP_SECTIONS[key];
 }
 
-export default function TerminalDialog({ open, onClose, workspace, dispatch, onExport, onImport }) {
+export default function TerminalDialog({ open, onClose, workspace, dispatch, onExport, onImport, orientation }) {
   const [cwdId, setCwdId] = useState(null);
   const [input, setInput] = useState('');
   const [lines, setLines] = useState([]);
@@ -417,6 +379,7 @@ export default function TerminalDialog({ open, onClose, workspace, dispatch, onE
   const scrollRef = useRef(null);
 
   const nodes = workspace.nodes || [];
+  const graphOrientation = normalizeOrientation(orientation || workspace.orientation);
   const pathParts = nodePath(nodes, cwdId);
   const prompt = `${workspace.name || 'Workspace'}:\\${pathParts.join('\\')}>`;
 
@@ -583,7 +546,7 @@ export default function TerminalDialog({ open, onClose, workspace, dispatch, onE
       case 'new': {
         if (!requireQuoted(rest, write)) break;
         const title = unquote(rest) || 'Untitled';
-        const pos = nextChildPosition(nodes, cwdId, title);
+        const pos = nextChildGraphPosition(nodes, cwdId, title, graphOrientation);
         const now = new Date().toISOString();
         const node = {
           id: nextNumericNodeId(nodes),
@@ -611,8 +574,8 @@ export default function TerminalDialog({ open, onClose, workspace, dispatch, onE
           write(`Path not found: ${rest}`);
           break;
         }
-        const pos = nextChildPosition(nodes, parentId, current.title);
-        replaceWorkspace({ nodes: cloneBranch(nodes, current.id, parentId, pos), nextZ: (workspace.nextZ || 1) + branchIds(nodes, current.id).size });
+        const pos = nextChildGraphPosition(nodes, parentId, current.title, graphOrientation);
+        replaceWorkspace({ nodes: cloneBranch(nodes, current.id, parentId, pos, graphOrientation), nextZ: (workspace.nextZ || 1) + branchIds(nodes, current.id).size });
         write(cmd === 'copy' ? 'Copied branch.' : 'Duplicated branch.');
         break;
       }
@@ -623,9 +586,9 @@ export default function TerminalDialog({ open, onClose, workspace, dispatch, onE
           write('Invalid target.');
           break;
         }
-        const pos = nextChildPosition(nodes, parentId, current.title);
+        const pos = nextChildGraphPosition(nodes, parentId, current.title, graphOrientation);
         const moved = nodes.map((node) => (node.id === current.id ? { ...node, parentId: parentId || null } : node));
-        replaceWorkspace({ nodes: layoutBranch(moved, current.id, pos) });
+        replaceWorkspace({ nodes: layoutBranchByOrientation(moved, current.id, pos, graphOrientation) });
         write('Moved branch.');
         break;
       }

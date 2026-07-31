@@ -23,14 +23,23 @@ function ToolbarGroup({ icon: Icon, title, options }) {
   useEffect(() => {
     canHover.current = window.matchMedia?.('(hover: hover) and (pointer: fine)').matches || false;
     const close = (e) => {
-      if (!groupRef.current?.contains(e.target)) {
-        setHoverOpen(false);
-        setClickedOpen(false);
+      if (!open || groupRef.current?.contains(e.target)) return;
+
+      setHoverOpen(false);
+      setClickedOpen(false);
+
+      const interactive = e.target.closest?.(
+        'button, input, textarea, select, [role="button"], [contenteditable="true"], [data-note-node]'
+      );
+
+      if (!interactive) {
+        e.preventDefault();
+        e.stopPropagation();
       }
     };
-    document.addEventListener('pointerdown', close);
-    return () => document.removeEventListener('pointerdown', close);
-  }, []);
+    document.addEventListener('pointerdown', close, true);
+    return () => document.removeEventListener('pointerdown', close, true);
+  }, [open]);
 
   const run = (action) => {
     action();
@@ -50,7 +59,7 @@ function ToolbarGroup({ icon: Icon, title, options }) {
       </ToolbarButton>
       <div
         aria-hidden={!open}
-        className={`absolute top-full left-1/2 mt-2 w-44 -translate-x-1/2 overflow-hidden rounded-2xl border border-white/10 bg-zinc-900/95 backdrop-blur-md shadow-xl transition-all duration-200 ease-out ${
+        className={`absolute top-full left-1/2 w-44 -translate-x-1/2 overflow-hidden rounded-2xl border border-white/10 bg-zinc-900/95 backdrop-blur-md shadow-xl transition-all duration-200 ease-out ${
           open
             ? 'visible max-h-64 opacity-100 translate-y-0 pointer-events-auto'
             : 'invisible max-h-0 opacity-0 -translate-y-1 pointer-events-none'

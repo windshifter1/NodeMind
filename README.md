@@ -33,12 +33,14 @@ Output is written to `dist/`.
 
 ## Deploy to GitHub Pages
 
-1. Run `npm install` locally and commit the generated `package-lock.json` (required for `npm ci` in CI).
+1. Run `npm install` locally and commit `package-lock.json` (required for `npm ci` in CI).
 2. Push this repo to GitHub as **`NodeMind`** (must match the Vite `base` path).
-3. In the repo: **Settings → Pages → Build and deployment → Source: GitHub Actions**.
-4. Push to `main` — the workflow builds and publishes automatically.
+3. **Critical:** In the repo go to **Settings → Pages → Build and deployment** and set **Source** to **GitHub Actions** — not "Deploy from a branch". If branch deploy is enabled, GitHub serves the raw source `index.html`, which references `/src/main.jsx` and the page stays blank.
+4. Push to `main` — the workflow builds `dist/` and publishes that folder only.
 
 Live URL: `https://windshifter1.github.io/NodeMind/`
+
+After deploy, open the site and check the browser Network tab: requests should go to `/NodeMind/assets/index-*.js`, not `/src/main.jsx`.
 
 ### Custom domain or different repo name
 

@@ -1,8 +1,13 @@
+# GitHub Pages must use "GitHub Actions" as the source (Settings → Pages).
+# If Pages is set to "Deploy from a branch", visitors get the raw source
+# index.html which references /src/main.jsx and the app stays blank.
+
 name: Deploy Vite to GitHub Pages
 
 on:
   push:
     branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -16,7 +21,6 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
 
@@ -28,17 +32,24 @@ jobs:
       - run: npm ci
       - run: npm run build
 
+      - name: Verify dist output (not source)
+        run: |
+          test -f dist/index.html
+          grep -q '/NodeMind/assets/' dist/index.html
+          ! grep -q 'main.jsx' dist/index.html
+          echo "dist/index.html:"
+          cat dist/index.html
+
       - uses: actions/upload-pages-artifact@v3
         with:
           path: ./dist
 
   deploy:
+    needs: build
+    runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    needs: build
-    runs-on: ubuntu-latest
-
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4

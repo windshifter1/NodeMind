@@ -33,11 +33,12 @@ Output is written to `dist/`.
 
 ## Deploy to GitHub Pages
 
-1. Push this repo to GitHub as **`NodeMind`** (the name must match the Vite `base` path).
-2. In the repo: **Settings → Pages → Build and deployment → Source: GitHub Actions**.
-3. Push to `main` — the workflow builds and publishes automatically.
+1. Run `npm install` locally and commit the generated `package-lock.json` (required for `npm ci` in CI).
+2. Push this repo to GitHub as **`NodeMind`** (must match the Vite `base` path).
+3. In the repo: **Settings → Pages → Build and deployment → Source: GitHub Actions**.
+4. Push to `main` — the workflow builds and publishes automatically.
 
-Live URL: `https://<your-username>.github.io/NodeMind/`
+Live URL: `https://windshifter1.github.io/NodeMind/`
 
 ### Custom domain or different repo name
 

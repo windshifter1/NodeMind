@@ -1,0 +1,16 @@
+{
+  "name": "NodeMind",
+  "short_name": "NodeMind",
+  "description": "A local-first mind map canvas by Windshifter",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#09090b",
+  "theme_color": "#6366f1",
+  "icons": [
+    {
+      "src": "favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

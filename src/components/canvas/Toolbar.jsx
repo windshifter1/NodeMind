@@ -1,7 +1,7 @@
 import React, { useRef } from 'react';
-import { Download, Upload, Trash2, Plus, ZoomIn, ZoomOut, Maximize, Minimize, Sun, Moon, Copy } from 'lucide-react';
+import { Download, Upload, Trash2, Plus, ZoomIn, ZoomOut, Maximize, Minimize, Sun, Moon, Copy, Terminal } from 'lucide-react';
 
-export default function Toolbar({ onExport, onImport, onClear, onTextExport, zoom, onZoom, isFullscreen, onToggleFullscreen, onAddNodeCenter, nodeTheme, onToggleTheme }) {
+export default function Toolbar({ onExport, onImport, onClear, onTextExport, onOpenTerminal, zoom, onZoom, isFullscreen, onToggleFullscreen, onAddNodeCenter, nodeTheme, onToggleTheme }) {
   const fileRef = useRef(null);
 
   const Btn = ({ children, onClick, title }) => (
@@ -26,6 +26,7 @@ export default function Toolbar({ onExport, onImport, onClear, onTextExport, zoo
           {isFullscreen ? <Minimize size={16} /> : <Maximize size={16} />}
         </Btn>
         <div className="w-px h-6 bg-white/10 mx-1" />
+        <Btn onClick={onOpenTerminal} title="Terminal"><Terminal size={16} /></Btn>
         <Btn onClick={onTextExport} title="Copy as text"><Copy size={16} /></Btn>
         <Btn onClick={onExport} title="Export JSON"><Download size={16} /></Btn>
         <Btn onClick={() => fileRef.current && fileRef.current.click()} title="Import JSON"><Upload size={16} /></Btn>

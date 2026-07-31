@@ -89,6 +89,7 @@ export default function NoteNode({
         borderColor: node.color,
         backgroundColor: darkNodes ? '#424448' : '#ffffff',
         opacity: ghost ? 0.3 : 1,
+        transition: 'left 200ms ease, top 200ms ease, opacity 180ms ease, width 200ms ease',
       }}
     >
       {/* Top bar */}

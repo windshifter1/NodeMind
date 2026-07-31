@@ -95,6 +95,13 @@ function reducer(state, action) {
     case 'SET_ACTIVE':
       return { ...state, activeId: action.id };
 
+    case 'REPLACE_ACTIVE_WORKSPACE':
+      return withActiveGraph(state, (w) => ({
+        ...w,
+        ...action.workspace,
+        id: w.id,
+      }));
+
     case 'ADD_NODE':
       return withActiveGraph(state, (w) => ({
         ...w,
@@ -108,6 +115,7 @@ function reducer(state, action) {
             content: '',
             color: '#6366f1',
             collapsed: false,
+            parentId: action.parentId || null,
             z: w.nextZ,
           },
         ],
@@ -124,6 +132,7 @@ function reducer(state, action) {
           content: '',
           color: '#6366f1',
           collapsed: false,
+          parentId: action.fromNode || null,
           z: w.nextZ,
         };
         let edge;

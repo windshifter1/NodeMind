@@ -5,6 +5,7 @@ import NodeEditDialog from '@/components/canvas/NodeEditDialog';
 import WorkspaceBar from '@/components/canvas/WorkspaceBar';
 import WorkspaceEditDialog from '@/components/canvas/WorkspaceEditDialog';
 import TextExportDialog from '@/components/canvas/TextExportDialog';
+import TerminalDialog from '@/components/canvas/TerminalDialog';
 import { useWorkspaces } from '@/hooks/useWorkspaces';
 import { MIN_ZOOM, MAX_ZOOM, nodeWidthForTitle, TOP_BAR_HEIGHT } from '@/lib/canvasConstants';
 
@@ -19,6 +20,7 @@ export default function Canvas() {
   const [editingNodeId, setEditingNodeId] = useState(null);
   const [editingWorkspace, setEditingWorkspace] = useState(false);
   const [textExportOpen, setTextExportOpen] = useState(false);
+  const [terminalOpen, setTerminalOpen] = useState(false);
   const [nodeTheme, setNodeTheme] = useState(() => {
     try {
       const stored = localStorage.getItem('thoughts-canvas-node-theme-v2');
@@ -147,6 +149,7 @@ export default function Canvas() {
         onImport={handleImport}
         onClear={handleClear}
         onTextExport={() => setTextExportOpen(true)}
+        onOpenTerminal={() => setTerminalOpen(true)}
         zoom={zoom}
         onZoom={zoomToCenter}
         isFullscreen={isFullscreen}
@@ -186,6 +189,18 @@ export default function Canvas() {
         workspaceName={active.name}
         nodes={active.nodes}
         edges={active.edges}
+      />
+
+      <TerminalDialog
+        open={terminalOpen}
+        onClose={() => setTerminalOpen(false)}
+        workspace={active}
+        dispatch={dispatch}
+        onExport={handleExport}
+        onImport={() => {
+          const input = document.querySelector('input[type="file"][accept="application/json"]');
+          input?.click();
+        }}
       />
     </div>
   );

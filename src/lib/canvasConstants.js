@@ -16,7 +16,10 @@ export function socketWorld(node, type) {
   return type === 'output' ? { x: node.x + w, y } : { x: node.x, y };
 }
 
-export function bezierPath(x1, y1, x2, y2) {
+export function bezierPath(x1, y1, x2, y2, reversed = false) {
   const dx = Math.max(60, Math.abs(x2 - x1) * 0.5);
+  if (reversed) {
+    return `M ${x1} ${y1} C ${x1 - dx} ${y1}, ${x2 + dx} ${y2}, ${x2} ${y2}`;
+  }
   return `M ${x1} ${y1} C ${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}`;
 }

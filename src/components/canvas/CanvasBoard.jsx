@@ -449,7 +449,7 @@ export default function CanvasBoard({
             const from = socketScreen(fn, pending.fromType);
             return (
               <path
-                d={bezierPath(from.x, from.y, pending.toX, pending.toY)}
+                d={bezierPath(from.x, from.y, pending.toX, pending.toY, pending.fromType === 'input')}
                 fill="none"
                 stroke="#818cf8"
                 strokeWidth={2.5}

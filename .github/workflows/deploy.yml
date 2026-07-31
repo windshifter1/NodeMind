@@ -39,10 +39,10 @@ jobs:
           test -f dist/favicon.svg
           test -f dist/.nojekyll
           grep -q '/NodeMind/assets/' dist/index.html
-          grep -q './manifest.json' dist/index.html
-          grep -q './favicon.svg' dist/index.html
           ! grep -q '%BASE_URL%' dist/index.html
           ! grep -q 'src/main.jsx' dist/index.html
+          ! grep -q 'manifest.json' dist/index.html
+          ! grep -q 'favicon.svg' dist/index.html
           echo "dist/index.html:"
           cat dist/index.html
 

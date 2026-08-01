@@ -75,7 +75,8 @@ export default function CanvasBoard({
   selectedNodeIdsRef.current = selectedNodeIds;
 
   const [marqueeRect, setMarqueeRect] = useState(null);
-  const [edgeClick, setEdgeClick] = useState(null);
+  const edgeClickRef = useRef(null);
+  const edgeClickListenersRef = useRef(null);
 
   const zoomRef = useRef(zoom);
   zoomRef.current = zoom;
@@ -137,6 +138,26 @@ export default function CanvasBoard({
 
   const isBoardEvent = (e) => boardRef.current?.contains(e.target);
 
+  const clearEdgeClickListeners = useCallback(() => {
+    const listeners = edgeClickListenersRef.current;
+    if (!listeners) return;
+    window.removeEventListener('pointermove', listeners.onMove);
+    window.removeEventListener('pointerup', listeners.onFinish);
+    window.removeEventListener('pointercancel', listeners.onFinish);
+    edgeClickListenersRef.current = null;
+  }, []);
+
+  const updateMarqueeRect = useCallback((startX, startY, clientX, clientY) => {
+    const rect = boardRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    setMarqueeRect({
+      left: Math.min(startX, clientX) - rect.left,
+      top: Math.min(startY, clientY) - rect.top,
+      width: Math.abs(clientX - startX),
+      height: Math.abs(clientY - startY),
+    });
+  }, []);
+
   const shouldSuppressPrimaryPointer = (e, phase) => {
     if (!e || e.pointerType !== 'mouse' || e.button !== 0) return false;
 
@@ -191,11 +212,12 @@ export default function CanvasBoard({
     pendingRef.current = null;
     setPending(null);
     setMarqueeRect(null);
-    setEdgeClick(null);
+    clearEdgeClickListeners();
+    edgeClickRef.current = null;
     setDraggingNode(null);
     overBinRef.current = false;
     setOverBin(false);
-  }, []);
+  }, [clearEdgeClickListeners]);
 
   // Center origin on mount
   useEffect(() => {
@@ -319,98 +341,118 @@ export default function CanvasBoard({
     [updateDraggedEdges]
   );
 
-  const transferToCanvasInteraction = useCallback((startX, startY, e) => {
-    pointers.current.set(e.pointerId, {
-      x: e.clientX,
-      y: e.clientY,
-      button: 0,
-      pointerType: e.pointerType,
-    });
-    const useMarquee = e.pointerType === 'mouse' && desktopSelection.current;
-    const totalDx = e.clientX - startX;
-    const totalDy = e.clientY - startY;
-    const crossedThreshold = Math.abs(totalDx) + Math.abs(totalDy) > PAN_DRAG_THRESHOLD;
-    panState.current = {
-      panning: !useMarquee,
-      candidate: useMarquee && !crossedThreshold,
-      marquee: useMarquee,
-      marqueing: useMarquee && crossedThreshold,
-      button: 0,
-      startX,
-      startY,
-      lastX: e.clientX,
-      lastY: e.clientY,
-      moved: crossedThreshold,
-      suppressContextMenu: false,
-    };
-    if (useMarquee && crossedThreshold) {
-      const rect = boardRef.current.getBoundingClientRect();
-      setMarqueeRect({
-        left: Math.min(startX, e.clientX) - rect.left,
-        top: Math.min(startY, e.clientY) - rect.top,
-        width: Math.abs(totalDx),
-        height: Math.abs(totalDy),
+  const transferToCanvasInteraction = useCallback(
+    (startX, startY, e) => {
+      pointers.current.set(e.pointerId, {
+        x: e.clientX,
+        y: e.clientY,
+        button: 0,
+        pointerType: e.pointerType,
       });
-    }
-  }, []);
+      const useMarquee = e.pointerType === 'mouse' && desktopSelection.current;
+      const totalDx = e.clientX - startX;
+      const totalDy = e.clientY - startY;
+      const crossedThreshold = Math.abs(totalDx) + Math.abs(totalDy) > PAN_DRAG_THRESHOLD;
+      panState.current = {
+        panning: !useMarquee,
+        candidate: useMarquee && !crossedThreshold,
+        marquee: useMarquee,
+        marqueing: useMarquee && crossedThreshold,
+        button: 0,
+        startX,
+        startY,
+        lastX: e.clientX,
+        lastY: e.clientY,
+        moved: crossedThreshold,
+        suppressContextMenu: false,
+      };
+      try {
+        boardRef.current?.setPointerCapture(e.pointerId);
+      } catch (err) {
+        /* ignore */
+      }
+      if (useMarquee && crossedThreshold) {
+        updateMarqueeRect(startX, startY, e.clientX, e.clientY);
+      }
+    },
+    [updateMarqueeRect]
+  );
+
+  const finishEdgeClick = useCallback(
+    (e) => {
+      const click = edgeClickRef.current;
+      if (!click || e.pointerId !== click.pointerId) return;
+
+      clearEdgeClickListeners();
+      edgeClickRef.current = null;
+
+      if (shouldSuppressPrimaryPointer(e, 'up')) return;
+      if (click.transferredToCanvas) return;
+
+      if (click.hadSelection) {
+        onSelectionChange?.([]);
+        return;
+      }
+
+      const dist =
+        Math.abs(e.clientX - click.startX) + Math.abs(e.clientY - click.startY);
+      const overEdge = isPointerOverEdge(click.edgeId, e.clientX, e.clientY);
+      if (overEdge || dist <= PAN_DRAG_THRESHOLD) onDeleteEdge(click.edgeId);
+    },
+    [clearEdgeClickListeners, onDeleteEdge, onSelectionChange]
+  );
+
+  const transferEdgeClickToCanvas = useCallback(
+    (e) => {
+      const click = edgeClickRef.current;
+      if (!click || click.transferredToCanvas || e.pointerId !== click.pointerId) return;
+
+      click.transferredToCanvas = true;
+      clearEdgeClickListeners();
+      edgeClickRef.current = null;
+      transferToCanvasInteraction(click.startX, click.startY, e);
+    },
+    [clearEdgeClickListeners, transferToCanvasInteraction]
+  );
 
   const startEdgeClick = useCallback(
     (edgeId, e) => {
       if (!isPrimaryPointerStart(e) || shouldSuppressPrimaryPointer(e, 'down')) return;
       e.stopPropagation();
 
-      setEdgeClick({
+      clearEdgeClickListeners();
+      edgeClickRef.current = {
         edgeId,
         startX: e.clientX,
         startY: e.clientY,
         pointerId: e.pointerId,
         hadSelection: selectedNodeIdsRef.current.length > 0,
-      });
-    },
-    []
-  );
+        transferredToCanvas: false,
+      };
 
-  useEffect(() => {
-    if (!edgeClick) return undefined;
+      const onMove = (moveEvent) => {
+        const active = edgeClickRef.current;
+        if (!active || active.transferredToCanvas || moveEvent.pointerId !== active.pointerId) return;
 
-    const finish = (e) => {
-      if (e.pointerId !== edgeClick.pointerId) return;
-      if (shouldSuppressPrimaryPointer(e, 'up')) {
-        setEdgeClick(null);
-        return;
-      }
-      if (edgeClick.hadSelection) {
-        onSelectionChange?.([]);
-      } else {
         const dist =
-          Math.abs(e.clientX - edgeClick.startX) + Math.abs(e.clientY - edgeClick.startY);
-        const overEdge = isPointerOverEdge(edgeClick.edgeId, e.clientX, e.clientY);
-        if (overEdge || dist <= PAN_DRAG_THRESHOLD) onDeleteEdge(edgeClick.edgeId);
-      }
-      setEdgeClick(null);
-    };
+          Math.abs(moveEvent.clientX - active.startX) + Math.abs(moveEvent.clientY - active.startY);
+        const overEdge = isPointerOverEdge(active.edgeId, moveEvent.clientX, moveEvent.clientY);
+        if (!overEdge && dist > PAN_DRAG_THRESHOLD) {
+          transferEdgeClickToCanvas(moveEvent);
+        }
+      };
 
-    const onMove = (e) => {
-      if (e.pointerId !== edgeClick.pointerId) return;
-      const dist =
-        Math.abs(e.clientX - edgeClick.startX) + Math.abs(e.clientY - edgeClick.startY);
-      const overEdge = isPointerOverEdge(edgeClick.edgeId, e.clientX, e.clientY);
-      if (!overEdge && dist > PAN_DRAG_THRESHOLD) {
-        const start = { x: edgeClick.startX, y: edgeClick.startY };
-        setEdgeClick(null);
-        transferToCanvasInteraction(start.x, start.y, e);
-      }
-    };
+      const onFinish = (upEvent) => {
+        finishEdgeClick(upEvent);
+      };
 
-    window.addEventListener('pointermove', onMove);
-    window.addEventListener('pointerup', finish);
-    window.addEventListener('pointercancel', finish);
-    return () => {
-      window.removeEventListener('pointermove', onMove);
-      window.removeEventListener('pointerup', finish);
-      window.removeEventListener('pointercancel', finish);
-    };
-  }, [edgeClick, onDeleteEdge, onSelectionChange, transferToCanvasInteraction]);
+      edgeClickListenersRef.current = { onMove, onFinish };
+      window.addEventListener('pointermove', onMove);
+      window.addEventListener('pointerup', onFinish);
+      window.addEventListener('pointercancel', onFinish);
+    },
+    [clearEdgeClickListeners, finishEdgeClick, transferEdgeClickToCanvas]
+  );
 
   // --- Background pan / click-to-add / pinch ---
   const onPointerDown = (e) => {
@@ -499,13 +541,7 @@ export default function CanvasBoard({
       }
 
       if (panState.current.marqueing) {
-        const rect = boardRef.current.getBoundingClientRect();
-        setMarqueeRect({
-          left: Math.min(panState.current.startX, e.clientX) - rect.left,
-          top: Math.min(panState.current.startY, e.clientY) - rect.top,
-          width: Math.abs(totalDx),
-          height: Math.abs(totalDy),
-        });
+        updateMarqueeRect(panState.current.startX, panState.current.startY, e.clientX, e.clientY);
       } else if (panState.current.panning) {
         if (Math.abs(dx) + Math.abs(dy) > PAN_DRAG_THRESHOLD) panState.current.moved = true;
         if (panState.current.button === 1 || panState.current.button === 2) e.preventDefault();

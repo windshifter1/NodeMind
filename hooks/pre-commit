@@ -6,12 +6,36 @@
 ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || exit 0
 cd "$ROOT" || exit 0
 
-if command -v node >/dev/null 2>&1; then
-  node scripts/version.mjs bump-build || exit 1
-  git add version.json || exit 1
-else
+resolve_node() {
+  if command -v node >/dev/null 2>&1; then
+    command -v node
+    return 0
+  fi
+
+  # GitHub Desktop / Git Bash often have a minimal PATH without Node.
+  for candidate in \
+    "/c/Program Files/nodejs/node.exe" \
+    "/c/Program Files (x86)/nodejs/node.exe" \
+    "$PROGRAMFILES/nodejs/node.exe" \
+    "$LOCALAPPDATA/Programs/node/node.exe" \
+    "/usr/bin/node" \
+    "/usr/local/bin/node"
+  do
+    if [ -n "$candidate" ] && [ -f "$candidate" ]; then
+      echo "$candidate"
+      return 0
+    fi
+  done
+  return 1
+}
+
+NODE="$(resolve_node)" || {
   echo "NodeMind pre-commit: node not found; build number not incremented." >&2
+  echo "Install Node.js or ensure it is on PATH for Git hooks." >&2
   exit 1
-fi
+}
+
+"$NODE" scripts/version.mjs bump-build || exit 1
+git add -- "version.json" || exit 1
 
 exit 0

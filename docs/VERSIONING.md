@@ -98,7 +98,15 @@ Install / repair hooks:
 npm run hooks:install
 ```
 
-`npm install` / `npm prepare` also attempts this when Git is available.
+`npm install` / `npm prepare` also attempts this. The installer:
+
+1. Sets `core.hooksPath = hooks` (via Git, or by editing `.git/config` if `git` is not on PATH).
+2. Copies a fallback into `.git/hooks/pre-commit`.
+3. Discovers Git from Program Files **and** GitHub Desktop.
+
+The pre-commit script also resolves `node` from common Windows install paths, because GitHub Desktop’s hook environment often omits Node from `PATH`.
+
+If a commit does not bump the build, run `npm run hooks:install` and confirm `.git/config` contains `hooksPath = hooks`.
 
 ## In-app terminal
 

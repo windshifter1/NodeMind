@@ -1,5 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
@@ -13,6 +14,25 @@ export const VERSION_FILE = path.join(ROOT, 'version.json');
 
 const UNAVAILABLE = 'unavailable';
 
+function githubDesktopGitCandidates() {
+  const base = path.join(os.homedir(), 'AppData', 'Local', 'GitHubDesktop');
+  const found = [];
+  if (!fs.existsSync(base)) return found;
+  try {
+    for (const entry of fs.readdirSync(base)) {
+      if (!entry.startsWith('app-')) continue;
+      found.push(
+        path.join(base, entry, 'resources', 'app', 'git', 'cmd', 'git.exe'),
+        path.join(base, entry, 'resources', 'app', 'git', 'mingw64', 'bin', 'git.exe')
+      );
+    }
+  } catch {
+    /* ignore */
+  }
+  // Prefer newest app-* folders last → reverse so latest is tried first.
+  return found.reverse();
+}
+
 export function findGitExecutable() {
   const candidates = [
     process.env.GIT_EXECUTABLE,
@@ -20,6 +40,7 @@ export function findGitExecutable() {
     'C:\\Program Files\\Git\\cmd\\git.exe',
     'C:\\Program Files\\Git\\bin\\git.exe',
     'C:\\Program Files (x86)\\Git\\cmd\\git.exe',
+    ...githubDesktopGitCandidates(),
   ].filter(Boolean);
 
   for (const candidate of candidates) {

@@ -10,7 +10,11 @@ export default [
     ...pluginJs.configs.recommended,
     ...pluginReact.configs.flat.recommended,
     languageOptions: {
-      globals: globals.browser,
+      globals: {
+        ...globals.browser,
+        __NODEMIND_GIT_COMMIT__: "readonly",
+        __NODEMIND_GIT_BRANCH__: "readonly",
+      },
       parserOptions: {
         ecmaVersion: 2022,
         sourceType: "module",

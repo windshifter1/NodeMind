@@ -31,6 +31,25 @@ npm run preview
 
 Output is written to `dist/`.
 
+## Versioning
+
+Application version and build number live in a single source of truth: [`version.json`](./version.json).
+
+```bat
+node scripts/version.mjs
+node scripts/version.mjs help
+node scripts/version.mjs bump
+node scripts/version.mjs bump patch
+```
+
+Or via npm: `npm run version:info`, `npm run version:bump`.
+
+A Git `pre-commit` hook increments the build number before every commit (and stages `version.json` into that commit). Run `npm run hooks:install` once per clone if hooks are not configured (also attempted by `npm install`).
+
+Full details: [`docs/VERSIONING.md`](./docs/VERSIONING.md).
+
+In the app terminal: `version`, `version help`.
+
 ## Deploy to GitHub Pages
 
 1. Run `npm install` locally and commit `package-lock.json` (required for `npm ci` in CI).

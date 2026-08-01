@@ -7,6 +7,11 @@ import {
   nextNumericNodeId,
   normalizeOrientation,
 } from '@/lib/canvasConstants';
+import {
+  getVersionBumpHintLines,
+  getVersionHelpLines,
+  getVersionReportLines,
+} from '@/lib/appVersion';
 
 const COLORS = {
   red: '#ef4444',
@@ -321,6 +326,7 @@ const HELP_SECTIONS = {
   arrange: ['arrange', '    Auto organise the workspace using the current orientation.'],
   export: ['export', '    Download the workspace as JSON.'],
   import: ['import', '    Open the JSON import dialog.'],
+  version: getVersionHelpLines(),
   terminal: [
     'terminal exit',
     '    Close Terminal Mode.',
@@ -344,6 +350,7 @@ const HELP_GROUPS = [
   { title: 'NODE MANAGEMENT', keys: ['new', 'duplicate', 'move', 'copy', 'delete'] },
   { title: 'GRAPH LINKS', keys: ['link', 'unlink', 'links'] },
   { title: 'WORKSPACE', keys: ['arrange', 'export', 'import'] },
+  { title: 'VERSION', keys: ['version'] },
   { title: 'TERMINAL', keys: ['terminal'] },
 ];
 
@@ -666,6 +673,23 @@ export default function TerminalDialog({ open, onClose, workspace, dispatch, onE
         onImport();
         write('Import picker opened.');
         break;
+      case 'version': {
+        const sub = args[0]?.toLowerCase();
+        if (!sub) {
+          write(getVersionReportLines());
+          break;
+        }
+        if (sub === 'help' || sub === '--help' || sub === '-h') {
+          write(getVersionHelpLines());
+          break;
+        }
+        if (sub === 'bump') {
+          write(getVersionBumpHintLines());
+          break;
+        }
+        write([`Unknown version command: ${sub}.`, '', ...getVersionHelpLines()]);
+        break;
+      }
       default:
         write(`Unknown command: ${command}. Type help.`);
     }

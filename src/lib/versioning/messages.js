@@ -1,0 +1,67 @@
+/** Shared version command copy for the in-app terminal and Node CLI. */
+
+export function formatVersionReport({ version, build, commit, branch }) {
+  return [
+    'NodeMind',
+    `Version : ${version}`,
+    `Build   : ${build}`,
+    `Commit  : ${commit}`,
+    `Branch  : ${branch}`,
+  ];
+}
+
+export const VERSION_HELP_LINES = [
+  'version',
+  '    Display the current application version, build number, Git commit and branch.',
+  '',
+  'version help',
+  '    Show this help page.',
+  '',
+  'version bump',
+  '    Interactively ask whether to perform a Patch, Minor or Major version bump,',
+  '    or revert patch/minor/major, or cancel with None (esc).',
+  '',
+  'version bump patch',
+  '    Increment the patch version.',
+  '    Example:',
+  '    0.5.0 → 0.5.1',
+  '',
+  'version bump minor',
+  '    Increment the minor version and reset patch to zero.',
+  '    Example:',
+  '    0.5.0 → 0.6.0',
+  '',
+  'version bump major',
+  '    Increment the major version and reset minor and patch to zero.',
+  '    Example:',
+  '    0.5.0 → 1.0.0',
+  '',
+  'version bump revert-patch',
+  '    Decrement the patch version.',
+  '    Example:',
+  '    0.5.1 → 0.5.0',
+  '',
+  'version bump revert-minor',
+  '    Decrement the minor version and reset patch to zero.',
+  '    Example:',
+  '    0.5.3 → 0.4.0',
+  '',
+  'version bump revert-major',
+  '    Decrement the major version and reset minor and patch to zero.',
+  '    Example:',
+  '    1.2.3 → 0.0.0',
+];
+
+export const VERSION_BUMP_CLI_HINT = [
+  'Version bumps write to version.json on disk and must be run from the project directory:',
+  '',
+  '  node scripts/version.mjs bump',
+  '  node scripts/version.mjs bump patch',
+  '  node scripts/version.mjs bump minor',
+  '  node scripts/version.mjs bump major',
+  '  node scripts/version.mjs bump revert-patch',
+  '  node scripts/version.mjs bump revert-minor',
+  '  node scripts/version.mjs bump revert-major',
+  '',
+  'Or: npm run version:bump',
+];

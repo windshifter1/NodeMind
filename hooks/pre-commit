@@ -1,0 +1,17 @@
+#!/bin/sh
+# Increment NodeMind build number before every commit and stage version.json
+# so the new build is included in that commit.
+# Managed via core.hooksPath=hooks (see scripts/install-hooks.mjs).
+
+ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || exit 0
+cd "$ROOT" || exit 0
+
+if command -v node >/dev/null 2>&1; then
+  node scripts/version.mjs bump-build || exit 1
+  git add version.json || exit 1
+else
+  echo "NodeMind pre-commit: node not found; build number not incremented." >&2
+  exit 1
+fi
+
+exit 0

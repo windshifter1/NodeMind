@@ -6,6 +6,7 @@ import WorkspaceBar from '@/components/canvas/WorkspaceBar';
 import WorkspaceEditDialog from '@/components/canvas/WorkspaceEditDialog';
 import TextExportDialog from '@/components/canvas/TextExportDialog';
 import TerminalDialog from '@/components/canvas/TerminalDialog';
+import SettingsDialog from '@/components/canvas/SettingsDialog';
 import { useWorkspaces } from '@/hooks/useWorkspaces';
 import {
   LAYOUT_ON_ORIENTATION_CHANGE,
@@ -29,6 +30,7 @@ export default function Canvas() {
   const [creatingWorkspace, setCreatingWorkspace] = useState(false);
   const [textExportOpen, setTextExportOpen] = useState(false);
   const [terminalOpen, setTerminalOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [nodeTheme, setNodeTheme] = useState(() => {
     try {
       const stored = localStorage.getItem('thoughts-canvas-node-theme-v2');
@@ -44,7 +46,6 @@ export default function Canvas() {
       /* ignore */
     }
   }, [nodeTheme]);
-  const toggleTheme = () => setNodeTheme((t) => (t === 'dark' ? 'light' : 'dark'));
 
   const addNode = (x, y) => dispatch({ type: 'ADD_NODE', x, y });
   const updateNode = (id, patch) => dispatch({ type: 'UPDATE_NODE', id, patch });
@@ -201,8 +202,7 @@ export default function Canvas() {
         onZoom={zoomToCenter}
         isFullscreen={isFullscreen}
         onToggleFullscreen={toggleFullscreen}
-        nodeTheme={nodeTheme}
-        onToggleTheme={toggleTheme}
+        onOpenSettings={() => setSettingsOpen(true)}
         onAddNodeCenter={() => addNode(-nodeWidthForTitle('') / 2, -TOP_BAR_HEIGHT / 2)}
       />
 
@@ -252,6 +252,13 @@ export default function Canvas() {
         workspaceName={active.name}
         nodes={active.nodes}
         edges={active.edges}
+      />
+
+      <SettingsDialog
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        nodeTheme={nodeTheme}
+        onThemeChange={setNodeTheme}
       />
 
       <TerminalDialog

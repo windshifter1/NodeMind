@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Download, Upload, Trash2, Plus, ZoomIn, ZoomOut, Maximize, Minimize, Sun, Moon, Copy, Terminal, Search, Share2, Wrench, Settings } from 'lucide-react';
+import { Download, Upload, Trash2, Plus, ZoomIn, ZoomOut, Maximize, Minimize, Copy, Terminal, Search, Share2, Wrench, Settings } from 'lucide-react';
 
 function ToolbarButton({ children, onClick, title }) {
   return (
@@ -83,7 +83,7 @@ function ToolbarGroup({ icon: Icon, title, options }) {
   );
 }
 
-export default function Toolbar({ onExport, onImport, onClear, onTextExport, onOpenTerminal, onAutoOrganise, zoom, onZoom, isFullscreen, onToggleFullscreen, onAddNodeCenter, nodeTheme, onToggleTheme }) {
+export default function Toolbar({ onExport, onImport, onClear, onTextExport, onOpenTerminal, onAutoOrganise, zoom, onZoom, isFullscreen, onToggleFullscreen, onAddNodeCenter, onOpenSettings }) {
   const fileRef = useRef(null);
 
   return (
@@ -121,13 +121,7 @@ export default function Toolbar({ onExport, onImport, onClear, onTextExport, onO
         />
         <ToolbarButton onClick={onClear} title="Clear all"><Trash2 size={16} /></ToolbarButton>
         <div className="w-px h-6 bg-white/10 mx-1" />
-        <ToolbarGroup
-          icon={Settings}
-          title="Settings"
-          options={[
-            { label: nodeTheme === 'dark' ? 'Theme: Light' : 'Theme: Dark', icon: nodeTheme === 'dark' ? Sun : Moon, action: onToggleTheme },
-          ]}
-        />
+        <ToolbarButton onClick={onOpenSettings} title="Settings"><Settings size={16} /></ToolbarButton>
         <input ref={fileRef} type="file" accept="application/json" className="hidden" onChange={onImport} />
       </div>
 

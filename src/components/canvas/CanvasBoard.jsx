@@ -301,6 +301,7 @@ export default function CanvasBoard({
         startX: e.clientX,
         startY: e.clientY,
         pointerId: e.pointerId,
+        hadSelection: desktopSelection.current && selectedNodeIdsRef.current.length > 0,
       });
     },
     [onDeleteEdge]
@@ -311,10 +312,14 @@ export default function CanvasBoard({
 
     const finish = (e) => {
       if (e.pointerId !== edgeClick.pointerId) return;
-      const dist =
-        Math.abs(e.clientX - edgeClick.startX) + Math.abs(e.clientY - edgeClick.startY);
-      const overEdge = isPointerOverEdge(edgeClick.edgeId, e.clientX, e.clientY);
-      if (overEdge || dist <= PAN_DRAG_THRESHOLD) onDeleteEdge(edgeClick.edgeId);
+      if (edgeClick.hadSelection) {
+        onSelectionChange?.([]);
+      } else {
+        const dist =
+          Math.abs(e.clientX - edgeClick.startX) + Math.abs(e.clientY - edgeClick.startY);
+        const overEdge = isPointerOverEdge(edgeClick.edgeId, e.clientX, e.clientY);
+        if (overEdge || dist <= PAN_DRAG_THRESHOLD) onDeleteEdge(edgeClick.edgeId);
+      }
       setEdgeClick(null);
     };
 
@@ -338,7 +343,7 @@ export default function CanvasBoard({
       window.removeEventListener('pointerup', finish);
       window.removeEventListener('pointercancel', finish);
     };
-  }, [edgeClick, onDeleteEdge, transferToCanvasInteraction]);
+  }, [edgeClick, onDeleteEdge, onSelectionChange, transferToCanvasInteraction]);
 
   // --- Background pan / click-to-add / pinch ---
   const onPointerDown = (e) => {
@@ -481,9 +486,15 @@ export default function CanvasBoard({
           .map((node) => node.id);
         onSelectionChange(hits);
       } else if (panState.current.button === 0 && !moved && !pinch.current.active) {
-        if (desktopSelection.current && onSelectionChange) onSelectionChange([]);
-        const w = screenToWorld(e.clientX, e.clientY);
-        onAddNode(w.x - nodeWidthForTitle('') / 2, w.y - TOP_BAR_HEIGHT / 2);
+        const hasSelection =
+          desktopSelection.current && selectedNodeIdsRef.current.length > 0;
+        if (hasSelection) {
+          onSelectionChange?.([]);
+        } else {
+          if (desktopSelection.current && onSelectionChange) onSelectionChange([]);
+          const w = screenToWorld(e.clientX, e.clientY);
+          onAddNode(w.x - nodeWidthForTitle('') / 2, w.y - TOP_BAR_HEIGHT / 2);
+        }
       }
       panState.current.panning = false;
       panState.current.candidate = false;

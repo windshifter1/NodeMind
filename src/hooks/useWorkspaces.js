@@ -1,5 +1,11 @@
 import { useReducer, useEffect } from 'react';
-import { migrateWorkspaceNodeIds, nextNumericNodeId, normalizeOrientation } from '@/lib/canvasConstants';
+import {
+  migrateWorkspaceNodeIds,
+  nextNumericNodeId,
+  normalizeLayoutOnOrientationChange,
+  normalizeLayoutSettings,
+  normalizeOrientation,
+} from '@/lib/canvasConstants';
 
 const STORAGE_KEY = 'thoughts-canvas-workspaces-v2';
 const LEGACY_KEY = 'thoughts-canvas-graph-v1';
@@ -8,13 +14,15 @@ function uid(prefix) {
   return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
 }
 
-function newWorkspace({ name, colour, icon, orientation, nodes, edges, nextZ } = {}) {
+function newWorkspace({ name, colour, icon, orientation, layoutOnOrientationChange, layoutSettings, nodes, edges, nextZ } = {}) {
   return {
     id: uid('w'),
     name: name || 'Untitled',
     colour: colour || '#6366f1',
     icon: icon || 'note',
     orientation: normalizeOrientation(orientation),
+    layoutOnOrientationChange: normalizeLayoutOnOrientationChange(layoutOnOrientationChange),
+    layoutSettings: normalizeLayoutSettings(layoutSettings),
     nodes: Array.isArray(nodes) ? nodes : [],
     edges: Array.isArray(edges) ? edges : [],
     nextZ: typeof nextZ === 'number' ? nextZ : 1,
@@ -73,6 +81,8 @@ function reducer(state, action) {
         colour: action.workspace?.colour,
         icon: action.workspace?.icon,
         orientation: action.workspace?.orientation,
+        layoutOnOrientationChange: action.workspace?.layoutOnOrientationChange,
+        layoutSettings: action.workspace?.layoutSettings,
       });
       return { workspaces: [...state.workspaces, ws], activeId: ws.id };
     }
@@ -84,6 +94,8 @@ function reducer(state, action) {
           colour: meta.colour,
           icon: meta.icon,
           orientation: meta.orientation,
+          layoutOnOrientationChange: meta.layoutOnOrientationChange,
+          layoutSettings: meta.layoutSettings,
           nodes: action.data && action.data.nodes,
           edges: action.data && action.data.edges,
           nextZ: action.data && action.data.nextZ,

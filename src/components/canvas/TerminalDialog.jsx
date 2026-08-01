@@ -318,6 +318,7 @@ const HELP_SECTIONS = {
   link: ['link <id>', '    Create a graph link to another node.'],
   unlink: ['unlink <id>', '    Remove a graph link.'],
   links: ['links', '    Display all incoming and outgoing graph links.'],
+  arrange: ['arrange', '    Auto organise the workspace using the current orientation.'],
   export: ['export', '    Download the workspace as JSON.'],
   import: ['import', '    Open the JSON import dialog.'],
   terminal: [
@@ -342,7 +343,7 @@ const HELP_GROUPS = [
   { title: 'EDIT', keys: ['title', 'desc', 'append', 'prepend', 'clear', 'color'] },
   { title: 'NODE MANAGEMENT', keys: ['new', 'duplicate', 'move', 'copy', 'delete'] },
   { title: 'GRAPH LINKS', keys: ['link', 'unlink', 'links'] },
-  { title: 'WORKSPACE', keys: ['export', 'import'] },
+  { title: 'WORKSPACE', keys: ['arrange', 'export', 'import'] },
   { title: 'TERMINAL', keys: ['terminal'] },
 ];
 
@@ -369,7 +370,7 @@ function helpFor(topic) {
   return HELP_SECTIONS[key];
 }
 
-export default function TerminalDialog({ open, onClose, workspace, dispatch, onExport, onImport, orientation }) {
+export default function TerminalDialog({ open, onClose, workspace, dispatch, onExport, onImport, onArrange, orientation }) {
   const [cwdId, setCwdId] = useState(null);
   const [input, setInput] = useState('');
   const [lines, setLines] = useState([]);
@@ -653,6 +654,10 @@ export default function TerminalDialog({ open, onClose, workspace, dispatch, onE
         ]);
         break;
       }
+      case 'arrange':
+        onArrange?.();
+        write('Workspace arranged.');
+        break;
       case 'export':
         onExport();
         write('Export started.');

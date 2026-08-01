@@ -7,7 +7,14 @@ import WorkspaceEditDialog from '@/components/canvas/WorkspaceEditDialog';
 import TextExportDialog from '@/components/canvas/TextExportDialog';
 import TerminalDialog from '@/components/canvas/TerminalDialog';
 import { useWorkspaces } from '@/hooks/useWorkspaces';
-import { MIN_ZOOM, MAX_ZOOM, nodeWidthForTitle, TOP_BAR_HEIGHT } from '@/lib/canvasConstants';
+import {
+  LAYOUT_ON_ORIENTATION_CHANGE,
+  MIN_ZOOM,
+  MAX_ZOOM,
+  autoOrganiseNodes,
+  nodeWidthForTitle,
+  TOP_BAR_HEIGHT,
+} from '@/lib/canvasConstants';
 
 function clampZoom(z) {
   return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z));
@@ -51,13 +58,50 @@ export default function Canvas() {
 
   const createWorkspace = (workspace) => dispatch({ type: 'ADD_WORKSPACE', workspace });
   const selectWorkspace = (id) => dispatch({ type: 'SET_ACTIVE', id });
-  const updateWorkspaceMeta = (id, patch) => dispatch({ type: 'UPDATE_WORKSPACE_META', id, patch });
+  const viewportCenterWorld = () => ({
+    x: (window.innerWidth / 2 - pan.x) / zoom,
+    y: (window.innerHeight / 2 - pan.y) / zoom,
+  });
+  const organiseWorkspaceNodes = (workspace, orientation = workspace.orientation, settings = workspace.layoutSettings) =>
+    autoOrganiseNodes(workspace.nodes || [], workspace.edges || [], orientation, settings, viewportCenterWorld());
+  const updateWorkspaceMeta = (id, patch) => {
+    const shouldOrganise =
+      patch.orientation &&
+      patch.orientation !== active.orientation &&
+      (patch.layoutOnOrientationChange || active.layoutOnOrientationChange) === LAYOUT_ON_ORIENTATION_CHANGE.AUTO;
+
+    if (shouldOrganise) {
+      dispatch({
+        type: 'REPLACE_ACTIVE_WORKSPACE',
+        workspace: {
+          ...patch,
+          nodes: organiseWorkspaceNodes(active, patch.orientation, patch.layoutSettings || active.layoutSettings),
+        },
+      });
+      return;
+    }
+
+    dispatch({ type: 'UPDATE_WORKSPACE_META', id, patch });
+  };
   const deleteWorkspace = (id) => dispatch({ type: 'DELETE_WORKSPACE', id });
+  const autoOrganise = () => {
+    dispatch({
+      type: 'REPLACE_ACTIVE_WORKSPACE',
+      workspace: { nodes: organiseWorkspaceNodes(active) },
+    });
+  };
 
   const handleExport = () => {
     const data = JSON.stringify(
       {
-        workspace: { name: active.name, colour: active.colour, icon: active.icon, orientation: active.orientation },
+        workspace: {
+          name: active.name,
+          colour: active.colour,
+          icon: active.icon,
+          orientation: active.orientation,
+          layoutOnOrientationChange: active.layoutOnOrientationChange,
+          layoutSettings: active.layoutSettings,
+        },
         nodes: active.nodes,
         edges: active.edges,
         nextZ: active.nextZ,
@@ -152,6 +196,7 @@ export default function Canvas() {
         onClear={handleClear}
         onTextExport={() => setTextExportOpen(true)}
         onOpenTerminal={() => setTerminalOpen(true)}
+        onAutoOrganise={autoOrganise}
         zoom={zoom}
         onZoom={zoomToCenter}
         isFullscreen={isFullscreen}
@@ -193,6 +238,7 @@ export default function Canvas() {
           colour: '#6366f1',
           icon: 'note',
           orientation: 'horizontal',
+          layoutOnOrientationChange: 'preserve',
         }}
         open={creatingWorkspace}
         mode="create"
@@ -214,6 +260,7 @@ export default function Canvas() {
         workspace={active}
         dispatch={dispatch}
         orientation={active.orientation}
+        onArrange={autoOrganise}
         onExport={handleExport}
         onImport={() => {
           const input = document.querySelector('input[type="file"][accept="application/json"]');

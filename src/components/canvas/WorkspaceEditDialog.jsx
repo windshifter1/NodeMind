@@ -1,6 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
-import { GRAPH_ORIENTATIONS, normalizeOrientation } from '@/lib/canvasConstants';
+import {
+  GRAPH_ORIENTATIONS,
+  LAYOUT_DENSITIES,
+  LAYOUT_ON_ORIENTATION_CHANGE,
+  normalizeLayoutOnOrientationChange,
+  normalizeLayoutSettings,
+  normalizeOrientation,
+} from '@/lib/canvasConstants';
 import { WORKSPACE_ICONS, WORKSPACE_ICON_KEYS, WORKSPACE_COLORS } from '@/lib/workspaceIcons';
 
 function OrientationIcon({ orientation }) {
@@ -37,6 +44,8 @@ export default function WorkspaceEditDialog({ workspace, open, onClose, onSave, 
   const [colour, setColour] = useState(WORKSPACE_COLORS[0]);
   const [icon, setIcon] = useState('note');
   const [orientation, setOrientation] = useState(GRAPH_ORIENTATIONS.HORIZONTAL);
+  const [layoutOnOrientationChange, setLayoutOnOrientationChange] = useState(LAYOUT_ON_ORIENTATION_CHANGE.PRESERVE);
+  const [layoutSettings, setLayoutSettings] = useState(() => normalizeLayoutSettings());
 
   useEffect(() => {
     if (workspace) {
@@ -44,13 +53,26 @@ export default function WorkspaceEditDialog({ workspace, open, onClose, onSave, 
       setColour(workspace.colour || WORKSPACE_COLORS[0]);
       setIcon(workspace.icon || 'note');
       setOrientation(normalizeOrientation(workspace.orientation));
+      setLayoutOnOrientationChange(normalizeLayoutOnOrientationChange(workspace.layoutOnOrientationChange));
+      setLayoutSettings(normalizeLayoutSettings(workspace.layoutSettings));
     }
   }, [workspace]);
 
   if (!open || !workspace) return null;
 
+  const updateLayoutSetting = (key, value) => {
+    setLayoutSettings((current) => normalizeLayoutSettings({ ...current, [key]: value }));
+  };
+
   const save = () => {
-    onSave(workspace.id, { name: name.trim() || 'Untitled', colour, icon, orientation });
+    onSave(workspace.id, {
+      name: name.trim() || 'Untitled',
+      colour,
+      icon,
+      orientation,
+      layoutOnOrientationChange,
+      layoutSettings,
+    });
     onClose();
   };
 
@@ -147,6 +169,74 @@ export default function WorkspaceEditDialog({ workspace, open, onClose, onSave, 
                 </button>
               );
             })}
+          </div>
+
+          <label className="text-sm font-medium text-zinc-300">Layout on Orientation Change</label>
+          <div className="grid grid-cols-2 gap-2 mt-2 mb-5">
+            {[
+              { value: LAYOUT_ON_ORIENTATION_CHANGE.PRESERVE, label: 'Preserve Original Layout' },
+              { value: LAYOUT_ON_ORIENTATION_CHANGE.AUTO, label: 'Auto Organise' },
+            ].map((option) => {
+              const selected = layoutOnOrientationChange === option.value;
+              return (
+                <button
+                  key={option.value}
+                  onClick={() => setLayoutOnOrientationChange(option.value)}
+                  className="rounded-xl border px-3 py-3 text-left text-sm font-medium transition hover:bg-white/10"
+                  style={{
+                    backgroundColor: selected ? colour + '22' : 'rgba(255,255,255,0.03)',
+                    borderColor: selected ? colour : 'rgba(255,255,255,0.1)',
+                    color: selected ? '#ffffff' : '#d4d4d8',
+                  }}
+                >
+                  {option.label}
+                </button>
+              );
+            })}
+          </div>
+
+          <label className="text-sm font-medium text-zinc-300">Auto Organise Layout</label>
+          <div className="grid grid-cols-3 gap-2 mt-2 mb-3">
+            {[
+              { value: LAYOUT_DENSITIES.COMPACT, label: 'Compact' },
+              { value: LAYOUT_DENSITIES.DEFAULT, label: 'Default' },
+              { value: LAYOUT_DENSITIES.SPACIOUS, label: 'Spacious' },
+            ].map((option) => {
+              const selected = layoutSettings.density === option.value;
+              return (
+                <button
+                  key={option.value}
+                  onClick={() => updateLayoutSetting('density', option.value)}
+                  className="rounded-lg border px-2 py-2 text-xs font-medium transition hover:bg-white/10"
+                  style={{
+                    backgroundColor: selected ? colour + '22' : 'rgba(255,255,255,0.03)',
+                    borderColor: selected ? colour : 'rgba(255,255,255,0.1)',
+                    color: selected ? '#ffffff' : '#d4d4d8',
+                  }}
+                >
+                  {option.label}
+                </button>
+              );
+            })}
+          </div>
+          <div className="grid grid-cols-3 gap-2 mb-5">
+            {[
+              { key: 'horizontalSpacing', label: 'Horizontal' },
+              { key: 'verticalSpacing', label: 'Vertical' },
+              { key: 'graphSpacing', label: 'Graphs' },
+            ].map((field) => (
+              <label key={field.key} className="text-xs text-zinc-400">
+                {field.label}
+                <input
+                  type="number"
+                  min="40"
+                  step="10"
+                  value={layoutSettings[field.key]}
+                  onChange={(e) => updateLayoutSetting(field.key, e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-zinc-100 outline-none focus:border-indigo-400"
+                />
+              </label>
+            ))}
           </div>
 
           <div className="flex justify-between items-center">

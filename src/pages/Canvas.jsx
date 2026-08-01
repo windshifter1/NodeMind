@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import CanvasBoard from '@/components/canvas/CanvasBoard';
 import Toolbar from '@/components/canvas/Toolbar';
 import NodeEditDialog from '@/components/canvas/NodeEditDialog';
@@ -15,6 +15,8 @@ import {
   autoOrganiseNodes,
   nodeWidthForTitle,
   TOP_BAR_HEIGHT,
+  workspaceNodesBounds,
+  zoomToFrameBounds,
 } from '@/lib/canvasConstants';
 
 function clampZoom(z) {
@@ -150,6 +152,53 @@ export default function Canvas() {
     setZoom(z);
   };
 
+  const panRef = useRef(pan);
+  panRef.current = pan;
+  const zoomRef = useRef(zoom);
+  zoomRef.current = zoom;
+  const cameraAnimRef = useRef(0);
+
+  useEffect(() => () => {
+    if (cameraAnimRef.current) cancelAnimationFrame(cameraAnimRef.current);
+  }, []);
+
+  const animateCamera = useCallback((toPan, toZoom, duration = 250) => {
+    if (cameraAnimRef.current) cancelAnimationFrame(cameraAnimRef.current);
+    const fromPan = { ...panRef.current };
+    const fromZoom = zoomRef.current;
+    const start = performance.now();
+    const easeOut = (t) => 1 - (1 - t) ** 3;
+
+    const tick = (now) => {
+      const t = Math.min(1, (now - start) / duration);
+      const e = easeOut(t);
+      setPan({
+        x: fromPan.x + (toPan.x - fromPan.x) * e,
+        y: fromPan.y + (toPan.y - fromPan.y) * e,
+      });
+      setZoom(fromZoom + (toZoom - fromZoom) * e);
+      if (t < 1) cameraAnimRef.current = requestAnimationFrame(tick);
+      else cameraAnimRef.current = 0;
+    };
+    cameraAnimRef.current = requestAnimationFrame(tick);
+  }, []);
+
+  const recenterView = useCallback(() => {
+    const nodes = active.nodes || [];
+    if (!nodes.length) {
+      animateCamera(panRef.current, 1);
+      return;
+    }
+    const bounds = workspaceNodesBounds(nodes);
+    const fitZoom = clampZoom(zoomToFrameBounds(bounds, window.innerWidth, window.innerHeight));
+    const cx = window.innerWidth / 2;
+    const cy = window.innerHeight / 2;
+    animateCamera(
+      { x: cx - bounds.centroid.x * fitZoom, y: cy - bounds.centroid.y * fitZoom },
+      fitZoom
+    );
+  }, [active.nodes, animateCamera]);
+
   const [isFullscreen, setIsFullscreen] = useState(false);
   useEffect(() => {
     const onChange = () => setIsFullscreen(!!document.fullscreenElement);
@@ -200,6 +249,7 @@ export default function Canvas() {
         onAutoOrganise={autoOrganise}
         zoom={zoom}
         onZoom={zoomToCenter}
+        onRecenter={recenterView}
         isFullscreen={isFullscreen}
         onToggleFullscreen={toggleFullscreen}
         onOpenSettings={() => setSettingsOpen(true)}

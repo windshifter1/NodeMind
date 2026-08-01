@@ -85,6 +85,40 @@ export function nodeSizeForLayout(nodeOrTitle = '') {
   };
 }
 
+export function workspaceNodesBounds(nodes) {
+  if (!nodes.length) return null;
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  nodes.forEach((node) => {
+    const size = nodeSizeForLayout(node);
+    minX = Math.min(minX, node.x);
+    minY = Math.min(minY, node.y);
+    maxX = Math.max(maxX, node.x + size.width);
+    maxY = Math.max(maxY, node.y + size.height);
+  });
+  const width = maxX - minX;
+  const height = maxY - minY;
+  return {
+    minX,
+    minY,
+    maxX,
+    maxY,
+    width,
+    height,
+    centroid: { x: minX + width / 2, y: minY + height / 2 },
+  };
+}
+
+export function zoomToFrameBounds(bounds, viewportW, viewportH, padding = 64) {
+  const availW = Math.max(1, viewportW - padding * 2);
+  const availH = Math.max(1, viewportH - padding * 2);
+  const w = Math.max(bounds.width, 1);
+  const h = Math.max(bounds.height, 1);
+  return Math.min(availW / w, availH / h);
+}
+
 export function socketWorld(node, type, orientation = GRAPH_ORIENTATIONS.HORIZONTAL, size = nodeSizeForLayout(node)) {
   const o = normalizeOrientation(orientation);
   if (o === GRAPH_ORIENTATIONS.VERTICAL) {

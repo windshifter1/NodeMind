@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Download, Upload, Trash2, Plus, ZoomIn, ZoomOut, Maximize, Minimize, Copy, Terminal, Search, Share2, Wrench, Settings } from 'lucide-react';
+import { Download, Upload, Trash2, Plus, ZoomIn, ZoomOut, Maximize, Minimize, Copy, Terminal, Search, Share2, Wrench, Settings, Home } from 'lucide-react';
 
 function ToolbarButton({ children, onClick, title }) {
   return (
@@ -83,7 +83,7 @@ function ToolbarGroup({ icon: Icon, title, options }) {
   );
 }
 
-export default function Toolbar({ onExport, onImport, onClear, onTextExport, onOpenTerminal, onAutoOrganise, zoom, onZoom, isFullscreen, onToggleFullscreen, onAddNodeCenter, onOpenSettings }) {
+export default function Toolbar({ onExport, onImport, onClear, onTextExport, onOpenTerminal, onAutoOrganise, zoom, onZoom, onRecenter, isFullscreen, onToggleFullscreen, onAddNodeCenter, onOpenSettings }) {
   const fileRef = useRef(null);
 
   return (
@@ -97,6 +97,7 @@ export default function Toolbar({ onExport, onImport, onClear, onTextExport, onO
           options={[
             { label: 'Zoom In', icon: ZoomIn, action: () => onZoom(zoom * 1.2) },
             { label: 'Zoom Out', icon: ZoomOut, action: () => onZoom(zoom / 1.2) },
+            { label: 'Recenter', icon: Home, action: onRecenter },
             { label: isFullscreen ? 'Exit Full Screen' : 'Full Screen', icon: isFullscreen ? Minimize : Maximize, action: onToggleFullscreen },
           ]}
         />

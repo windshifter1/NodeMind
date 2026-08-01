@@ -1,8 +1,13 @@
 import { useEffect, useState } from 'react';
 import Canvas from '@/pages/Canvas';
+import { lockMobileViewport } from '@/lib/lockMobileViewport';
 
 export default function App() {
   const [offline, setOffline] = useState(() => typeof navigator !== 'undefined' && !navigator.onLine);
+
+  useEffect(() => {
+    return lockMobileViewport();
+  }, []);
 
   useEffect(() => {
     const update = () => setOffline(!navigator.onLine);

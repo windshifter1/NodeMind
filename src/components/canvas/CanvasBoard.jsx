@@ -66,6 +66,10 @@ export default function CanvasBoard({
   });
   const pinch = useRef({ active: false, startDist: 0, startZoom: 1, midX: 0, midY: 0 });
   const suppressNextMouseAction = useRef(false);
+  const postContextMenuSuppression = useRef(false);
+  const suppressPrimaryUp = useRef(false);
+  const suppressNextClick = useRef(false);
+  const suppressionTimerRef = useRef(0);
   const desktopSelection = useRef(false);
   const selectedNodeIdsRef = useRef(selectedNodeIds);
   selectedNodeIdsRef.current = selectedNodeIds;
@@ -113,10 +117,59 @@ export default function CanvasBoard({
     return e.button === 0 || e.button === 1 || e.button === 2;
   };
 
-  const shouldIgnoreMouseFocusRestore = (e) => {
-    if (e.pointerType !== 'mouse' || !suppressNextMouseAction.current) return false;
-    suppressNextMouseAction.current = false;
-    return true;
+  const clearSuppressionTimer = () => {
+    if (suppressionTimerRef.current) {
+      window.clearTimeout(suppressionTimerRef.current);
+      suppressionTimerRef.current = 0;
+    }
+  };
+
+  const armPostContextMenuSuppression = useCallback(() => {
+    postContextMenuSuppression.current = true;
+    suppressPrimaryUp.current = false;
+    clearSuppressionTimer();
+    suppressionTimerRef.current = window.setTimeout(() => {
+      postContextMenuSuppression.current = false;
+      suppressPrimaryUp.current = false;
+      suppressionTimerRef.current = 0;
+    }, 4000);
+  }, []);
+
+  const isBoardEvent = (e) => boardRef.current?.contains(e.target);
+
+  const shouldSuppressPrimaryPointer = (e, phase) => {
+    if (!e || e.pointerType !== 'mouse' || e.button !== 0) return false;
+
+    if (phase === 'up' && suppressPrimaryUp.current) {
+      suppressPrimaryUp.current = false;
+      suppressNextClick.current = true;
+      if (postContextMenuSuppression.current) {
+        postContextMenuSuppression.current = false;
+        clearSuppressionTimer();
+      }
+      return true;
+    }
+
+    if (phase === 'down') {
+      if (postContextMenuSuppression.current && !isBoardEvent(e)) {
+        postContextMenuSuppression.current = false;
+        clearSuppressionTimer();
+        return false;
+      }
+
+      if (suppressNextMouseAction.current) {
+        suppressNextMouseAction.current = false;
+        suppressPrimaryUp.current = true;
+        return true;
+      }
+
+      if (postContextMenuSuppression.current) {
+        suppressPrimaryUp.current = true;
+        return true;
+      }
+    }
+
+    return false;
   };
 
   const cancelCanvasInteraction = useCallback(() => {
@@ -182,6 +235,24 @@ export default function CanvasBoard({
       document.removeEventListener('visibilitychange', onVisibilityChange);
     };
   }, [cancelCanvasInteraction]);
+
+  useEffect(() => {
+    const board = boardRef.current;
+    if (!board) return undefined;
+
+    const blockGhostClick = (e) => {
+      if (e.button !== 0 || !suppressNextClick.current) return;
+      suppressNextClick.current = false;
+      e.preventDefault();
+      e.stopPropagation();
+    };
+
+    board.addEventListener('click', blockGhostClick, true);
+    return () => {
+      board.removeEventListener('click', blockGhostClick, true);
+      clearSuppressionTimer();
+    };
+  }, []);
 
   const screenToWorld = useCallback((clientX, clientY) => {
     const rect = boardRef.current.getBoundingClientRect();
@@ -285,7 +356,7 @@ export default function CanvasBoard({
 
   const startEdgeClick = useCallback(
     (edgeId, e) => {
-      if (!isPrimaryPointerStart(e) || shouldIgnoreMouseFocusRestore(e)) return;
+      if (!isPrimaryPointerStart(e) || shouldSuppressPrimaryPointer(e, 'down')) return;
       e.stopPropagation();
 
       setEdgeClick({
@@ -304,6 +375,10 @@ export default function CanvasBoard({
 
     const finish = (e) => {
       if (e.pointerId !== edgeClick.pointerId) return;
+      if (shouldSuppressPrimaryPointer(e, 'up')) {
+        setEdgeClick(null);
+        return;
+      }
       if (edgeClick.hadSelection) {
         onSelectionChange?.([]);
       } else {
@@ -339,7 +414,7 @@ export default function CanvasBoard({
 
   // --- Background pan / click-to-add / pinch ---
   const onPointerDown = (e) => {
-    if (!isCanvasPanPointerStart(e) || (e.button === 0 && shouldIgnoreMouseFocusRestore(e))) {
+    if (!isCanvasPanPointerStart(e) || (e.button === 0 && shouldSuppressPrimaryPointer(e, 'down'))) {
       cancelCanvasInteraction();
       return;
     }
@@ -443,6 +518,21 @@ export default function CanvasBoard({
   };
 
   const onPointerUp = (e) => {
+    if (shouldSuppressPrimaryPointer(e, 'up')) {
+      pointers.current.delete(e.pointerId);
+      if (pointers.current.size === 0) {
+        panState.current.panning = false;
+        panState.current.candidate = false;
+        panState.current.marqueing = false;
+        setMarqueeRect(null);
+      }
+      try {
+        boardRef.current.releasePointerCapture(e.pointerId);
+      } catch (err) {
+        /* ignore */
+      }
+      return;
+    }
     if (!pointers.current.has(e.pointerId)) return;
     const moved = panState.current.moved;
     pointers.current.delete(e.pointerId);
@@ -514,6 +604,7 @@ export default function CanvasBoard({
       e.preventDefault();
       panState.current.suppressContextMenu = false;
     }
+    armPostContextMenuSuppression();
     cancelCanvasInteraction();
   };
 
@@ -540,7 +631,7 @@ export default function CanvasBoard({
   // --- Node dragging ---
   const startNodeDrag = useCallback(
     (nodeId, e) => {
-      if (!isPrimaryPointerStart(e) || shouldIgnoreMouseFocusRestore(e)) return;
+      if (!isPrimaryPointerStart(e) || shouldSuppressPrimaryPointer(e, 'down')) return;
       const node = nodes.find((n) => n.id === nodeId);
       if (!node) return;
 
@@ -654,7 +745,7 @@ export default function CanvasBoard({
   // --- Socket connection drag ---
   const startConnect = useCallback(
     (nodeId, type, e) => {
-      if (e && (!isPrimaryPointerStart(e) || shouldIgnoreMouseFocusRestore(e))) return;
+      if (e && (!isPrimaryPointerStart(e) || shouldSuppressPrimaryPointer(e, 'down'))) return;
       const node = nodes.find((n) => n.id === nodeId);
       if (!node) return;
       const point = socketWorld(node, type, graphOrientation, nodeSizeForLayout(node));

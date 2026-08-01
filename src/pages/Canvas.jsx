@@ -19,6 +19,11 @@ import {
   workspaceNodesBounds,
   zoomToFrameBounds,
 } from '@/lib/canvasConstants';
+import {
+  isFullscreenActive,
+  subscribeFullscreenChange,
+  toggleFullscreen as toggleAppFullscreen,
+} from '@/lib/fullscreen';
 
 function clampZoom(z) {
   return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z));
@@ -233,22 +238,11 @@ export default function Canvas() {
     );
   }, [active.nodes, animateCamera]);
 
-  const [isFullscreen, setIsFullscreen] = useState(false);
-  useEffect(() => {
-    const onChange = () => setIsFullscreen(!!document.fullscreenElement);
-    document.addEventListener('fullscreenchange', onChange);
-    return () => document.removeEventListener('fullscreenchange', onChange);
-  }, []);
-  const toggleFullscreen = () => {
-    try {
-      if (!document.fullscreenElement) {
-        document.documentElement.requestFullscreen?.();
-      } else {
-        document.exitFullscreen?.();
-      }
-    } catch (e) {
-      /* ignore */
-    }
+  const [isFullscreen, setIsFullscreen] = useState(() => isFullscreenActive());
+  useEffect(() => subscribeFullscreenChange(setIsFullscreen), []);
+  const toggleFullscreen = async () => {
+    await toggleAppFullscreen();
+    setIsFullscreen(isFullscreenActive());
   };
 
   const editingNode = active.nodes.find((n) => n.id === editingNodeId) || null;

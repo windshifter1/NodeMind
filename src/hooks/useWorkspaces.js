@@ -191,6 +191,15 @@ function reducer(state, action) {
         nodes: w.nodes.filter((n) => n.id !== action.id),
         edges: w.edges.filter((e) => e.fromNode !== action.id && e.toNode !== action.id),
       }));
+    case 'DELETE_NODES': {
+      const ids = new Set(action.ids || []);
+      if (!ids.size) return state;
+      return withActiveGraph(state, (w) => ({
+        ...w,
+        nodes: w.nodes.filter((n) => !ids.has(n.id)),
+        edges: w.edges.filter((e) => !ids.has(e.fromNode) && !ids.has(e.toNode)),
+      }));
+    }
     case 'BRING_TO_FRONT':
       return withActiveGraph(state, (w) => ({
         ...w,

@@ -78,6 +78,7 @@ export default function NoteNode({
   pending,
   orientation,
   darkNodes,
+  selected,
   ghost,
   onUpdate,
   onStartNodeDrag,
@@ -112,10 +113,11 @@ export default function NoteNode({
         zIndex: node.z,
         borderWidth: 2,
         borderStyle: 'solid',
-        borderColor: node.color,
+        borderColor: selected ? '#818cf8' : node.color,
         backgroundColor: darkNodes ? '#424448' : '#ffffff',
         opacity: ghost ? 0.3 : 1,
-        transition: 'left 250ms ease, top 250ms ease, opacity 180ms ease, width 250ms ease',
+        boxShadow: selected ? '0 0 0 2px rgba(129, 140, 248, 0.55), 0 8px 24px rgba(0,0,0,0.35)' : undefined,
+        transition: 'left 250ms ease, top 250ms ease, opacity 180ms ease, width 250ms ease, box-shadow 180ms ease, border-color 180ms ease',
       }}
     >
       <Socket

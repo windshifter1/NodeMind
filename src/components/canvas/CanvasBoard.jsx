@@ -8,8 +8,10 @@ import {
   bezierPath,
   connectedNodePositionAtSocket,
   normalizeOrientation,
+  nodeLayoutRect,
   nodeSizeForLayout,
   nodeWidthForTitle,
+  rectsIntersect,
   socketWorld,
 } from '@/lib/canvasConstants';
 
@@ -18,6 +20,12 @@ function clampZoom(z) {
 }
 
 const PAN_DRAG_THRESHOLD = 3;
+
+function isPointerOverEdge(edgeId, clientX, clientY) {
+  const el = document.elementFromPoint(clientX, clientY);
+  const hit = el?.closest?.('[data-edge-hit]');
+  return hit?.getAttribute('data-edge-id') === edgeId;
+}
 
 export default function CanvasBoard({
   nodes,
@@ -30,6 +38,9 @@ export default function CanvasBoard({
   onBringToFront,
   onOpenEdit,
   onDeleteNode,
+  onDeleteNodes,
+  selectedNodeIds = [],
+  onSelectionChange,
   darkNodes,
   zoom,
   setZoom,
@@ -43,6 +54,8 @@ export default function CanvasBoard({
   const panState = useRef({
     panning: false,
     candidate: false,
+    marquee: false,
+    marqueing: false,
     button: 0,
     startX: 0,
     startY: 0,
@@ -53,6 +66,13 @@ export default function CanvasBoard({
   });
   const pinch = useRef({ active: false, startDist: 0, startZoom: 1, midX: 0, midY: 0 });
   const suppressNextMouseAction = useRef(false);
+  const desktopSelection = useRef(false);
+  const [desktopSelectionEnabled, setDesktopSelectionEnabled] = useState(false);
+  const selectedNodeIdsRef = useRef(selectedNodeIds);
+  selectedNodeIdsRef.current = selectedNodeIds;
+
+  const [marqueeRect, setMarqueeRect] = useState(null);
+  const [edgeClick, setEdgeClick] = useState(null);
 
   const zoomRef = useRef(zoom);
   zoomRef.current = zoom;
@@ -70,8 +90,21 @@ export default function CanvasBoard({
   const overBinRef = useRef(false);
   const binRef = useRef(null);
   const binRectRef = useRef(null);
-  const dragVisual = useRef({ raf: 0, id: null, dx: 0, dy: 0, finalX: 0, finalY: 0 });
+  const dragVisual = useRef({ raf: 0, ids: [], dx: 0, dy: 0, positions: {} });
   const [vp, setVp] = useState({ w: window.innerWidth, h: window.innerHeight });
+
+  useEffect(() => {
+    const mq = window.matchMedia?.('(hover: hover) and (pointer: fine)');
+    const update = () => {
+      const enabled = mq?.matches || false;
+      desktopSelection.current = enabled;
+      setDesktopSelectionEnabled(enabled);
+    };
+    update();
+    if (!mq?.addEventListener) return undefined;
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, []);
 
   const isPrimaryPointerStart = (e) => {
     if (e.pointerType === 'mouse') return e.button === 0;
@@ -94,6 +127,8 @@ export default function CanvasBoard({
     panState.current = {
       panning: false,
       candidate: false,
+      marquee: false,
+      marqueing: false,
       button: 0,
       startX: 0,
       startY: 0,
@@ -105,6 +140,8 @@ export default function CanvasBoard({
     pinch.current.active = false;
     pendingRef.current = null;
     setPending(null);
+    setMarqueeRect(null);
+    setEdgeClick(null);
     setDraggingNode(null);
     overBinRef.current = false;
     setOverBin(false);
@@ -157,29 +194,30 @@ export default function CanvasBoard({
     };
   }, []);
 
-  const socketScreen = (node, type, override) => {
-    const x = override && override.id === node.id ? override.x : node.x;
-    const y = override && override.id === node.id ? override.y : node.y;
+  const socketScreen = (node, type, overrides) => {
+    const override = overrides?.get?.(node.id);
+    const x = override ? override.x : node.x;
+    const y = override ? override.y : node.y;
     const overridden = { ...node, x, y };
     const point = socketWorld(overridden, type, graphOrientation, nodeSizeForLayout(overridden));
     return { x: point.x * zoom + pan.x, y: point.y * zoom + pan.y };
   };
 
   const updateDraggedEdges = useCallback(
-    (draggedId, x, y) => {
-      const override = { id: draggedId, x, y };
+    (overrides) => {
+      const overrideMap = overrides instanceof Map ? overrides : new Map([[overrides.id, overrides]]);
       edgesRef.current.forEach((edge) => {
-        if (edge.fromNode !== draggedId && edge.toNode !== draggedId) return;
+        if (!overrideMap.has(edge.fromNode) && !overrideMap.has(edge.toNode)) return;
         const from = nodesRef.current.find((n) => n.id === edge.fromNode);
         const to = nodesRef.current.find((n) => n.id === edge.toNode);
         if (!from || !to) return;
         let out, inp;
         if (edge.fromType === 'output') {
-          out = socketScreen(from, 'output', override);
-          inp = socketScreen(to, 'input', override);
+          out = socketScreen(from, 'output', overrideMap);
+          inp = socketScreen(to, 'input', overrideMap);
         } else {
-          out = socketScreen(to, 'output', override);
-          inp = socketScreen(from, 'input', override);
+          out = socketScreen(to, 'output', overrideMap);
+          inp = socketScreen(from, 'input', overrideMap);
         }
         const d = bezierPath(out.x, out.y, inp.x, inp.y, false, graphOrientation);
         boardRef.current
@@ -196,17 +234,111 @@ export default function CanvasBoard({
       if (dragVisual.current.raf) return;
       dragVisual.current.raf = requestAnimationFrame(() => {
         dragVisual.current.raf = 0;
-        const { id, dx, dy, finalX, finalY } = dragVisual.current;
-        const el = boardRef.current?.querySelector(`[data-note-node="${id}"]`);
-        if (el) {
-          el.style.transition = 'none';
-          el.style.transform = `translate(${dx}px, ${dy}px)`;
-        }
-        updateDraggedEdges(id, finalX, finalY);
+        const { ids, dx, dy, positions } = dragVisual.current;
+        const overrideMap = new Map();
+        ids.forEach((id) => {
+          const el = boardRef.current?.querySelector(`[data-note-node="${id}"]`);
+          if (el) {
+            el.style.transition = 'none';
+            el.style.transform = `translate(${dx}px, ${dy}px)`;
+          }
+          const pos = positions[id];
+          if (pos) overrideMap.set(id, { id, x: pos.finalX, y: pos.finalY });
+        });
+        updateDraggedEdges(overrideMap);
       });
     },
     [updateDraggedEdges]
   );
+
+  const transferToCanvasInteraction = useCallback((startX, startY, e) => {
+    pointers.current.set(e.pointerId, {
+      x: e.clientX,
+      y: e.clientY,
+      button: 0,
+      pointerType: e.pointerType,
+    });
+    const useMarquee = e.pointerType === 'mouse' && desktopSelection.current;
+    const totalDx = e.clientX - startX;
+    const totalDy = e.clientY - startY;
+    const crossedThreshold = Math.abs(totalDx) + Math.abs(totalDy) > PAN_DRAG_THRESHOLD;
+    panState.current = {
+      panning: !useMarquee,
+      candidate: useMarquee && !crossedThreshold,
+      marquee: useMarquee,
+      marqueing: useMarquee && crossedThreshold,
+      button: 0,
+      startX,
+      startY,
+      lastX: e.clientX,
+      lastY: e.clientY,
+      moved: crossedThreshold,
+      suppressContextMenu: false,
+    };
+    if (useMarquee && crossedThreshold) {
+      const rect = boardRef.current.getBoundingClientRect();
+      setMarqueeRect({
+        left: Math.min(startX, e.clientX) - rect.left,
+        top: Math.min(startY, e.clientY) - rect.top,
+        width: Math.abs(totalDx),
+        height: Math.abs(totalDy),
+      });
+    }
+  }, []);
+
+  const startEdgeClick = useCallback(
+    (edgeId, e) => {
+      if (!isPrimaryPointerStart(e) || shouldIgnoreMouseFocusRestore(e)) return;
+      e.stopPropagation();
+
+      if (e.pointerType !== 'mouse') {
+        onDeleteEdge(edgeId);
+        return;
+      }
+
+      setEdgeClick({
+        edgeId,
+        startX: e.clientX,
+        startY: e.clientY,
+        pointerId: e.pointerId,
+      });
+    },
+    [onDeleteEdge]
+  );
+
+  useEffect(() => {
+    if (!edgeClick) return undefined;
+
+    const finish = (e) => {
+      if (e.pointerId !== edgeClick.pointerId) return;
+      const dist =
+        Math.abs(e.clientX - edgeClick.startX) + Math.abs(e.clientY - edgeClick.startY);
+      const overEdge = isPointerOverEdge(edgeClick.edgeId, e.clientX, e.clientY);
+      if (overEdge || dist <= PAN_DRAG_THRESHOLD) onDeleteEdge(edgeClick.edgeId);
+      setEdgeClick(null);
+    };
+
+    const onMove = (e) => {
+      if (e.pointerId !== edgeClick.pointerId) return;
+      const dist =
+        Math.abs(e.clientX - edgeClick.startX) + Math.abs(e.clientY - edgeClick.startY);
+      const overEdge = isPointerOverEdge(edgeClick.edgeId, e.clientX, e.clientY);
+      if (!overEdge && dist > PAN_DRAG_THRESHOLD) {
+        const start = { x: edgeClick.startX, y: edgeClick.startY };
+        setEdgeClick(null);
+        transferToCanvasInteraction(start.x, start.y, e);
+      }
+    };
+
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', finish);
+    window.addEventListener('pointercancel', finish);
+    return () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', finish);
+      window.removeEventListener('pointercancel', finish);
+    };
+  }, [edgeClick, onDeleteEdge, transferToCanvasInteraction]);
 
   // --- Background pan / click-to-add / pinch ---
   const onPointerDown = (e) => {
@@ -223,10 +355,14 @@ export default function CanvasBoard({
     pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY, button: e.button, pointerType: e.pointerType });
 
     if (pointers.current.size === 1) {
+      const isMousePrimary = e.pointerType === 'mouse' && e.button === 0;
+      const useMarquee = isMousePrimary && desktopSelection.current;
       const delayedMousePan = e.pointerType === 'mouse' && (e.button === 1 || e.button === 2);
       panState.current = {
-        panning: !delayedMousePan,
-        candidate: delayedMousePan,
+        panning: !delayedMousePan && !useMarquee,
+        candidate: delayedMousePan || useMarquee,
+        marquee: useMarquee,
+        marqueing: false,
         button: e.button,
         startX: e.clientX,
         startY: e.clientY,
@@ -235,6 +371,7 @@ export default function CanvasBoard({
         moved: false,
         suppressContextMenu: false,
       };
+      if (useMarquee) setMarqueeRect(null);
     } else if (pointers.current.size === 2) {
       const pts = [...pointers.current.values()];
       const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
@@ -278,13 +415,26 @@ export default function CanvasBoard({
       const crossedThreshold = Math.abs(totalDx) + Math.abs(totalDy) > PAN_DRAG_THRESHOLD;
 
       if (panState.current.candidate && crossedThreshold) {
-        panState.current.candidate = false;
-        panState.current.panning = true;
-        panState.current.moved = true;
-        panState.current.suppressContextMenu = panState.current.button === 2;
+        if (panState.current.marquee) {
+          panState.current.marqueing = true;
+          panState.current.moved = true;
+        } else {
+          panState.current.candidate = false;
+          panState.current.panning = true;
+          panState.current.moved = true;
+          panState.current.suppressContextMenu = panState.current.button === 2;
+        }
       }
 
-      if (panState.current.panning) {
+      if (panState.current.marqueing) {
+        const rect = boardRef.current.getBoundingClientRect();
+        setMarqueeRect({
+          left: Math.min(panState.current.startX, e.clientX) - rect.left,
+          top: Math.min(panState.current.startY, e.clientY) - rect.top,
+          width: Math.abs(totalDx),
+          height: Math.abs(totalDy),
+        });
+      } else if (panState.current.panning) {
         if (Math.abs(dx) + Math.abs(dy) > PAN_DRAG_THRESHOLD) panState.current.moved = true;
         if (panState.current.button === 1 || panState.current.button === 2) e.preventDefault();
         setPan((p) => ({ x: p.x + dx, y: p.y + dy }));
@@ -306,6 +456,8 @@ export default function CanvasBoard({
       panState.current = {
         panning: true,
         candidate: false,
+        marquee: false,
+        marqueing: false,
         button: rem.button,
         startX: rem.x,
         startY: rem.y,
@@ -314,13 +466,29 @@ export default function CanvasBoard({
         moved: true,
         suppressContextMenu: false,
       };
+      setMarqueeRect(null);
     } else if (pointers.current.size === 0) {
-      if (panState.current.button === 0 && panState.current.panning && !moved && !pinch.current.active) {
+      const wasMarquee = panState.current.marqueing;
+      if (wasMarquee && desktopSelection.current && onSelectionChange) {
+        const rect = boardRef.current.getBoundingClientRect();
+        const x1 = (Math.min(panState.current.startX, e.clientX) - rect.left - panRef.current.x) / zoomRef.current;
+        const y1 = (Math.min(panState.current.startY, e.clientY) - rect.top - panRef.current.y) / zoomRef.current;
+        const x2 = (Math.max(panState.current.startX, e.clientX) - rect.left - panRef.current.x) / zoomRef.current;
+        const y2 = (Math.max(panState.current.startY, e.clientY) - rect.top - panRef.current.y) / zoomRef.current;
+        const worldRect = { minX: x1, minY: y1, maxX: x2, maxY: y2 };
+        const hits = nodesRef.current
+          .filter((node) => rectsIntersect(nodeLayoutRect(node), worldRect))
+          .map((node) => node.id);
+        onSelectionChange(hits);
+      } else if (panState.current.button === 0 && !moved && !pinch.current.active) {
+        if (desktopSelection.current && onSelectionChange) onSelectionChange([]);
         const w = screenToWorld(e.clientX, e.clientY);
         onAddNode(w.x - nodeWidthForTitle('') / 2, w.y - TOP_BAR_HEIGHT / 2);
       }
       panState.current.panning = false;
       panState.current.candidate = false;
+      panState.current.marqueing = false;
+      setMarqueeRect(null);
       if (panState.current.suppressContextMenu) {
         window.setTimeout(() => {
           panState.current.suppressContextMenu = false;
@@ -373,25 +541,46 @@ export default function CanvasBoard({
       if (!isPrimaryPointerStart(e) || shouldIgnoreMouseFocusRestore(e)) return;
       const node = nodes.find((n) => n.id === nodeId);
       if (!node) return;
-      onBringToFront(nodeId);
+
+      const isDesktopMouse = e.pointerType === 'mouse' && desktopSelection.current;
+      const currentSelection = selectedNodeIdsRef.current;
+      let dragIds;
+      if (isDesktopMouse && currentSelection.includes(nodeId) && currentSelection.length > 1) {
+        dragIds = currentSelection.filter((id) => nodes.some((n) => n.id === id));
+      } else {
+        if (isDesktopMouse && onSelectionChange) onSelectionChange([nodeId]);
+        dragIds = [nodeId];
+      }
+
+      const origins = {};
+      dragIds.forEach((id) => {
+        const n = nodes.find((item) => item.id === id);
+        if (n) origins[id] = { x: n.x, y: n.y };
+      });
+
+      dragIds.forEach((id) => onBringToFront(id));
+
+      const positions = {};
+      dragIds.forEach((id) => {
+        positions[id] = { finalX: origins[id].x, finalY: origins[id].y };
+      });
+
       dragVisual.current = {
         raf: 0,
-        id: nodeId,
+        ids: dragIds,
         dx: 0,
         dy: 0,
-        finalX: node.x,
-        finalY: node.y,
+        positions,
       };
       binRectRef.current = null;
       setDraggingNode({
-        id: nodeId,
+        ids: dragIds,
         startX: e.clientX,
         startY: e.clientY,
-        origX: node.x,
-        origY: node.y,
+        origins,
       });
     },
-    [nodes, onBringToFront]
+    [nodes, onBringToFront, onSelectionChange]
   );
 
   useEffect(() => {
@@ -404,13 +593,12 @@ export default function CanvasBoard({
     const onMove = (e) => {
       const dx = (e.clientX - draggingNode.startX) / zoomRef.current;
       const dy = (e.clientY - draggingNode.startY) / zoomRef.current;
-      scheduleDragVisual({
-        id: draggingNode.id,
-        dx,
-        dy,
-        finalX: draggingNode.origX + dx,
-        finalY: draggingNode.origY + dy,
+      const positions = {};
+      draggingNode.ids.forEach((id) => {
+        const origin = draggingNode.origins[id];
+        if (origin) positions[id] = { finalX: origin.x + dx, finalY: origin.y + dy };
       });
+      scheduleDragVisual({ ids: draggingNode.ids, dx, dy, positions });
       const el = binRef.current;
       if (el) {
         const r = binRectRef.current || el.getBoundingClientRect();
@@ -430,14 +618,14 @@ export default function CanvasBoard({
         cancelAnimationFrame(dragVisual.current.raf);
         dragVisual.current.raf = 0;
       }
-      const { id, finalX, finalY } = dragVisual.current;
-      const el = boardRef.current?.querySelector(`[data-note-node="${id}"]`);
+      const { ids, positions } = dragVisual.current;
       if (overBinRef.current) {
-        onDeleteNode(draggingNode.id);
+        if (onDeleteNodes) onDeleteNodes(draggingNode.ids);
+        else draggingNode.ids.forEach((id) => onDeleteNode(id));
       } else {
-        onUpdateNode(draggingNode.id, {
-          x: finalX,
-          y: finalY,
+        draggingNode.ids.forEach((id) => {
+          const pos = positions[id];
+          if (pos) onUpdateNode(id, { x: pos.finalX, y: pos.finalY });
         });
       }
       overBinRef.current = false;
@@ -445,10 +633,13 @@ export default function CanvasBoard({
       setOverBin(false);
       setDraggingNode(null);
       requestAnimationFrame(() => {
-        if (el) {
-          el.style.transform = '';
-          el.style.transition = '';
-        }
+        ids.forEach((id) => {
+          const el = boardRef.current?.querySelector(`[data-note-node="${id}"]`);
+          if (el) {
+            el.style.transform = '';
+            el.style.transition = '';
+          }
+        });
       });
     };
     window.addEventListener('pointermove', onMove);
@@ -457,7 +648,7 @@ export default function CanvasBoard({
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('pointerup', onUp);
     };
-  }, [draggingNode, onUpdateNode, onDeleteNode, scheduleDragVisual]);
+  }, [draggingNode, onUpdateNode, onDeleteNode, onDeleteNodes, scheduleDragVisual]);
 
   // --- Socket connection drag ---
   const startConnect = useCallback(
@@ -517,7 +708,9 @@ export default function CanvasBoard({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pending !== null]);
 
-  const cursor = panState.current.panning ? 'grabbing' : 'grab';
+  const selectedSet = new Set(selectedNodeIds);
+  const draggingSet = draggingNode ? new Set(draggingNode.ids) : null;
+  const cursor = marqueeRect ? 'crosshair' : panState.current.panning ? 'grabbing' : 'grab';
 
   return (
     <div
@@ -572,17 +765,14 @@ export default function CanvasBoard({
             <g key={edge.id}>
               <path data-edge-id={edge.id} d={d} fill="none" stroke="#94a3b8" strokeWidth={2.5} strokeLinecap="round" />
               <path
+                data-edge-hit
                 data-edge-id={edge.id}
                 d={d}
                 fill="none"
                 stroke="transparent"
                 strokeWidth={16}
                 style={{ pointerEvents: 'stroke', cursor: 'pointer' }}
-                onPointerDown={(e) => {
-                  if (!isPrimaryPointerStart(e) || shouldIgnoreMouseFocusRestore(e)) return;
-                  e.stopPropagation();
-                  onDeleteEdge(edge.id);
-                }}
+                onPointerDown={(e) => startEdgeClick(edge.id, e)}
               />
             </g>
           );
@@ -620,7 +810,8 @@ export default function CanvasBoard({
             pending={pending}
             orientation={graphOrientation}
             darkNodes={darkNodes}
-            ghost={overBin && draggingNode && node.id === draggingNode.id}
+            selected={desktopSelectionEnabled && selectedSet.has(node.id)}
+            ghost={overBin && draggingSet?.has(node.id)}
             onUpdate={(patch) => onUpdateNode(node.id, patch)}
             onStartNodeDrag={startNodeDrag}
             onStartConnect={startConnect}
@@ -628,6 +819,18 @@ export default function CanvasBoard({
           />
         ))}
       </div>
+
+      {marqueeRect && (
+        <div
+          className="absolute pointer-events-none border border-indigo-400 bg-indigo-400/10 z-40"
+          style={{
+            left: marqueeRect.left,
+            top: marqueeRect.top,
+            width: marqueeRect.width,
+            height: marqueeRect.height,
+          }}
+        />
+      )}
 
       {draggingNode && (
         <div

@@ -1,12 +1,60 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Download, Upload, Trash2, Plus, ZoomIn, ZoomOut, Maximize, Minimize, Copy, Terminal, Search, Share2, Wrench, Settings, Home } from 'lucide-react';
 
-function ToolbarButton({ children, onClick, title }) {
+function AutoOrganiseAllIcon({ size = 15 }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <rect x="3" y="3" width="7" height="7" rx="1.5" />
+      <rect x="14" y="3" width="7" height="7" rx="1.5" />
+      <rect x="3" y="14" width="7" height="7" rx="1.5" />
+      <rect x="14" y="14" width="7" height="7" rx="1.5" />
+    </svg>
+  );
+}
+
+function AutoOrganiseSelectedIcon({ size = 15 }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <rect x="2.5" y="2.5" width="19" height="19" rx="2" />
+      <rect x="7" y="7" width="4" height="4" rx="0.75" />
+      <rect x="13" y="7" width="4" height="4" rx="0.75" />
+      <rect x="7" y="13" width="4" height="4" rx="0.75" />
+      <rect x="13" y="13" width="4" height="4" rx="0.75" />
+    </svg>
+  );
+}
+
+function ToolbarButton({ children, onClick, title, disabled = false }) {
   return (
     <button
-      onClick={onClick}
+      onClick={disabled ? undefined : onClick}
       title={title}
-      className="p-2 sm:p-3 rounded-xl text-white/80 hover:text-white hover:bg-white/10 active:scale-95 transition"
+      disabled={disabled}
+      className={`p-2 sm:p-3 rounded-xl transition active:scale-95 ${
+        disabled
+          ? 'text-white/30 cursor-not-allowed'
+          : 'text-white/80 hover:text-white hover:bg-white/10'
+      }`}
     >
       {children}
     </button>
@@ -59,19 +107,25 @@ function ToolbarGroup({ icon: Icon, title, options }) {
       </ToolbarButton>
       <div
         aria-hidden={!open}
-        className={`absolute top-full left-1/2 w-44 -translate-x-1/2 overflow-hidden rounded-2xl border border-white/10 bg-zinc-900/95 backdrop-blur-md shadow-xl transition-all duration-200 ease-out ${
+        className={`absolute top-full left-1/2 w-56 -translate-x-1/2 overflow-hidden rounded-2xl border border-white/10 bg-zinc-900/95 backdrop-blur-md shadow-xl transition-all duration-200 ease-out ${
           open
             ? 'visible max-h-64 opacity-100 translate-y-0 pointer-events-auto'
             : 'invisible max-h-0 opacity-0 -translate-y-1 pointer-events-none'
         }`}
       >
         <div className="flex flex-col gap-1 p-2">
-          {options.map(({ label, icon: OptionIcon, action }) => (
+          {options.map(({ label, icon: OptionIcon, action, disabled = false, title }) => (
             <button
               key={label}
-              onClick={() => run(action)}
-              tabIndex={open ? 0 : -1}
-              className="flex items-center gap-2 rounded-xl px-3 py-2 text-left text-sm text-white/80 hover:text-white hover:bg-white/10 active:scale-[0.98] transition"
+              onClick={() => !disabled && run(action)}
+              disabled={disabled}
+              title={title || label}
+              tabIndex={open && !disabled ? 0 : -1}
+              className={`flex items-center gap-2 rounded-xl px-3 py-2 text-left text-sm transition active:scale-[0.98] ${
+                disabled
+                  ? 'text-white/30 cursor-not-allowed'
+                  : 'text-white/80 hover:text-white hover:bg-white/10'
+              }`}
             >
               <OptionIcon size={15} />
               <span>{label}</span>
@@ -83,8 +137,25 @@ function ToolbarGroup({ icon: Icon, title, options }) {
   );
 }
 
-export default function Toolbar({ onExport, onImport, onClear, onTextExport, onOpenTerminal, onAutoOrganise, zoom, onZoom, onRecenter, isFullscreen, onToggleFullscreen, onAddNodeCenter, onOpenSettings }) {
+export default function Toolbar({
+  onExport,
+  onImport,
+  onClear,
+  onTextExport,
+  onOpenTerminal,
+  onAutoOrganise,
+  onOrganiseSelected,
+  selectedCount = 0,
+  zoom,
+  onZoom,
+  onRecenter,
+  isFullscreen,
+  onToggleFullscreen,
+  onAddNodeCenter,
+  onOpenSettings,
+}) {
   const fileRef = useRef(null);
+  const canOrganiseSelected = selectedCount >= 2;
 
   return (
     <>
@@ -107,7 +178,16 @@ export default function Toolbar({ onExport, onImport, onClear, onTextExport, onO
           icon={Wrench}
           title="Tools"
           options={[
-            { label: 'Auto Organise', icon: Wrench, action: onAutoOrganise },
+            { label: 'Auto Organise All', icon: AutoOrganiseAllIcon, action: onAutoOrganise },
+            {
+              label: 'Auto Organise Selected',
+              icon: AutoOrganiseSelectedIcon,
+              action: onOrganiseSelected,
+              disabled: !canOrganiseSelected,
+              title: canOrganiseSelected
+                ? 'Auto Organise Selected'
+                : 'Select two or more nodes to organise',
+            },
           ]}
         />
         <ToolbarButton onClick={onOpenTerminal} title="Terminal"><Terminal size={16} /></ToolbarButton>

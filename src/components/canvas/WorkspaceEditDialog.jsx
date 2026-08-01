@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X } from 'lucide-react';
+import { X, ChevronDown, ChevronUp } from 'lucide-react';
 import {
   GRAPH_ORIENTATIONS,
   LAYOUT_DENSITIES,
@@ -46,6 +46,7 @@ export default function WorkspaceEditDialog({ workspace, open, onClose, onSave, 
   const [orientation, setOrientation] = useState(GRAPH_ORIENTATIONS.HORIZONTAL);
   const [layoutOnOrientationChange, setLayoutOnOrientationChange] = useState(LAYOUT_ON_ORIENTATION_CHANGE.PRESERVE);
   const [layoutSettings, setLayoutSettings] = useState(() => normalizeLayoutSettings());
+  const [advancedOpen, setAdvancedOpen] = useState(false);
 
   useEffect(() => {
     if (workspace) {
@@ -56,7 +57,8 @@ export default function WorkspaceEditDialog({ workspace, open, onClose, onSave, 
       setLayoutOnOrientationChange(normalizeLayoutOnOrientationChange(workspace.layoutOnOrientationChange));
       setLayoutSettings(normalizeLayoutSettings(workspace.layoutSettings));
     }
-  }, [workspace]);
+    if (open) setAdvancedOpen(false);
+  }, [workspace, open]);
 
   if (!open || !workspace) return null;
 
@@ -171,73 +173,86 @@ export default function WorkspaceEditDialog({ workspace, open, onClose, onSave, 
             })}
           </div>
 
-          <label className="text-sm font-medium text-zinc-300">Layout on Orientation Change</label>
-          <div className="grid grid-cols-2 gap-2 mt-2 mb-5">
-            {[
-              { value: LAYOUT_ON_ORIENTATION_CHANGE.PRESERVE, label: 'Preserve Original Layout' },
-              { value: LAYOUT_ON_ORIENTATION_CHANGE.AUTO, label: 'Auto Organise' },
-            ].map((option) => {
-              const selected = layoutOnOrientationChange === option.value;
-              return (
-                <button
-                  key={option.value}
-                  onClick={() => setLayoutOnOrientationChange(option.value)}
-                  className="rounded-xl border px-3 py-3 text-left text-sm font-medium transition hover:bg-white/10"
-                  style={{
-                    backgroundColor: selected ? colour + '22' : 'rgba(255,255,255,0.03)',
-                    borderColor: selected ? colour : 'rgba(255,255,255,0.1)',
-                    color: selected ? '#ffffff' : '#d4d4d8',
-                  }}
-                >
-                  {option.label}
-                </button>
-              );
-            })}
-          </div>
+          <button
+            type="button"
+            onClick={() => setAdvancedOpen((open) => !open)}
+            className="w-full flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm font-medium text-zinc-200 hover:bg-white/10 transition"
+          >
+            <span>Advanced settings</span>
+            {advancedOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+          </button>
 
-          <label className="text-sm font-medium text-zinc-300">Auto Organise Layout</label>
-          <div className="grid grid-cols-3 gap-2 mt-2 mb-3">
-            {[
-              { value: LAYOUT_DENSITIES.COMPACT, label: 'Compact' },
-              { value: LAYOUT_DENSITIES.DEFAULT, label: 'Default' },
-              { value: LAYOUT_DENSITIES.SPACIOUS, label: 'Spacious' },
-            ].map((option) => {
-              const selected = layoutSettings.density === option.value;
-              return (
-                <button
-                  key={option.value}
-                  onClick={() => updateLayoutSetting('density', option.value)}
-                  className="rounded-lg border px-2 py-2 text-xs font-medium transition hover:bg-white/10"
-                  style={{
-                    backgroundColor: selected ? colour + '22' : 'rgba(255,255,255,0.03)',
-                    borderColor: selected ? colour : 'rgba(255,255,255,0.1)',
-                    color: selected ? '#ffffff' : '#d4d4d8',
-                  }}
-                >
-                  {option.label}
-                </button>
-              );
-            })}
-          </div>
-          <div className="grid grid-cols-3 gap-2 mb-5">
-            {[
-              { key: 'horizontalSpacing', label: 'Horizontal' },
-              { key: 'verticalSpacing', label: 'Vertical' },
-              { key: 'graphSpacing', label: 'Graphs' },
-            ].map((field) => (
-              <label key={field.key} className="text-xs text-zinc-400">
-                {field.label}
-                <input
-                  type="number"
-                  min="40"
-                  step="10"
-                  value={layoutSettings[field.key]}
-                  onChange={(e) => updateLayoutSetting(field.key, e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-zinc-100 outline-none focus:border-indigo-400"
-                />
-              </label>
-            ))}
-          </div>
+          {advancedOpen && (
+            <div className="mt-3 mb-5">
+              <label className="text-sm font-medium text-zinc-300">Layout on Orientation Change</label>
+              <div className="grid grid-cols-2 gap-2 mt-2 mb-5">
+                {[
+                  { value: LAYOUT_ON_ORIENTATION_CHANGE.PRESERVE, label: 'Preserve Original Layout' },
+                  { value: LAYOUT_ON_ORIENTATION_CHANGE.AUTO, label: 'Auto Organise' },
+                ].map((option) => {
+                  const selected = layoutOnOrientationChange === option.value;
+                  return (
+                    <button
+                      key={option.value}
+                      onClick={() => setLayoutOnOrientationChange(option.value)}
+                      className="rounded-xl border px-3 py-3 text-left text-sm font-medium transition hover:bg-white/10"
+                      style={{
+                        backgroundColor: selected ? colour + '22' : 'rgba(255,255,255,0.03)',
+                        borderColor: selected ? colour : 'rgba(255,255,255,0.1)',
+                        color: selected ? '#ffffff' : '#d4d4d8',
+                      }}
+                    >
+                      {option.label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <label className="text-sm font-medium text-zinc-300">Auto Organise Layout</label>
+              <div className="grid grid-cols-3 gap-2 mt-2 mb-3">
+                {[
+                  { value: LAYOUT_DENSITIES.COMPACT, label: 'Compact' },
+                  { value: LAYOUT_DENSITIES.DEFAULT, label: 'Default' },
+                  { value: LAYOUT_DENSITIES.SPACIOUS, label: 'Spacious' },
+                ].map((option) => {
+                  const selected = layoutSettings.density === option.value;
+                  return (
+                    <button
+                      key={option.value}
+                      onClick={() => updateLayoutSetting('density', option.value)}
+                      className="rounded-lg border px-2 py-2 text-xs font-medium transition hover:bg-white/10"
+                      style={{
+                        backgroundColor: selected ? colour + '22' : 'rgba(255,255,255,0.03)',
+                        borderColor: selected ? colour : 'rgba(255,255,255,0.1)',
+                        color: selected ? '#ffffff' : '#d4d4d8',
+                      }}
+                    >
+                      {option.label}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { key: 'horizontalSpacing', label: 'Horizontal' },
+                  { key: 'verticalSpacing', label: 'Vertical' },
+                  { key: 'graphSpacing', label: 'Graphs' },
+                ].map((field) => (
+                  <label key={field.key} className="text-xs text-zinc-400">
+                    {field.label}
+                    <input
+                      type="number"
+                      min="40"
+                      step="10"
+                      value={layoutSettings[field.key]}
+                      onChange={(e) => updateLayoutSetting(field.key, e.target.value)}
+                      className="mt-1 w-full rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-zinc-100 outline-none focus:border-indigo-400"
+                    />
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="flex justify-between items-center">
             {mode === 'edit' ? (

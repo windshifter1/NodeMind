@@ -13,6 +13,7 @@ import {
   MIN_ZOOM,
   MAX_ZOOM,
   autoOrganiseNodes,
+  autoOrganiseSelectedNodes,
   nodeWidthForTitle,
   TOP_BAR_HEIGHT,
   workspaceNodesBounds,
@@ -33,6 +34,7 @@ export default function Canvas() {
   const [textExportOpen, setTextExportOpen] = useState(false);
   const [terminalOpen, setTerminalOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [selectedNodeIds, setSelectedNodeIds] = useState([]);
   const [nodeTheme, setNodeTheme] = useState(() => {
     try {
       const stored = localStorage.getItem('thoughts-canvas-node-theme-v2');
@@ -52,6 +54,11 @@ export default function Canvas() {
   const addNode = (x, y) => dispatch({ type: 'ADD_NODE', x, y });
   const updateNode = (id, patch) => dispatch({ type: 'UPDATE_NODE', id, patch });
   const deleteNode = (id) => dispatch({ type: 'DELETE_NODE', id });
+  const deleteNodes = (ids) => {
+    if (!ids?.length) return;
+    dispatch({ type: 'DELETE_NODES', ids });
+    setSelectedNodeIds((prev) => prev.filter((id) => !ids.includes(id)));
+  };
   const addEdge = (fromNode, fromType, toNode, toType) =>
     dispatch({ type: 'ADD_EDGE', fromNode, fromType, toNode, toType });
   const deleteEdge = (id) => dispatch({ type: 'DELETE_EDGE', id });
@@ -93,6 +100,33 @@ export default function Canvas() {
       workspace: { nodes: organiseWorkspaceNodes(active) },
     });
   };
+  const organiseSelected = () => {
+    if (selectedNodeIds.length < 2) return;
+    const selectedNodes = active.nodes.filter((n) => selectedNodeIds.includes(n.id));
+    const bounds = workspaceNodesBounds(selectedNodes);
+    const centre = bounds?.centroid || viewportCenterWorld();
+    dispatch({
+      type: 'REPLACE_ACTIVE_WORKSPACE',
+      workspace: {
+        nodes: autoOrganiseSelectedNodes(
+          active.nodes,
+          active.edges,
+          selectedNodeIds,
+          active.orientation,
+          active.layoutSettings,
+          centre
+        ),
+      },
+    });
+  };
+
+  useEffect(() => {
+    setSelectedNodeIds([]);
+  }, [state.activeId]);
+
+  useEffect(() => {
+    setSelectedNodeIds((ids) => ids.filter((id) => active.nodes.some((n) => n.id === id)));
+  }, [active.nodes]);
 
   const handleExport = () => {
     const data = JSON.stringify(
@@ -232,6 +266,9 @@ export default function Canvas() {
         onBringToFront={bringToFront}
         onOpenEdit={setEditingNodeId}
         onDeleteNode={deleteNode}
+        onDeleteNodes={deleteNodes}
+        selectedNodeIds={selectedNodeIds}
+        onSelectionChange={setSelectedNodeIds}
         darkNodes={nodeTheme === 'dark'}
         zoom={zoom}
         setZoom={setZoom}
@@ -247,6 +284,8 @@ export default function Canvas() {
         onTextExport={() => setTextExportOpen(true)}
         onOpenTerminal={() => setTerminalOpen(true)}
         onAutoOrganise={autoOrganise}
+        onOrganiseSelected={organiseSelected}
+        selectedCount={selectedNodeIds.length}
         zoom={zoom}
         onZoom={zoomToCenter}
         onRecenter={recenterView}

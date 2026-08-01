@@ -242,6 +242,33 @@ export function autoOrganiseNodes(nodes, edges, orientation = GRAPH_ORIENTATIONS
   return autoOrganiseGraph(nodes, edges, graphOrientation, settings, centre, { nodeSizeForLayout }).nodes;
 }
 
+export function nodeLayoutRect(node) {
+  const size = nodeSizeForLayout(node);
+  return { minX: node.x, minY: node.y, maxX: node.x + size.width, maxY: node.y + size.height };
+}
+
+export function rectsIntersect(a, b) {
+  return a.minX <= b.maxX && a.maxX >= b.minX && a.minY <= b.maxY && a.maxY >= b.minY;
+}
+
+export function autoOrganiseSelectedNodes(
+  allNodes,
+  allEdges,
+  selectedIds,
+  orientation = GRAPH_ORIENTATIONS.HORIZONTAL,
+  layoutSettings = {},
+  centre = { x: 0, y: 0 }
+) {
+  const idSet = new Set(selectedIds);
+  const selected = allNodes.filter((n) => idSet.has(n.id));
+  if (selected.length < 2) return allNodes;
+
+  const internalEdges = allEdges.filter((e) => idSet.has(e.fromNode) && idSet.has(e.toNode));
+  const arranged = autoOrganiseNodes(selected, internalEdges, orientation, layoutSettings, centre);
+  const posMap = new Map(arranged.map((n) => [n.id, { x: n.x, y: n.y }]));
+  return allNodes.map((n) => (posMap.has(n.id) ? { ...n, ...posMap.get(n.id) } : n));
+}
+
 export function formatNodeId(num) {
   return String(num).padStart(3, '0');
 }

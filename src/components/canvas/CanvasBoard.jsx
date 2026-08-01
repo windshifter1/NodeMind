@@ -17,6 +17,8 @@ function clampZoom(z) {
   return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z));
 }
 
+const PAN_DRAG_THRESHOLD = 3;
+
 export default function CanvasBoard({
   nodes,
   edges,
@@ -38,7 +40,17 @@ export default function CanvasBoard({
   const graphOrientation = normalizeOrientation(orientation);
   const boardRef = useRef(null);
   const pointers = useRef(new Map());
-  const panState = useRef({ panning: false, lastX: 0, lastY: 0, moved: false });
+  const panState = useRef({
+    panning: false,
+    candidate: false,
+    button: 0,
+    startX: 0,
+    startY: 0,
+    lastX: 0,
+    lastY: 0,
+    moved: false,
+    suppressContextMenu: false,
+  });
   const pinch = useRef({ active: false, startDist: 0, startZoom: 1, midX: 0, midY: 0 });
   const suppressNextMouseAction = useRef(false);
 
@@ -66,6 +78,11 @@ export default function CanvasBoard({
     return e.button === 0 || e.button === -1;
   };
 
+  const isCanvasPanPointerStart = (e) => {
+    if (e.pointerType !== 'mouse') return e.button === 0 || e.button === -1;
+    return e.button === 0 || e.button === 1 || e.button === 2;
+  };
+
   const shouldIgnoreMouseFocusRestore = (e) => {
     if (e.pointerType !== 'mouse' || !suppressNextMouseAction.current) return false;
     suppressNextMouseAction.current = false;
@@ -74,7 +91,17 @@ export default function CanvasBoard({
 
   const cancelCanvasInteraction = useCallback(() => {
     pointers.current.clear();
-    panState.current = { panning: false, lastX: 0, lastY: 0, moved: false };
+    panState.current = {
+      panning: false,
+      candidate: false,
+      button: 0,
+      startX: 0,
+      startY: 0,
+      lastX: 0,
+      lastY: 0,
+      moved: false,
+      suppressContextMenu: false,
+    };
     pinch.current.active = false;
     pendingRef.current = null;
     setPending(null);
@@ -183,23 +210,30 @@ export default function CanvasBoard({
 
   // --- Background pan / click-to-add / pinch ---
   const onPointerDown = (e) => {
-    if (!isPrimaryPointerStart(e) || shouldIgnoreMouseFocusRestore(e)) {
+    if (!isCanvasPanPointerStart(e) || (e.button === 0 && shouldIgnoreMouseFocusRestore(e))) {
       cancelCanvasInteraction();
       return;
     }
+    if (e.pointerType === 'mouse' && e.button === 1) e.preventDefault();
     try {
       boardRef.current.setPointerCapture(e.pointerId);
     } catch (err) {
       /* ignore */
     }
-    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY, button: e.button, pointerType: e.pointerType });
 
     if (pointers.current.size === 1) {
+      const delayedMousePan = e.pointerType === 'mouse' && (e.button === 1 || e.button === 2);
       panState.current = {
-        panning: true,
+        panning: !delayedMousePan,
+        candidate: delayedMousePan,
+        button: e.button,
+        startX: e.clientX,
+        startY: e.clientY,
         lastX: e.clientX,
         lastY: e.clientY,
         moved: false,
+        suppressContextMenu: false,
       };
     } else if (pointers.current.size === 2) {
       const pts = [...pointers.current.values()];
@@ -212,6 +246,7 @@ export default function CanvasBoard({
         midY: (pts[0].y + pts[1].y) / 2,
       };
       panState.current.panning = false;
+      panState.current.candidate = false;
     }
   };
 
@@ -235,11 +270,26 @@ export default function CanvasBoard({
       return;
     }
 
-    if (panState.current.panning && pointers.current.size === 1) {
+    if ((panState.current.panning || panState.current.candidate) && pointers.current.size === 1) {
       const dx = e.clientX - panState.current.lastX;
       const dy = e.clientY - panState.current.lastY;
-      if (Math.abs(dx) + Math.abs(dy) > 3) panState.current.moved = true;
-      setPan((p) => ({ x: p.x + dx, y: p.y + dy }));
+      const totalDx = e.clientX - panState.current.startX;
+      const totalDy = e.clientY - panState.current.startY;
+      const crossedThreshold = Math.abs(totalDx) + Math.abs(totalDy) > PAN_DRAG_THRESHOLD;
+
+      if (panState.current.candidate && crossedThreshold) {
+        panState.current.candidate = false;
+        panState.current.panning = true;
+        panState.current.moved = true;
+        panState.current.suppressContextMenu = panState.current.button === 2;
+      }
+
+      if (panState.current.panning) {
+        if (Math.abs(dx) + Math.abs(dy) > PAN_DRAG_THRESHOLD) panState.current.moved = true;
+        if (panState.current.button === 1 || panState.current.button === 2) e.preventDefault();
+        setPan((p) => ({ x: p.x + dx, y: p.y + dy }));
+      }
+
       panState.current.lastX = e.clientX;
       panState.current.lastY = e.clientY;
     }
@@ -253,13 +303,29 @@ export default function CanvasBoard({
 
     if (pointers.current.size === 1) {
       const rem = [...pointers.current.values()][0];
-      panState.current = { panning: true, lastX: rem.x, lastY: rem.y, moved: true };
+      panState.current = {
+        panning: true,
+        candidate: false,
+        button: rem.button,
+        startX: rem.x,
+        startY: rem.y,
+        lastX: rem.x,
+        lastY: rem.y,
+        moved: true,
+        suppressContextMenu: false,
+      };
     } else if (pointers.current.size === 0) {
-      if (panState.current.panning && !moved && !pinch.current.active) {
+      if (panState.current.button === 0 && panState.current.panning && !moved && !pinch.current.active) {
         const w = screenToWorld(e.clientX, e.clientY);
         onAddNode(w.x - nodeWidthForTitle('') / 2, w.y - TOP_BAR_HEIGHT / 2);
       }
       panState.current.panning = false;
+      panState.current.candidate = false;
+      if (panState.current.suppressContextMenu) {
+        window.setTimeout(() => {
+          panState.current.suppressContextMenu = false;
+        }, 500);
+      }
     }
     try {
       boardRef.current.releasePointerCapture(e.pointerId);
@@ -273,8 +339,11 @@ export default function CanvasBoard({
     if (pointers.current.size === 0) cancelCanvasInteraction();
   };
 
-  const onContextMenu = () => {
-    suppressNextMouseAction.current = true;
+  const onContextMenu = (e) => {
+    if (panState.current.suppressContextMenu) {
+      e.preventDefault();
+      panState.current.suppressContextMenu = false;
+    }
     cancelCanvasInteraction();
   };
 
@@ -459,6 +528,9 @@ export default function CanvasBoard({
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerCancel}
       onContextMenu={onContextMenu}
+      onAuxClick={(e) => {
+        if (e.button === 1) e.preventDefault();
+      }}
       style={{
         touchAction: 'none',
         cursor,

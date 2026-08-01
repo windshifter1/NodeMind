@@ -27,35 +27,35 @@ export default function NodeEditDialog({ node, open, onClose, onSave, onDelete }
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-md" onClick={onClose} />
+      <div className="absolute inset-0 bg-nm-overlay backdrop-blur-md" onClick={onClose} />
       <div
-        className="relative w-full max-w-sm rounded-2xl bg-zinc-900 border border-white/10 shadow-2xl flex flex-col overflow-hidden"
+        className="relative w-full max-w-sm rounded-2xl bg-nm-panel border border-nm-border shadow-2xl flex flex-col overflow-hidden"
         onPointerDown={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center gap-2 px-3 sm:px-4 py-3 border-b border-white/10 bg-white/5">
-          <h2 className="text-sm font-semibold text-zinc-100">Edit note</h2>
+        <div className="flex items-center gap-2 px-3 sm:px-4 py-3 border-b border-nm-border bg-nm-header">
+          <h2 className="text-sm font-semibold text-nm-text">Edit note</h2>
           <div className="flex-1" />
           <button
             onClick={onClose}
-            className="p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition active:scale-95"
+            className="p-2 rounded-lg text-nm-text-faint hover:text-nm-text hover:bg-nm-hover transition active:scale-95"
           >
             <X size={18} />
           </button>
         </div>
 
         <div className="px-4 sm:px-5 py-4">
-          <label className="text-sm font-medium text-zinc-300">Title</label>
+          <label className="text-sm font-medium text-nm-label">Title</label>
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && save()}
             placeholder="Untitled"
             autoFocus
-            className="w-full mt-1 mb-4 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-zinc-100 placeholder:text-zinc-500 outline-none focus:border-indigo-400 focus:bg-white/10"
+            className="w-full mt-1 mb-4 rounded-lg border border-nm-border bg-nm-input px-3 py-2 text-nm-text placeholder:text-nm-text-muted outline-none focus:border-indigo-400 focus:bg-nm-hover"
             style={{ fontSize: 16 }}
           />
 
-          <label className="text-sm font-medium text-zinc-300">Outline colour</label>
+          <label className="text-sm font-medium text-nm-label">Outline colour</label>
           <div className="flex flex-wrap gap-2 mt-2 mb-5">
             {COLORS.map((c) => (
               <button
@@ -64,7 +64,7 @@ export default function NodeEditDialog({ node, open, onClose, onSave, onDelete }
                 className="w-8 h-8 rounded-full border-2 transition-transform shadow-sm"
                 style={{
                   backgroundColor: c,
-                  borderColor: color === c ? '#e0e7ff' : 'rgba(255,255,255,0.16)',
+                  borderColor: color === c ? '#818cf8' : 'var(--nm-border-strong)',
                   transform: color === c ? 'scale(1.12)' : 'none',
                 }}
               />
@@ -77,14 +77,14 @@ export default function NodeEditDialog({ node, open, onClose, onSave, onDelete }
                 onDelete(node.id);
                 onClose();
               }}
-              className="text-sm text-red-300 hover:text-red-200 font-medium transition"
+              className="text-sm text-red-500 hover:text-red-400 font-medium transition"
             >
               Delete note
             </button>
             <div className="flex gap-2">
               <button
                 onClick={onClose}
-                className="px-4 py-2 rounded-lg text-sm font-medium text-white/70 hover:text-white hover:bg-white/10 transition"
+                className="px-4 py-2 rounded-lg text-sm font-medium text-nm-text-faint hover:text-nm-text hover:bg-nm-hover transition"
               >
                 Cancel
               </button>

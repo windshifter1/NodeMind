@@ -61,10 +61,10 @@ function ToolbarButton({
       data-selection-arm-button={selectionArmButton ? '' : undefined}
       className={`p-2 sm:p-3 rounded-xl transition active:scale-95 ${
         disabled
-          ? 'text-white/30 cursor-not-allowed'
+          ? 'text-nm-text-subtle cursor-not-allowed'
           : active
             ? 'text-indigo-100 bg-indigo-500/35 shadow-[0_0_0_1px_rgba(165,180,252,0.55),0_0_18px_rgba(99,102,241,0.55)]'
-            : 'text-white/80 hover:text-white hover:bg-white/10'
+            : 'text-nm-text-secondary hover:text-nm-text hover:bg-nm-hover'
       } ${className}`}
     >
       {children}
@@ -118,24 +118,24 @@ function ToolbarGroup({ icon: Icon, title, options }) {
       </ToolbarButton>
       <div
         aria-hidden={!open}
-        className={`absolute top-full left-1/2 w-56 -translate-x-1/2 overflow-hidden rounded-2xl border border-white/10 bg-zinc-900/95 backdrop-blur-md shadow-xl transition-all duration-200 ease-out ${
+        className={`absolute top-full left-1/2 w-56 -translate-x-1/2 overflow-hidden rounded-2xl border border-nm-border bg-nm-chrome backdrop-blur-md shadow-xl transition-all duration-200 ease-out ${
           open
             ? 'visible max-h-64 opacity-100 translate-y-0 pointer-events-auto'
             : 'invisible max-h-0 opacity-0 -translate-y-1 pointer-events-none'
         }`}
       >
         <div className="flex flex-col gap-1 p-2">
-          {options.map(({ label, icon: OptionIcon, action, disabled = false, title }) => (
+          {options.map(({ label, icon: OptionIcon, action, disabled = false, title: optionTitle }) => (
             <button
               key={label}
               onClick={() => !disabled && run(action)}
               disabled={disabled}
-              title={title || label}
+              title={optionTitle || label}
               tabIndex={open && !disabled ? 0 : -1}
               className={`flex items-center gap-2 rounded-xl px-3 py-2 text-left text-sm transition active:scale-[0.98] ${
                 disabled
-                  ? 'text-white/30 cursor-not-allowed'
-                  : 'text-white/80 hover:text-white hover:bg-white/10'
+                  ? 'text-nm-text-subtle cursor-not-allowed'
+                  : 'text-nm-text-secondary hover:text-nm-text hover:bg-nm-hover'
               }`}
             >
               <OptionIcon size={15} />
@@ -182,9 +182,9 @@ export default function Toolbar({
 
   return (
     <>
-      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1 sm:gap-2 rounded-2xl border border-white/10 bg-zinc-900/80 backdrop-blur-md px-2 sm:px-3 py-2 sm:py-2.5 shadow-xl max-w-[96vw]">
+      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1 sm:gap-2 rounded-2xl border border-nm-border bg-nm-chrome backdrop-blur-md px-2 sm:px-3 py-2 sm:py-2.5 shadow-xl max-w-[96vw]">
         <ToolbarButton onClick={onAddNodeCenter} title="Add note"><Plus size={16} /></ToolbarButton>
-        <div className="w-px h-6 bg-white/10 mx-1" />
+        <div className="w-px h-6 bg-nm-divider mx-1" />
         <ToolbarGroup
           icon={Search}
           title="View controls"
@@ -195,7 +195,7 @@ export default function Toolbar({
             { label: isFullscreen ? 'Exit Full Screen' : 'Full Screen', icon: isFullscreen ? Minimize : Maximize, action: onToggleFullscreen },
           ]}
         />
-        <span className="hidden sm:inline text-xs text-white/50 w-10 text-center tabular-nums">{Math.round(zoom * 100)}%</span>
+        <span className="hidden sm:inline text-xs text-nm-text-muted w-10 text-center tabular-nums">{Math.round(zoom * 100)}%</span>
         {showMobileSelection && (
           <ToolbarButton
             data-selection-arm-button
@@ -206,7 +206,7 @@ export default function Toolbar({
             <SquareDashed size={16} />
           </ToolbarButton>
         )}
-        <div className="w-px h-6 bg-white/10 mx-1" />
+        <div className="w-px h-6 bg-nm-divider mx-1" />
         <ToolbarGroup
           icon={Wrench}
           title="Tools"
@@ -234,7 +234,7 @@ export default function Toolbar({
           ]}
         />
         <ToolbarButton onClick={onClear} title="Clear all"><Trash2 size={16} /></ToolbarButton>
-        <div className="w-px h-6 bg-white/10 mx-1" />
+        <div className="w-px h-6 bg-nm-divider mx-1" />
         <ToolbarButton onClick={onOpenSettings} title="Settings"><Settings size={16} /></ToolbarButton>
         <input ref={fileRef} type="file" accept="application/json" className="hidden" onChange={onImport} />
       </div>

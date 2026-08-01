@@ -54,19 +54,19 @@ export default function TextExportDialog({ open, onClose, workspaceName, nodes, 
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-md" onClick={onClose} />
-      <div className="relative w-full max-w-2xl max-h-[80vh] rounded-2xl bg-zinc-900 border border-white/10 shadow-2xl flex flex-col overflow-hidden">
-        <div className="flex items-center gap-2 px-3 sm:px-4 py-3 border-b border-white/10 bg-white/5">
+      <div className="absolute inset-0 bg-nm-overlay backdrop-blur-md" onClick={onClose} />
+      <div className="relative w-full max-w-2xl max-h-[80vh] rounded-2xl bg-nm-panel border border-nm-border shadow-2xl flex flex-col overflow-hidden">
+        <div className="flex items-center gap-2 px-3 sm:px-4 py-3 border-b border-nm-border bg-nm-header">
           <button
             onClick={handleCopy}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium bg-white/10 hover:bg-white/20 text-white transition active:scale-95"
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium bg-nm-hover hover:bg-nm-hover-strong text-nm-text transition active:scale-95"
           >
             <Copy size={15} />
             {copied ? 'Copied!' : 'Copy'}
           </button>
           <button
             onClick={() => setExpanded((v) => !v)}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium bg-white/5 hover:bg-white/15 text-white/80 transition active:scale-95"
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium bg-nm-input hover:bg-nm-hover text-nm-text-secondary transition active:scale-95"
           >
             {expanded ? <ListTree size={15} /> : <AlignLeft size={15} />}
             {expanded ? 'Hide text' : 'Show text'}
@@ -74,13 +74,13 @@ export default function TextExportDialog({ open, onClose, workspaceName, nodes, 
           <div className="flex-1" />
           <button
             onClick={onClose}
-            className="p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition active:scale-95"
+            className="p-2 rounded-lg text-nm-text-faint hover:text-nm-text hover:bg-nm-hover transition active:scale-95"
           >
             <X size={18} />
           </button>
         </div>
         <div className="overflow-auto px-4 sm:px-5 py-4">
-          <pre className="whitespace-pre-wrap break-words font-mono text-[13px] sm:text-sm leading-relaxed text-zinc-200">
+          <pre className="whitespace-pre-wrap break-words font-mono text-[13px] sm:text-sm leading-relaxed text-nm-text-secondary">
             {text}
           </pre>
         </div>

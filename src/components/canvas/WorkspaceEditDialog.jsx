@@ -39,6 +39,14 @@ function OrientationIcon({ orientation }) {
   );
 }
 
+function optionStyle(selected, colour) {
+  return {
+    backgroundColor: selected ? colour + '22' : 'var(--nm-option)',
+    borderColor: selected ? colour : 'var(--nm-border)',
+    color: selected ? 'var(--nm-text)' : 'var(--nm-option-text)',
+  };
+}
+
 export default function WorkspaceEditDialog({ workspace, open, onClose, onSave, onDelete, mode = 'edit' }) {
   const [name, setName] = useState('');
   const [colour, setColour] = useState(WORKSPACE_COLORS[0]);
@@ -80,35 +88,35 @@ export default function WorkspaceEditDialog({ workspace, open, onClose, onSave, 
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-md" onClick={onClose} />
+      <div className="absolute inset-0 bg-nm-overlay backdrop-blur-md" onClick={onClose} />
       <div
-        className="relative w-full max-w-sm max-h-[88vh] rounded-2xl bg-zinc-900 border border-white/10 shadow-2xl flex flex-col overflow-hidden"
+        className="relative w-full max-w-sm max-h-[88vh] rounded-2xl bg-nm-panel border border-nm-border shadow-2xl flex flex-col overflow-hidden"
         onPointerDown={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center gap-2 px-3 sm:px-4 py-3 border-b border-white/10 bg-white/5">
-          <h2 className="text-sm font-semibold text-zinc-100">{mode === 'create' ? 'New workspace' : 'Edit workspace'}</h2>
+        <div className="flex items-center gap-2 px-3 sm:px-4 py-3 border-b border-nm-border bg-nm-header">
+          <h2 className="text-sm font-semibold text-nm-text">{mode === 'create' ? 'New workspace' : 'Edit workspace'}</h2>
           <div className="flex-1" />
           <button
             onClick={onClose}
-            className="p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition active:scale-95"
+            className="p-2 rounded-lg text-nm-text-faint hover:text-nm-text hover:bg-nm-hover transition active:scale-95"
           >
             <X size={18} />
           </button>
         </div>
 
         <div className="overflow-auto px-4 sm:px-5 py-4">
-          <label className="text-sm font-medium text-zinc-300">Name</label>
+          <label className="text-sm font-medium text-nm-label">Name</label>
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && save()}
             placeholder="Untitled"
             autoFocus
-            className="w-full mt-1 mb-4 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-zinc-100 placeholder:text-zinc-500 outline-none focus:border-indigo-400 focus:bg-white/10"
+            className="w-full mt-1 mb-4 rounded-lg border border-nm-border bg-nm-input px-3 py-2 text-nm-text placeholder:text-nm-text-muted outline-none focus:border-indigo-400 focus:bg-nm-hover"
             style={{ fontSize: 16 }}
           />
 
-          <label className="text-sm font-medium text-zinc-300">Colour</label>
+          <label className="text-sm font-medium text-nm-label">Colour</label>
           <div className="flex flex-wrap gap-2 mt-2 mb-4">
             {WORKSPACE_COLORS.map((c) => (
               <button
@@ -117,14 +125,14 @@ export default function WorkspaceEditDialog({ workspace, open, onClose, onSave, 
                 className="w-8 h-8 rounded-full border-2 transition-transform shadow-sm"
                 style={{
                   backgroundColor: c,
-                  borderColor: colour === c ? '#e0e7ff' : 'rgba(255,255,255,0.16)',
+                  borderColor: colour === c ? '#818cf8' : 'var(--nm-border-strong)',
                   transform: colour === c ? 'scale(1.12)' : 'none',
                 }}
               />
             ))}
           </div>
 
-          <label className="text-sm font-medium text-zinc-300">Icon</label>
+          <label className="text-sm font-medium text-nm-label">Icon</label>
           <div className="grid grid-cols-5 gap-2 mt-2 mb-5">
             {WORKSPACE_ICON_KEYS.map((k) => {
               const Icon = WORKSPACE_ICONS[k];
@@ -133,11 +141,11 @@ export default function WorkspaceEditDialog({ workspace, open, onClose, onSave, 
                 <button
                   key={k}
                   onClick={() => setIcon(k)}
-                  className="h-10 rounded-lg flex items-center justify-center border transition hover:bg-white/10"
+                  className="h-10 rounded-lg flex items-center justify-center border transition hover:bg-nm-hover"
                   style={{
-                    backgroundColor: selected ? colour + '22' : 'rgba(255,255,255,0.03)',
-                    borderColor: selected ? colour : 'rgba(255,255,255,0.1)',
-                    color: selected ? colour : '#d4d4d8',
+                    backgroundColor: selected ? colour + '22' : 'var(--nm-option)',
+                    borderColor: selected ? colour : 'var(--nm-border)',
+                    color: selected ? colour : 'var(--nm-option-text)',
                   }}
                 >
                   <Icon size={20} />
@@ -146,7 +154,7 @@ export default function WorkspaceEditDialog({ workspace, open, onClose, onSave, 
             })}
           </div>
 
-          <label className="text-sm font-medium text-zinc-300">Orientation</label>
+          <label className="text-sm font-medium text-nm-label">Orientation</label>
           <div className="grid grid-cols-2 gap-2 mt-2 mb-5">
             {[
               { value: GRAPH_ORIENTATIONS.HORIZONTAL, label: 'Horizontal' },
@@ -157,12 +165,8 @@ export default function WorkspaceEditDialog({ workspace, open, onClose, onSave, 
                 <button
                   key={option.value}
                   onClick={() => setOrientation(option.value)}
-                  className="rounded-xl border px-3 py-3 text-left transition hover:bg-white/10"
-                  style={{
-                    backgroundColor: selected ? colour + '22' : 'rgba(255,255,255,0.03)',
-                    borderColor: selected ? colour : 'rgba(255,255,255,0.1)',
-                    color: selected ? '#ffffff' : '#d4d4d8',
-                  }}
+                  className="rounded-xl border px-3 py-3 text-left transition hover:bg-nm-hover"
+                  style={optionStyle(selected, colour)}
                 >
                   <div className="flex items-center gap-3">
                     <OrientationIcon orientation={option.value} />
@@ -176,7 +180,7 @@ export default function WorkspaceEditDialog({ workspace, open, onClose, onSave, 
           <button
             type="button"
             onClick={() => setAdvancedOpen((open) => !open)}
-            className="w-full flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm font-medium text-zinc-200 hover:bg-white/10 transition"
+            className="w-full flex items-center justify-between rounded-xl border border-nm-border bg-nm-input px-4 py-3.5 text-sm font-medium text-nm-text hover:bg-nm-hover transition"
           >
             <span>Advanced settings</span>
             {advancedOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
@@ -184,7 +188,7 @@ export default function WorkspaceEditDialog({ workspace, open, onClose, onSave, 
 
           {advancedOpen && (
             <div className="mt-3 mb-5">
-              <label className="text-sm font-medium text-zinc-300">Layout on Orientation Change</label>
+              <label className="text-sm font-medium text-nm-label">Layout on Orientation Change</label>
               <div className="grid grid-cols-2 gap-2 mt-2 mb-5">
                 {[
                   { value: LAYOUT_ON_ORIENTATION_CHANGE.PRESERVE, label: 'Preserve Original Layout' },
@@ -195,12 +199,8 @@ export default function WorkspaceEditDialog({ workspace, open, onClose, onSave, 
                     <button
                       key={option.value}
                       onClick={() => setLayoutOnOrientationChange(option.value)}
-                      className="rounded-xl border px-3 py-3 text-left text-sm font-medium transition hover:bg-white/10"
-                      style={{
-                        backgroundColor: selected ? colour + '22' : 'rgba(255,255,255,0.03)',
-                        borderColor: selected ? colour : 'rgba(255,255,255,0.1)',
-                        color: selected ? '#ffffff' : '#d4d4d8',
-                      }}
+                      className="rounded-xl border px-3 py-3 text-left text-sm font-medium transition hover:bg-nm-hover"
+                      style={optionStyle(selected, colour)}
                     >
                       {option.label}
                     </button>
@@ -208,7 +208,7 @@ export default function WorkspaceEditDialog({ workspace, open, onClose, onSave, 
                 })}
               </div>
 
-              <label className="text-sm font-medium text-zinc-300">Auto Organise Layout</label>
+              <label className="text-sm font-medium text-nm-label">Auto Organise Layout</label>
               <div className="grid grid-cols-3 gap-2 mt-2 mb-3">
                 {[
                   { value: LAYOUT_DENSITIES.COMPACT, label: 'Compact' },
@@ -220,12 +220,8 @@ export default function WorkspaceEditDialog({ workspace, open, onClose, onSave, 
                     <button
                       key={option.value}
                       onClick={() => updateLayoutSetting('density', option.value)}
-                      className="rounded-lg border px-2 py-2 text-xs font-medium transition hover:bg-white/10"
-                      style={{
-                        backgroundColor: selected ? colour + '22' : 'rgba(255,255,255,0.03)',
-                        borderColor: selected ? colour : 'rgba(255,255,255,0.1)',
-                        color: selected ? '#ffffff' : '#d4d4d8',
-                      }}
+                      className="rounded-lg border px-2 py-2 text-xs font-medium transition hover:bg-nm-hover"
+                      style={optionStyle(selected, colour)}
                     >
                       {option.label}
                     </button>
@@ -238,7 +234,7 @@ export default function WorkspaceEditDialog({ workspace, open, onClose, onSave, 
                   { key: 'verticalSpacing', label: 'Vertical' },
                   { key: 'graphSpacing', label: 'Graphs' },
                 ].map((field) => (
-                  <label key={field.key} className="text-xs text-zinc-400">
+                  <label key={field.key} className="text-xs text-nm-text-muted">
                     {field.label}
                     <input
                       type="number"
@@ -246,7 +242,7 @@ export default function WorkspaceEditDialog({ workspace, open, onClose, onSave, 
                       step="10"
                       value={layoutSettings[field.key]}
                       onChange={(e) => updateLayoutSetting(field.key, e.target.value)}
-                      className="mt-1 w-full rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-zinc-100 outline-none focus:border-indigo-400"
+                      className="mt-1 w-full rounded-lg border border-nm-border bg-nm-input px-2 py-1.5 text-sm text-nm-text outline-none focus:border-indigo-400"
                     />
                   </label>
                 ))}
@@ -254,7 +250,7 @@ export default function WorkspaceEditDialog({ workspace, open, onClose, onSave, 
             </div>
           )}
 
-          <div className="flex justify-between items-center">
+          <div className="flex justify-between items-center mt-5">
             {mode === 'edit' ? (
               <button
                 onClick={() => {
@@ -263,7 +259,7 @@ export default function WorkspaceEditDialog({ workspace, open, onClose, onSave, 
                     onClose();
                   }
                 }}
-                className="text-sm text-red-300 hover:text-red-200 font-medium transition"
+                className="text-sm text-red-500 hover:text-red-400 font-medium transition"
               >
                 Delete workspace
               </button>
@@ -273,7 +269,7 @@ export default function WorkspaceEditDialog({ workspace, open, onClose, onSave, 
             <div className="flex gap-2">
               <button
                 onClick={onClose}
-                className="px-4 py-2 rounded-lg text-sm font-medium text-white/70 hover:text-white hover:bg-white/10 transition"
+                className="px-4 py-2 rounded-lg text-sm font-medium text-nm-text-faint hover:text-nm-text hover:bg-nm-hover transition"
               >
                 Cancel
               </button>

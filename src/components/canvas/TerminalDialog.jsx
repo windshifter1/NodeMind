@@ -697,19 +697,19 @@ export default function TerminalDialog({ open, onClose, workspace, dispatch, onE
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-md" onClick={onClose} />
-      <div className="relative w-full max-w-3xl h-[78vh] rounded-2xl bg-zinc-950 border border-white/10 shadow-2xl flex flex-col overflow-hidden font-mono">
-        <div className="flex items-center gap-2 px-3 sm:px-4 py-3 border-b border-white/10 bg-white/5">
-          <Terminal size={16} className="text-emerald-300" />
-          <h2 className="text-sm font-semibold text-zinc-100">NodeMind Terminal</h2>
+      <div className="absolute inset-0 bg-nm-overlay backdrop-blur-md" onClick={onClose} />
+      <div className="relative w-full max-w-3xl h-[78vh] rounded-2xl bg-nm-panel border border-nm-border shadow-2xl flex flex-col overflow-hidden font-mono">
+        <div className="flex items-center gap-2 px-3 sm:px-4 py-3 border-b border-nm-border bg-nm-header">
+          <Terminal size={16} className="text-nm-terminal-prompt" />
+          <h2 className="text-sm font-semibold text-nm-text">NodeMind Terminal</h2>
           <div className="flex-1" />
-          <button onClick={onClose} className="p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition">
+          <button onClick={onClose} className="p-2 rounded-lg text-nm-text-faint hover:text-nm-text hover:bg-nm-hover transition">
             <X size={18} />
           </button>
         </div>
         <div
           ref={scrollRef}
-          className="flex-1 overflow-auto px-4 py-3 text-[13px] leading-relaxed text-emerald-100 bg-[#050806] select-text cursor-text"
+          className="flex-1 overflow-auto px-4 py-3 text-[13px] leading-relaxed text-nm-terminal-text bg-nm-terminal select-text cursor-text"
           onClick={() => {
             const sel = window.getSelection();
             if (sel && sel.toString().length > 0) return;
@@ -723,7 +723,7 @@ export default function TerminalDialog({ open, onClose, workspace, dispatch, onE
           ))}
         </div>
         <form
-          className="flex items-center gap-2 border-t border-white/10 bg-[#050806] px-4 py-3 text-[13px] text-emerald-100"
+          className="flex items-center gap-2 border-t border-nm-border bg-nm-terminal px-4 py-3 text-[13px] text-nm-terminal-text"
           onSubmit={(e) => {
             e.preventDefault();
             const value = input;
@@ -731,12 +731,12 @@ export default function TerminalDialog({ open, onClose, workspace, dispatch, onE
             run(value);
           }}
         >
-          <span className="shrink-0 text-emerald-300">{prompt}</span>
+          <span className="shrink-0 text-nm-terminal-prompt">{prompt}</span>
           <input
             ref={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            className="min-w-0 flex-1 bg-transparent outline-none text-emerald-100 caret-emerald-300"
+            className="min-w-0 flex-1 bg-transparent outline-none text-nm-terminal-text caret-nm-terminal-prompt"
             autoComplete="off"
             spellCheck={false}
           />

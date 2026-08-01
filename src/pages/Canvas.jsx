@@ -24,6 +24,7 @@ import {
   subscribeFullscreenChange,
   toggleFullscreen as toggleAppFullscreen,
 } from '@/lib/fullscreen';
+import { applyDocumentTheme, persistTheme, readStoredTheme } from '@/lib/theme';
 
 function clampZoom(z) {
   return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z));
@@ -41,20 +42,10 @@ export default function Canvas() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [selectedNodeIds, setSelectedNodeIds] = useState([]);
   const [selectionArmed, setSelectionArmed] = useState(false);
-  const [nodeTheme, setNodeTheme] = useState(() => {
-    try {
-      const stored = localStorage.getItem('thoughts-canvas-node-theme-v2');
-      return stored === 'light' ? 'light' : 'dark';
-    } catch (e) {
-      return 'dark';
-    }
-  });
+  const [nodeTheme, setNodeTheme] = useState(() => readStoredTheme());
   useEffect(() => {
-    try {
-      localStorage.setItem('thoughts-canvas-node-theme-v2', nodeTheme);
-    } catch (e) {
-      /* ignore */
-    }
+    applyDocumentTheme(nodeTheme);
+    persistTheme(nodeTheme);
   }, [nodeTheme]);
 
   const addNode = (x, y) => dispatch({ type: 'ADD_NODE', x, y });
@@ -264,7 +255,7 @@ export default function Canvas() {
   const editingNode = active.nodes.find((n) => n.id === editingNodeId) || null;
 
   return (
-    <div className="fixed inset-0 bg-zinc-950 overflow-hidden">
+    <div className="fixed inset-0 bg-nm-page overflow-hidden">
       <CanvasBoard
         nodes={active.nodes}
         edges={active.edges}

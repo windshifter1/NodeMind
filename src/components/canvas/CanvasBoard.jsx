@@ -868,16 +868,16 @@ export default function CanvasBoard({
       style={{
         touchAction: 'none',
         cursor,
-        backgroundColor: '#0b0d12',
+        backgroundColor: 'var(--nm-canvas)',
         backgroundImage:
-          'radial-gradient(circle, rgba(255,255,255,0.07) 1px, transparent 1px)',
+          'radial-gradient(circle, var(--nm-canvas-dot) 1px, transparent 1px)',
         backgroundSize: `${24 * zoom}px ${24 * zoom}px`,
         backgroundPosition: `${pan.x}px ${pan.y}px`,
       }}
     >
       {nodes.length === 0 && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none px-6">
-          <p className="text-white/15 text-center text-sm sm:text-base max-w-md leading-relaxed select-none">
+          <p className="text-nm-text-subtle text-center text-sm sm:text-base max-w-md leading-relaxed select-none">
             Tap empty canvas to add a note · drag sockets to connect · tap a line to delete
           </p>
         </div>
@@ -904,7 +904,7 @@ export default function CanvasBoard({
           const d = bezierPath(out.x, out.y, inp.x, inp.y, false, graphOrientation);
           return (
             <g key={edge.id}>
-              <path data-edge-id={edge.id} d={d} fill="none" stroke="#94a3b8" strokeWidth={2.5} strokeLinecap="round" />
+              <path data-edge-id={edge.id} d={d} fill="none" stroke="var(--nm-edge)" strokeWidth={2.5} strokeLinecap="round" />
               <path
                 data-edge-hit
                 data-edge-id={edge.id}
@@ -976,12 +976,12 @@ export default function CanvasBoard({
       {draggingNode && (
         <div
           ref={binRef}
-          className="absolute z-50 right-4 bottom-4 rounded-2xl border bg-zinc-900/80 backdrop-blur-md p-2 shadow-xl transition-all"
+          className="absolute z-50 right-4 bottom-4 rounded-2xl border bg-nm-bin backdrop-blur-md p-2 shadow-xl transition-all"
           style={{
             pointerEvents: 'none',
-            borderColor: overBin ? '#ef4444' : 'rgba(255,255,255,0.12)',
-            backgroundColor: overBin ? 'rgba(239,68,68,0.25)' : 'rgba(24,24,27,0.8)',
-            color: overBin ? '#ef4444' : 'rgba(255,255,255,0.75)',
+            borderColor: overBin ? '#ef4444' : 'var(--nm-border)',
+            backgroundColor: overBin ? 'rgba(239,68,68,0.2)' : 'var(--nm-bin)',
+            color: overBin ? '#ef4444' : 'var(--nm-text-secondary)',
             transform: overBin ? 'scale(1.08)' : 'none',
           }}
         >

@@ -41,6 +41,8 @@ export default function CanvasBoard({
   onDeleteNodes,
   selectedNodeIds = [],
   onSelectionChange,
+  selectionArmed = false,
+  onSelectionArmConsumed,
   darkNodes,
   zoom,
   setZoom,
@@ -71,6 +73,8 @@ export default function CanvasBoard({
   const suppressNextClick = useRef(false);
   const suppressionTimerRef = useRef(0);
   const desktopSelection = useRef(false);
+  const selectionArmedRef = useRef(selectionArmed);
+  selectionArmedRef.current = selectionArmed;
   const selectedNodeIdsRef = useRef(selectedNodeIds);
   selectedNodeIdsRef.current = selectedNodeIds;
 
@@ -116,6 +120,14 @@ export default function CanvasBoard({
   const isCanvasPanPointerStart = (e) => {
     if (e.pointerType !== 'mouse') return e.button === 0 || e.button === -1;
     return e.button === 0 || e.button === 1 || e.button === 2;
+  };
+
+  /** Desktop always marquees on primary mouse; mobile only when Selection Mode is armed. */
+  const shouldUseMarquee = (e) => {
+    if (selectionArmedRef.current) {
+      return e.pointerType !== 'mouse' ? e.button === 0 || e.button === -1 : e.button === 0;
+    }
+    return e.pointerType === 'mouse' && e.button === 0 && desktopSelection.current;
   };
 
   const clearSuppressionTimer = () => {
@@ -349,7 +361,7 @@ export default function CanvasBoard({
         button: 0,
         pointerType: e.pointerType,
       });
-      const useMarquee = e.pointerType === 'mouse' && desktopSelection.current;
+      const useMarquee = shouldUseMarquee(e);
       const totalDx = e.clientX - startX;
       const totalDy = e.clientY - startY;
       const crossedThreshold = Math.abs(totalDx) + Math.abs(totalDy) > PAN_DRAG_THRESHOLD;
@@ -469,8 +481,7 @@ export default function CanvasBoard({
     pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY, button: e.button, pointerType: e.pointerType });
 
     if (pointers.current.size === 1) {
-      const isMousePrimary = e.pointerType === 'mouse' && e.button === 0;
-      const useMarquee = isMousePrimary && desktopSelection.current;
+      const useMarquee = shouldUseMarquee(e);
       const delayedMousePan = e.pointerType === 'mouse' && (e.button === 1 || e.button === 2);
       panState.current = {
         panning: !delayedMousePan && !useMarquee,
@@ -592,7 +603,7 @@ export default function CanvasBoard({
       setMarqueeRect(null);
     } else if (pointers.current.size === 0) {
       const wasMarquee = panState.current.marqueing;
-      if (wasMarquee && desktopSelection.current && onSelectionChange) {
+      if (wasMarquee && onSelectionChange) {
         const rect = boardRef.current.getBoundingClientRect();
         const x1 = (Math.min(panState.current.startX, e.clientX) - rect.left - panRef.current.x) / zoomRef.current;
         const y1 = (Math.min(panState.current.startY, e.clientY) - rect.top - panRef.current.y) / zoomRef.current;
@@ -603,6 +614,7 @@ export default function CanvasBoard({
           .filter((node) => rectsIntersect(nodeLayoutRect(node), worldRect))
           .map((node) => node.id);
         onSelectionChange(hits);
+        if (selectionArmedRef.current) onSelectionArmConsumed?.();
       } else if (panState.current.button === 0 && !moved && !pinch.current.active) {
         const hasSelection = selectedNodeIdsRef.current.length > 0;
         if (hasSelection) {
@@ -843,6 +855,7 @@ export default function CanvasBoard({
   return (
     <div
       ref={boardRef}
+      data-canvas-board
       className="absolute inset-0 overflow-hidden"
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}

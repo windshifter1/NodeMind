@@ -40,6 +40,7 @@ export default function Canvas() {
   const [terminalOpen, setTerminalOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [selectedNodeIds, setSelectedNodeIds] = useState([]);
+  const [selectionArmed, setSelectionArmed] = useState(false);
   const [nodeTheme, setNodeTheme] = useState(() => {
     try {
       const stored = localStorage.getItem('thoughts-canvas-node-theme-v2');
@@ -127,11 +128,26 @@ export default function Canvas() {
 
   useEffect(() => {
     setSelectedNodeIds([]);
+    setSelectionArmed(false);
   }, [state.activeId]);
 
   useEffect(() => {
     setSelectedNodeIds((ids) => ids.filter((id) => active.nodes.some((n) => n.id === id)));
   }, [active.nodes]);
+
+  useEffect(() => {
+    if (!selectionArmed) return undefined;
+    const onPointerDown = (e) => {
+      if (e.target.closest?.('[data-selection-arm-button]')) return;
+      if (e.target.closest?.('[data-canvas-board]')) return;
+      const ui = e.target.closest?.(
+        'button, a, input, textarea, select, [role="button"], label, summary'
+      );
+      if (ui) setSelectionArmed(false);
+    };
+    document.addEventListener('pointerdown', onPointerDown, true);
+    return () => document.removeEventListener('pointerdown', onPointerDown, true);
+  }, [selectionArmed]);
 
   const handleExport = () => {
     const data = JSON.stringify(
@@ -263,6 +279,8 @@ export default function Canvas() {
         onDeleteNodes={deleteNodes}
         selectedNodeIds={selectedNodeIds}
         onSelectionChange={setSelectedNodeIds}
+        selectionArmed={selectionArmed}
+        onSelectionArmConsumed={() => setSelectionArmed(false)}
         darkNodes={nodeTheme === 'dark'}
         zoom={zoom}
         setZoom={setZoom}
@@ -280,6 +298,8 @@ export default function Canvas() {
         onAutoOrganise={autoOrganise}
         onOrganiseSelected={organiseSelected}
         selectedCount={selectedNodeIds.length}
+        selectionArmed={selectionArmed}
+        onToggleSelectionArm={() => setSelectionArmed((armed) => !armed)}
         zoom={zoom}
         onZoom={zoomToCenter}
         onRecenter={recenterView}

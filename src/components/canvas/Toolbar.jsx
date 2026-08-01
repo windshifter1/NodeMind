@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Download, Upload, Trash2, Plus, ZoomIn, ZoomOut, Maximize, Minimize, Copy, Terminal, Search, Share2, Wrench, Settings, Home } from 'lucide-react';
+import { Download, Upload, Trash2, Plus, ZoomIn, ZoomOut, Maximize, Minimize, Copy, Terminal, Search, Share2, Wrench, Settings, Home, SquareDashed } from 'lucide-react';
 
 function AutoOrganiseAllIcon({ size = 15 }) {
   return (
@@ -44,17 +44,28 @@ function AutoOrganiseSelectedIcon({ size = 15 }) {
   );
 }
 
-function ToolbarButton({ children, onClick, title, disabled = false }) {
+function ToolbarButton({
+  children,
+  onClick,
+  title,
+  disabled = false,
+  active = false,
+  className = '',
+  'data-selection-arm-button': selectionArmButton,
+}) {
   return (
     <button
       onClick={disabled ? undefined : onClick}
       title={title}
       disabled={disabled}
+      data-selection-arm-button={selectionArmButton ? '' : undefined}
       className={`p-2 sm:p-3 rounded-xl transition active:scale-95 ${
         disabled
           ? 'text-white/30 cursor-not-allowed'
-          : 'text-white/80 hover:text-white hover:bg-white/10'
-      }`}
+          : active
+            ? 'text-indigo-100 bg-indigo-500/35 shadow-[0_0_0_1px_rgba(165,180,252,0.55),0_0_18px_rgba(99,102,241,0.55)]'
+            : 'text-white/80 hover:text-white hover:bg-white/10'
+      } ${className}`}
     >
       {children}
     </button>
@@ -146,6 +157,8 @@ export default function Toolbar({
   onAutoOrganise,
   onOrganiseSelected,
   selectedCount = 0,
+  selectionArmed = false,
+  onToggleSelectionArm,
   zoom,
   onZoom,
   onRecenter,
@@ -156,6 +169,16 @@ export default function Toolbar({
 }) {
   const fileRef = useRef(null);
   const canOrganiseSelected = selectedCount >= 2;
+  const [showMobileSelection, setShowMobileSelection] = useState(false);
+
+  useEffect(() => {
+    const mq = window.matchMedia?.('(hover: hover) and (pointer: fine)');
+    const update = () => setShowMobileSelection(!(mq?.matches));
+    update();
+    if (!mq?.addEventListener) return undefined;
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, []);
 
   return (
     <>
@@ -173,6 +196,16 @@ export default function Toolbar({
           ]}
         />
         <span className="hidden sm:inline text-xs text-white/50 w-10 text-center tabular-nums">{Math.round(zoom * 100)}%</span>
+        {showMobileSelection && (
+          <ToolbarButton
+            data-selection-arm-button
+            active={selectionArmed}
+            onClick={onToggleSelectionArm}
+            title={selectionArmed ? 'Selection Mode armed — drag on canvas' : 'Selection Mode'}
+          >
+            <SquareDashed size={16} />
+          </ToolbarButton>
+        )}
         <div className="w-px h-6 bg-white/10 mx-1" />
         <ToolbarGroup
           icon={Wrench}

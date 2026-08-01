@@ -67,7 +67,6 @@ export default function CanvasBoard({
   const pinch = useRef({ active: false, startDist: 0, startZoom: 1, midX: 0, midY: 0 });
   const suppressNextMouseAction = useRef(false);
   const desktopSelection = useRef(false);
-  const [desktopSelectionEnabled, setDesktopSelectionEnabled] = useState(false);
   const selectedNodeIdsRef = useRef(selectedNodeIds);
   selectedNodeIdsRef.current = selectedNodeIds;
 
@@ -96,9 +95,7 @@ export default function CanvasBoard({
   useEffect(() => {
     const mq = window.matchMedia?.('(hover: hover) and (pointer: fine)');
     const update = () => {
-      const enabled = mq?.matches || false;
-      desktopSelection.current = enabled;
-      setDesktopSelectionEnabled(enabled);
+      desktopSelection.current = mq?.matches || false;
     };
     update();
     if (!mq?.addEventListener) return undefined;
@@ -291,20 +288,15 @@ export default function CanvasBoard({
       if (!isPrimaryPointerStart(e) || shouldIgnoreMouseFocusRestore(e)) return;
       e.stopPropagation();
 
-      if (e.pointerType !== 'mouse') {
-        onDeleteEdge(edgeId);
-        return;
-      }
-
       setEdgeClick({
         edgeId,
         startX: e.clientX,
         startY: e.clientY,
         pointerId: e.pointerId,
-        hadSelection: desktopSelection.current && selectedNodeIdsRef.current.length > 0,
+        hadSelection: selectedNodeIdsRef.current.length > 0,
       });
     },
-    [onDeleteEdge]
+    []
   );
 
   useEffect(() => {
@@ -486,12 +478,11 @@ export default function CanvasBoard({
           .map((node) => node.id);
         onSelectionChange(hits);
       } else if (panState.current.button === 0 && !moved && !pinch.current.active) {
-        const hasSelection =
-          desktopSelection.current && selectedNodeIdsRef.current.length > 0;
+        const hasSelection = selectedNodeIdsRef.current.length > 0;
         if (hasSelection) {
           onSelectionChange?.([]);
         } else {
-          if (desktopSelection.current && onSelectionChange) onSelectionChange([]);
+          onSelectionChange?.([]);
           const w = screenToWorld(e.clientX, e.clientY);
           onAddNode(w.x - nodeWidthForTitle('') / 2, w.y - TOP_BAR_HEIGHT / 2);
         }
@@ -553,13 +544,12 @@ export default function CanvasBoard({
       const node = nodes.find((n) => n.id === nodeId);
       if (!node) return;
 
-      const isDesktopMouse = e.pointerType === 'mouse' && desktopSelection.current;
       const currentSelection = selectedNodeIdsRef.current;
       let dragIds;
-      if (isDesktopMouse && currentSelection.includes(nodeId) && currentSelection.length > 1) {
+      if (currentSelection.includes(nodeId) && currentSelection.length > 1) {
         dragIds = currentSelection.filter((id) => nodes.some((n) => n.id === id));
       } else {
-        if (isDesktopMouse && onSelectionChange) onSelectionChange([nodeId]);
+        onSelectionChange?.([nodeId]);
         dragIds = [nodeId];
       }
 
@@ -821,7 +811,7 @@ export default function CanvasBoard({
             pending={pending}
             orientation={graphOrientation}
             darkNodes={darkNodes}
-            selected={desktopSelectionEnabled && selectedSet.has(node.id)}
+            selected={selectedSet.has(node.id)}
             ghost={overBin && draggingSet?.has(node.id)}
             onUpdate={(patch) => onUpdateNode(node.id, patch)}
             onStartNodeDrag={startNodeDrag}

@@ -13,6 +13,33 @@
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
     <link rel="apple-touch-icon" href="./icon.svg" />
     <title>NodeMind</title>
+    <script>
+      // Pre-paint iOS PWA frame height (black-translucent leaves a bottom gap with height:100%).
+      (function () {
+        try {
+          var standalone =
+            (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
+            (window.matchMedia && window.matchMedia('(display-mode: fullscreen)').matches) ||
+            window.navigator.standalone === true;
+          var inner = window.innerHeight || 0;
+          var vv = window.visualViewport && window.visualViewport.height ? window.visualViewport.height : 0;
+          var height = Math.max(inner, vv);
+          if (standalone && window.screen) {
+            var portrait =
+              (window.matchMedia && window.matchMedia('(orientation: portrait)').matches) ||
+              window.screen.height >= window.screen.width;
+            var screenH = portrait
+              ? Math.max(window.screen.width, window.screen.height)
+              : Math.min(window.screen.width, window.screen.height);
+            height = Math.max(height, screenH || 0);
+          }
+          // CSS fallback also adds safe-area-inset-bottom; JS screen height covers most devices.
+          if (height >= 80) {
+            document.documentElement.style.setProperty('--app-frame-height', Math.round(height) + 'px');
+          }
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

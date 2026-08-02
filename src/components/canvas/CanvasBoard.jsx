@@ -101,10 +101,14 @@ export default function CanvasBoard({
   const dragVisual = useRef({ raf: 0, ids: [], dx: 0, dy: 0, positions: {} });
   const readViewportSize = () => {
     const vv = window.visualViewport;
-    return {
-      w: Math.round(vv?.width ?? window.innerWidth),
-      h: Math.round(vv?.height ?? window.innerHeight),
-    };
+    const frame = Number.parseFloat(
+      getComputedStyle(document.documentElement).getPropertyValue('--app-frame-height')
+    );
+    const w = Math.round(vv?.width ?? window.innerWidth);
+    const h = Math.round(
+      Number.isFinite(frame) && frame >= 80 ? frame : vv?.height ?? window.innerHeight
+    );
+    return { w, h };
   };
   const [vp, setVp] = useState(() => readViewportSize());
 

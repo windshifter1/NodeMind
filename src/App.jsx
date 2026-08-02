@@ -20,11 +20,11 @@ export default function App() {
   }, []);
 
   return (
-    <>
+    <div className="relative h-full w-full overflow-hidden bg-nm-page">
       <Canvas />
       {offline && (
         <div
-          className="fixed z-[120] rounded-full border border-amber-500/40 bg-amber-500/15 px-3 py-1.5 text-xs font-medium text-amber-700 shadow-lg backdrop-blur dark:text-amber-100"
+          className="absolute z-[120] rounded-full border border-amber-500/40 bg-amber-500/15 px-3 py-1.5 text-xs font-medium text-amber-700 shadow-lg backdrop-blur dark:text-amber-100"
           style={{
             right: 'calc(0.75rem + var(--safe-right))',
             bottom: 'calc(0.75rem + var(--safe-bottom))',
@@ -33,6 +33,6 @@ export default function App() {
           Offline mode
         </div>
       )}
-    </>
+    </div>
   );
 }

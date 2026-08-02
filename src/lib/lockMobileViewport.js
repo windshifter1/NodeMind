@@ -1,19 +1,46 @@
 /**
- * Mobile / PWA viewport helpers:
- * - Block iOS page pinch/double-tap zoom gestures
- * - Publish visualViewport size as CSS vars for components that need it
- *   (never drive html/body height from these — cold-start values can be 0)
+ * Mobile / PWA viewport helpers.
+ *
+ * iOS standalone + black-translucent reports a shorter "lying" viewport
+ * (innerHeight ≈ screen.height − home indicator). Using height:100% /
+ * position:fixed / inset:0 clamps the shell to that size and leaves a dead
+ * band at the bottom. In standalone we size the frame to the true screen
+ * height instead.
  */
 
-function applyAppViewport() {
-  const root = document.documentElement;
-  const vv = window.visualViewport;
-  const height = Math.round(vv?.height ?? window.innerHeight);
-  const width = Math.round(vv?.width ?? window.innerWidth);
+function isStandalonePwa() {
+  return (
+    window.matchMedia?.('(display-mode: standalone)').matches ||
+    window.matchMedia?.('(display-mode: fullscreen)').matches ||
+    window.navigator.standalone === true
+  );
+}
 
-  // Ignore transient 0×0 / tiny values during iOS PWA launch.
-  if (height >= 80) root.style.setProperty('--vv-height', `${height}px`);
-  if (width >= 80) root.style.setProperty('--vv-width', `${width}px`);
+function screenHeightForOrientation() {
+  const { width, height } = window.screen;
+  const portrait = window.matchMedia?.('(orientation: portrait)').matches ?? height >= width;
+  return portrait ? Math.max(width, height) : Math.min(width, height);
+}
+
+export function applyAppFrameHeight() {
+  const root = document.documentElement;
+  const vvHeight = Math.round(window.visualViewport?.height ?? 0);
+  const inner = Math.round(window.innerHeight || 0);
+
+  let height = Math.max(inner, vvHeight);
+  if (isStandalonePwa()) {
+    // Prefer true screen height so the canvas fills under the home indicator.
+    height = Math.max(height, Math.round(screenHeightForOrientation() || 0));
+  }
+
+  if (height >= 80) {
+    root.style.setProperty('--app-frame-height', `${height}px`);
+  }
+
+  const width = Math.round(window.visualViewport?.width ?? window.innerWidth ?? 0);
+  if (width >= 80) {
+    root.style.setProperty('--vv-width', `${width}px`);
+  }
 }
 
 export function lockMobileViewport() {
@@ -23,13 +50,16 @@ export function lockMobileViewport() {
     event.preventDefault();
   };
 
-  const onViewportChange = () => applyAppViewport();
+  const onViewportChange = () => applyAppFrameHeight();
   const onOrientation = () => {
-    window.setTimeout(applyAppViewport, 50);
-    window.setTimeout(applyAppViewport, 250);
+    window.setTimeout(applyAppFrameHeight, 50);
+    window.setTimeout(applyAppFrameHeight, 300);
   };
 
-  applyAppViewport();
+  applyAppFrameHeight();
+  // iOS can report a short innerHeight on the first paint after launch.
+  window.setTimeout(applyAppFrameHeight, 0);
+  window.setTimeout(applyAppFrameHeight, 250);
 
   document.addEventListener('gesturestart', blockGesture, { passive: false });
   document.addEventListener('gesturechange', blockGesture, { passive: false });

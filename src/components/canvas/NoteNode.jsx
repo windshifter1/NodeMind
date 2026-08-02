@@ -2,6 +2,10 @@ import React, { useRef, useEffect } from 'react';
 import { ChevronDown, ChevronUp, Pencil } from 'lucide-react';
 import { nodeWidthForTitle, TOP_BAR_HEIGHT, SOCKET_RADIUS } from '@/lib/canvasConstants';
 
+function selectionGlow(color) {
+  return `0 0 0 3px ${color}f2, 0 0 0 7px ${color}80, 0 0 24px 6px ${color}a6, 0 12px 36px rgba(0, 0, 0, 0.45)`;
+}
+
 function Socket({ type, color, nodeId, pending, orientation, onStartConnect }) {
   const isTarget = pending && pending.fromNode !== nodeId && pending.fromType !== type;
   // Generous, mostly-outward invisible hitbox; visible circle stays half-in/half-out.
@@ -113,12 +117,10 @@ export default function NoteNode({
         zIndex: node.z,
         borderWidth: selected ? 3 : 2,
         borderStyle: 'solid',
-        borderColor: selected ? '#a5b4fc' : node.color,
+        borderColor: node.color,
         backgroundColor: darkNodes ? '#424448' : '#f8fafc',
         opacity: ghost ? 0.3 : 1,
-        boxShadow: selected
-          ? '0 0 0 3px rgba(165, 180, 252, 0.95), 0 0 0 7px rgba(129, 140, 248, 0.5), 0 0 24px 6px rgba(99, 102, 241, 0.65), 0 12px 36px rgba(0, 0, 0, 0.45)'
-          : undefined,
+        boxShadow: selected ? selectionGlow(node.color) : undefined,
         transition:
           'left 250ms ease, top 250ms ease, opacity 180ms ease, width 250ms ease, box-shadow 180ms ease, border-color 180ms ease, border-width 180ms ease',
       }}

@@ -14,28 +14,42 @@
     <link rel="apple-touch-icon" href="./icon.svg" />
     <title>NodeMind</title>
     <script>
-      // Pre-paint iOS PWA frame height (black-translucent leaves a bottom gap with height:100%).
+      // Pre-paint full-screen frame for mobile browser + PWA (avoid short visualViewport).
       (function () {
         try {
           var standalone =
             (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
             (window.matchMedia && window.matchMedia('(display-mode: fullscreen)').matches) ||
             window.navigator.standalone === true;
-          var inner = window.innerHeight || 0;
-          var vv = window.visualViewport && window.visualViewport.height ? window.visualViewport.height : 0;
-          var height = Math.max(inner, vv);
-          if (standalone && window.screen) {
+          var innerH = window.innerHeight || 0;
+          var innerW = window.innerWidth || 0;
+          var clientH = document.documentElement.clientHeight || 0;
+          var clientW = document.documentElement.clientWidth || 0;
+          var vv = window.visualViewport;
+          var vvH = vv ? (vv.height + (vv.offsetTop || 0)) : 0;
+          var vvW = vv ? (vv.width + (vv.offsetLeft || 0)) : 0;
+          var height = Math.max(innerH, clientH, vvH);
+          var width = Math.max(innerW, clientW, vvW);
+          if (window.screen) {
             var portrait =
               (window.matchMedia && window.matchMedia('(orientation: portrait)').matches) ||
               window.screen.height >= window.screen.width;
             var screenH = portrait
               ? Math.max(window.screen.width, window.screen.height)
               : Math.min(window.screen.width, window.screen.height);
-            height = Math.max(height, screenH || 0);
+            var screenW = portrait
+              ? Math.min(window.screen.width, window.screen.height)
+              : Math.max(window.screen.width, window.screen.height);
+            if (standalone) {
+              height = Math.max(height, screenH || 0);
+              width = Math.max(width, screenW || 0);
+            }
           }
-          // CSS fallback also adds safe-area-inset-bottom; JS screen height covers most devices.
           if (height >= 80) {
             document.documentElement.style.setProperty('--app-frame-height', Math.round(height) + 'px');
+          }
+          if (width >= 80) {
+            document.documentElement.style.setProperty('--app-frame-width', Math.round(width) + 'px');
           }
         } catch (e) {}
       })();

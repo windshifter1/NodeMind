@@ -127,11 +127,14 @@
 
   :root {
     /*
-     * iOS standalone + black-translucent often reports 100vh as the short
-     * "lying" viewport (home-indicator band excluded). Extending by the
-     * bottom safe-area fills that dead band until JS sets a measured height.
+     * Prefer large / dynamic viewport units so mobile Safari fills the
+     * visible screen (and under home-indicator) until JS locks a pixel height.
+     * JS never shrinks this for the soft keyboard — chrome stays put.
      */
-    --app-frame-height: calc(100vh + env(safe-area-inset-bottom, 0px));
+    --app-frame-height: 100vh;
+    --app-frame-height: 100dvh;
+    --app-frame-width: 100vw;
+    --app-frame-width: 100dvw;
     --safe-top: env(safe-area-inset-top, 0px);
     --safe-right: env(safe-area-inset-right, 0px);
     --safe-bottom: env(safe-area-inset-bottom, 0px);
@@ -139,12 +142,9 @@
   }
 
   html {
-    height: 100%;
-    height: -webkit-fill-available;
-    height: var(--app-frame-height, 100vh);
-    min-height: 100%;
-    min-height: -webkit-fill-available;
-    min-height: var(--app-frame-height, 100vh);
+    width: 100%;
+    height: var(--app-frame-height, 100%);
+    min-height: var(--app-frame-height, 100%);
     overflow: hidden;
     overscroll-behavior: none;
     touch-action: manipulation;
@@ -154,14 +154,12 @@
 
   body {
     @apply bg-background text-foreground font-body;
-    /* absolute (not fixed): iOS clamps fixed shells to the lying viewport */
-    position: absolute;
+    /* fixed + explicit pixel height: stable against keyboard / vv scroll */
+    position: fixed;
     top: 0;
     left: 0;
-    width: 100%;
+    width: var(--app-frame-width, 100%);
     height: var(--app-frame-height, 100%);
-    min-height: 100%;
-    min-height: -webkit-fill-available;
     min-height: var(--app-frame-height, 100%);
     margin: 0;
     overflow: hidden;
@@ -173,11 +171,9 @@
 
   #root {
     position: absolute;
-    top: 0;
-    left: 0;
+    inset: 0;
     width: 100%;
     height: 100%;
-    min-height: 100%;
     overflow: hidden;
     background-color: var(--nm-page);
   }

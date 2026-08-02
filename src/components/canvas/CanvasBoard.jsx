@@ -100,13 +100,15 @@ export default function CanvasBoard({
   const binRectRef = useRef(null);
   const dragVisual = useRef({ raf: 0, ids: [], dx: 0, dy: 0, positions: {} });
   const readViewportSize = () => {
-    const vv = window.visualViewport;
-    const frame = Number.parseFloat(
-      getComputedStyle(document.documentElement).getPropertyValue('--app-frame-height')
+    const styles = getComputedStyle(document.documentElement);
+    const frameH = Number.parseFloat(styles.getPropertyValue('--app-frame-height'));
+    const frameW = Number.parseFloat(styles.getPropertyValue('--app-frame-width'));
+    // Prefer locked frame size so the soft keyboard does not resize the board/chrome.
+    const w = Math.round(
+      Number.isFinite(frameW) && frameW >= 80 ? frameW : window.innerWidth
     );
-    const w = Math.round(vv?.width ?? window.innerWidth);
     const h = Math.round(
-      Number.isFinite(frame) && frame >= 80 ? frame : vv?.height ?? window.innerHeight
+      Number.isFinite(frameH) && frameH >= 80 ? frameH : window.innerHeight
     );
     return { w, h };
   };

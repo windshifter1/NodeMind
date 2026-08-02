@@ -29,7 +29,10 @@ function enablePseudoFullscreen() {
   document.documentElement.classList.add(FULLSCREEN_CLASS);
   document.body.classList.add(FULLSCREEN_CLASS);
   window.scrollTo(0, 0);
-  requestAnimationFrame(() => window.scrollTo(0, 0));
+  requestAnimationFrame(() => {
+    window.scrollTo(0, 0);
+    window.dispatchEvent(new Event('resize'));
+  });
 }
 
 function disablePseudoFullscreen() {

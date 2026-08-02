@@ -182,7 +182,10 @@ export default function Toolbar({
 
   return (
     <>
-      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1 sm:gap-2 rounded-2xl border border-nm-border bg-nm-chrome backdrop-blur-md px-2 sm:px-3 py-2 sm:py-2.5 shadow-xl max-w-[96vw]">
+      <div
+        className="absolute left-1/2 z-50 flex max-w-[min(96vw,calc(100%-2rem-var(--safe-left)-var(--safe-right)))] -translate-x-1/2 items-center gap-1 rounded-2xl border border-nm-border bg-nm-chrome px-2 py-2 shadow-xl backdrop-blur-md sm:gap-2 sm:px-3 sm:py-2.5"
+        style={{ top: 'calc(1rem + var(--safe-top))' }}
+      >
         <ToolbarButton onClick={onAddNodeCenter} title="Add note"><Plus size={16} /></ToolbarButton>
         <div className="w-px h-6 bg-nm-divider mx-1" />
         <ToolbarGroup

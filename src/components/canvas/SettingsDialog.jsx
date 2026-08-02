@@ -10,7 +10,15 @@ export default function SettingsDialog({ open, onClose, nodeTheme, onThemeChange
   ];
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center"
+      style={{
+        paddingTop: 'calc(1rem + var(--safe-top))',
+        paddingRight: 'calc(1rem + var(--safe-right))',
+        paddingBottom: 'calc(1rem + var(--safe-bottom))',
+        paddingLeft: 'calc(1rem + var(--safe-left))',
+      }}
+    >
       <div className="absolute inset-0 bg-nm-overlay backdrop-blur-md" onClick={onClose} />
       <div
         className="relative flex max-h-[88vh] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-nm-border bg-nm-panel shadow-2xl"

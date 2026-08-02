@@ -696,7 +696,15 @@ export default function TerminalDialog({ open, onClose, workspace, dispatch, onE
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center"
+      style={{
+        paddingTop: 'calc(1rem + var(--safe-top))',
+        paddingRight: 'calc(1rem + var(--safe-right))',
+        paddingBottom: 'calc(1rem + var(--safe-bottom))',
+        paddingLeft: 'calc(1rem + var(--safe-left))',
+      }}
+    >
       <div className="absolute inset-0 bg-nm-overlay backdrop-blur-md" onClick={onClose} />
       <div className="relative w-full max-w-3xl h-[78vh] rounded-2xl bg-nm-panel border border-nm-border shadow-2xl flex flex-col overflow-hidden font-mono">
         <div className="flex items-center gap-2 px-3 sm:px-4 py-3 border-b border-nm-border bg-nm-header">

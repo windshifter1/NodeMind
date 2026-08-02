@@ -41,7 +41,10 @@ export default function WorkspaceBar({ workspaces, activeId, onSelect, onCreate,
   };
 
   return (
-    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 max-w-[94vw] overflow-x-auto rounded-2xl border border-nm-border bg-nm-chrome backdrop-blur-md px-2 py-2 shadow-xl">
+    <div
+      className="absolute left-1/2 z-50 flex max-w-[min(94vw,calc(100%-2rem-var(--safe-left)-var(--safe-right)))] -translate-x-1/2 items-center gap-2 overflow-x-auto rounded-2xl border border-nm-border bg-nm-chrome px-2 py-2 shadow-xl backdrop-blur-md"
+      style={{ bottom: 'calc(1rem + var(--safe-bottom))' }}
+    >
       <button
         onClick={onCreate}
         title="New workspace"

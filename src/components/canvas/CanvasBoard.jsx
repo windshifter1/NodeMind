@@ -99,7 +99,14 @@ export default function CanvasBoard({
   const binRef = useRef(null);
   const binRectRef = useRef(null);
   const dragVisual = useRef({ raf: 0, ids: [], dx: 0, dy: 0, positions: {} });
-  const [vp, setVp] = useState({ w: window.innerWidth, h: window.innerHeight });
+  const readViewportSize = () => {
+    const vv = window.visualViewport;
+    return {
+      w: Math.round(vv?.width ?? window.innerWidth),
+      h: Math.round(vv?.height ?? window.innerHeight),
+    };
+  };
+  const [vp, setVp] = useState(() => readViewportSize());
 
   useEffect(() => {
     const mq = window.matchMedia?.('(hover: hover) and (pointer: fine)');
@@ -237,11 +244,15 @@ export default function CanvasBoard({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Track viewport size
+  // Track viewport size (visualViewport is accurate in mobile PWAs)
   useEffect(() => {
-    const onResize = () => setVp({ w: window.innerWidth, h: window.innerHeight });
+    const onResize = () => setVp(readViewportSize());
     window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
+    window.visualViewport?.addEventListener('resize', onResize);
+    return () => {
+      window.removeEventListener('resize', onResize);
+      window.visualViewport?.removeEventListener('resize', onResize);
+    };
   }, []);
 
   useEffect(() => {
@@ -976,9 +987,11 @@ export default function CanvasBoard({
       {draggingNode && (
         <div
           ref={binRef}
-          className="absolute z-50 right-4 bottom-4 rounded-2xl border bg-nm-bin backdrop-blur-md p-2 shadow-xl transition-all"
+          className="absolute z-50 rounded-2xl border bg-nm-bin backdrop-blur-md p-2 shadow-xl transition-all"
           style={{
             pointerEvents: 'none',
+            right: 'calc(1rem + var(--safe-right))',
+            bottom: 'calc(1rem + var(--safe-bottom))',
             borderColor: overBin ? '#ef4444' : 'var(--nm-border)',
             backgroundColor: overBin ? 'rgba(239,68,68,0.2)' : 'var(--nm-bin)',
             color: overBin ? '#ef4444' : 'var(--nm-text-secondary)',

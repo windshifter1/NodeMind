@@ -127,14 +127,14 @@
 
   :root {
     /*
-     * Prefer large / dynamic viewport units so mobile Safari fills the
-     * visible screen (and under home-indicator) until JS locks a pixel height.
-     * JS never shrinks this for the soft keyboard — chrome stays put.
+     * iOS Safari: 100vh == large viewport (URL bar hidden) → clipped top/bottom
+     * while chrome is visible. 100svh fits the visible area on first paint.
+     * JS then locks a pixel height from innerHeight (not clientHeight).
      */
     --app-frame-height: 100vh;
-    --app-frame-height: 100dvh;
+    --app-frame-height: 100svh;
     --app-frame-width: 100vw;
-    --app-frame-width: 100dvw;
+    --app-frame-width: 100svw;
     --safe-top: env(safe-area-inset-top, 0px);
     --safe-right: env(safe-area-inset-right, 0px);
     --safe-bottom: env(safe-area-inset-bottom, 0px);
@@ -143,8 +143,8 @@
 
   html {
     width: 100%;
-    height: var(--app-frame-height, 100%);
-    min-height: var(--app-frame-height, 100%);
+    height: var(--app-frame-height, 100svh);
+    min-height: var(--app-frame-height, 100svh);
     overflow: hidden;
     overscroll-behavior: none;
     touch-action: manipulation;
@@ -154,13 +154,12 @@
 
   body {
     @apply bg-background text-foreground font-body;
-    /* fixed + explicit pixel height: stable against keyboard / vv scroll */
     position: fixed;
     top: 0;
     left: 0;
     width: var(--app-frame-width, 100%);
-    height: var(--app-frame-height, 100%);
-    min-height: var(--app-frame-height, 100%);
+    height: var(--app-frame-height, 100svh);
+    min-height: -webkit-fill-available;
     margin: 0;
     overflow: hidden;
     overscroll-behavior: none;

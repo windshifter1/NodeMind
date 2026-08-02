@@ -1,10 +1,13 @@
 /**
  * Mobile / PWA viewport helpers.
  *
- * Goals:
- * - Fill the full screen on mobile browser and standalone PWA (edge-to-edge).
- * - Keep a stable layout height so the soft keyboard does not resize/move chrome.
- * - Prevent document / visualViewport scroll from shifting the shell.
+ * iOS Safari notes:
+ * - `100vh` maps to the *large* viewport (URL bar hidden), so a full-height
+ *   shell is clipped at top/bottom while browser chrome is visible.
+ * - `documentElement.clientHeight` reflects our own CSS height — never use it
+ *   to measure, or oversized `100vh` gets locked in permanently.
+ * - Soft keyboard shrinks `visualViewport` (and sometimes `innerHeight`); we
+ *   keep the last stable layout size so toolbar/workspace chrome do not jump.
  */
 
 let lockedHeight = 0;
@@ -38,34 +41,36 @@ function screenWidthForOrientation() {
   return portrait ? Math.min(width, height) : Math.max(width, height);
 }
 
-/** True when the soft keyboard (or a similar overlay) has shrunk the visual viewport. */
 function isKeyboardLikelyOpen(layoutHeight) {
   const vv = window.visualViewport;
   if (!vv || layoutHeight < 80) return false;
-  // Keyboard usually takes a large bite; browser chrome changes are smaller.
   return vv.height < layoutHeight * 0.82 || layoutHeight - vv.height > 120;
 }
 
 function measureLayoutSize() {
   const vv = window.visualViewport;
+  // Layout viewport — updates when Safari chrome shows/hides, stable vs 100vh.
   const innerH = Math.round(window.innerHeight || 0);
   const innerW = Math.round(window.innerWidth || 0);
-  const clientH = Math.round(document.documentElement?.clientHeight || 0);
-  const clientW = Math.round(document.documentElement?.clientWidth || 0);
-  // Cover the layout viewport even when the visual viewport is offset (iOS).
-  const vvCoverH = vv ? Math.round(vv.height + vv.offsetTop) : 0;
-  const vvCoverW = vv ? Math.round(vv.width + vv.offsetLeft) : 0;
+  const vvH = vv ? Math.round(vv.height) : 0;
+  const vvW = vv ? Math.round(vv.width) : 0;
 
-  let height = Math.max(innerH, clientH, vvCoverH);
-  let width = Math.max(innerW, clientW, vvCoverW);
+  let height = innerH;
+  let width = innerW;
 
   if (isStandalonePwa()) {
-    height = Math.max(height, Math.round(screenHeightForOrientation() || 0));
-    width = Math.max(width, Math.round(screenWidthForOrientation() || 0));
+    // Installed PWA: fill the real screen (black-translucent / home indicator).
+    height = Math.max(innerH, Math.round(screenHeightForOrientation() || 0));
+    width = Math.max(innerW, Math.round(screenWidthForOrientation() || 0));
   } else if (isMobileLike()) {
-    // Mobile Safari/Chrome: prefer the larger layout size so content fills
-    // under the home indicator / dynamic toolbars like the installed PWA.
-    height = Math.max(height, innerH, clientH);
+    // Mobile Safari/Chrome in-browser: size to the *visible* layout viewport.
+    // Prefer innerHeight (matches 100svh). Only grow with visualViewport when
+    // it is larger (chrome retracting) — never adopt a smaller vv (keyboard).
+    if (vvH > height) height = vvH;
+    if (vvW > width) width = vvW;
+  } else if (vv) {
+    height = Math.max(innerH, vvH);
+    width = Math.max(innerW, vvW);
   }
 
   return { height, width };
@@ -75,17 +80,16 @@ function pinScroll() {
   if (window.scrollX || window.scrollY) {
     window.scrollTo(0, 0);
   }
-  // Kill visualViewport panning that iOS uses to reveal focused fields.
+  // iOS may pan the visual viewport to focused inputs — snap it back.
   const vv = window.visualViewport;
-  if (vv && (vv.offsetTop || vv.offsetLeft)) {
-    window.scrollTo(0, 0);
+  if (vv && (Math.abs(vv.offsetTop) > 0.5 || Math.abs(vv.offsetLeft) > 0.5)) {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' in window ? 'instant' : 'auto' });
   }
 }
 
 export function applyAppFrameHeight() {
   const root = document.documentElement;
   const { height: measuredH, width: measuredW } = measureLayoutSize();
-  // Detect keyboard against the last stable layout size (not the already-shrunk measure).
   const keyboardOpen =
     isMobileLike() && lockedHeight >= 80 && isKeyboardLikelyOpen(lockedHeight);
 
@@ -93,7 +97,6 @@ export function applyAppFrameHeight() {
   let width = measuredW;
 
   if (keyboardOpen) {
-    // Keep chrome where it was; do not shrink the shell under the keyboard.
     height = lockedHeight;
     if (lockedWidth >= 80) width = lockedWidth;
   } else {
@@ -131,7 +134,6 @@ export function lockMobileViewport() {
     const el = event.target;
     if (!(el instanceof Element)) return;
     if (!el.matches?.('input, textarea, select, [contenteditable="true"]')) return;
-    // Stop the browser from scrolling the page to the focused field.
     pinScroll();
     window.setTimeout(pinScroll, 0);
     window.setTimeout(pinScroll, 50);
@@ -140,7 +142,6 @@ export function lockMobileViewport() {
   };
 
   const onTouchMove = (event) => {
-    // Allow scrolling inside text fields and overflow scroll panes (dialogs/terminal).
     const target = event.target;
     if (!(target instanceof Element)) return;
     if (
@@ -150,7 +151,6 @@ export function lockMobileViewport() {
     ) {
       return;
     }
-    // Prevent rubber-band document scroll that reveals gaps around the shell.
     if (event.cancelable) event.preventDefault();
   };
 
@@ -165,9 +165,14 @@ export function lockMobileViewport() {
   document.addEventListener('touchmove', onTouchMove, { passive: false });
   window.addEventListener('resize', onViewportChange);
   window.addEventListener('orientationchange', onOrientation);
+  const onVvScroll = () => {
+    pinScroll();
+    applyAppFrameHeight();
+  };
+
   window.addEventListener('scroll', pinScroll, { passive: true });
   window.visualViewport?.addEventListener('resize', onViewportChange);
-  window.visualViewport?.addEventListener('scroll', onViewportChange);
+  window.visualViewport?.addEventListener('scroll', onVvScroll);
 
   return () => {
     document.removeEventListener('gesturestart', blockGesture);
@@ -179,6 +184,6 @@ export function lockMobileViewport() {
     window.removeEventListener('orientationchange', onOrientation);
     window.removeEventListener('scroll', pinScroll);
     window.visualViewport?.removeEventListener('resize', onViewportChange);
-    window.visualViewport?.removeEventListener('scroll', onViewportChange);
+    window.visualViewport?.removeEventListener('scroll', onVvScroll);
   };
 }

@@ -1,22 +1,19 @@
 /**
  * Mobile / PWA viewport helpers:
  * - Block iOS page pinch/double-tap zoom gestures
- * - Sync --app-height to visualViewport so standalone PWAs don't leave a
- *   dead band at the bottom or draw chrome under the status bar incorrectly
+ * - Publish visualViewport size as CSS vars for components that need it
+ *   (never drive html/body height from these — cold-start values can be 0)
  */
 
 function applyAppViewport() {
   const root = document.documentElement;
   const vv = window.visualViewport;
-  const height = Math.max(1, Math.round(vv?.height ?? window.innerHeight));
-  const width = Math.max(1, Math.round(vv?.width ?? window.innerWidth));
-  const offsetTop = Math.max(0, Math.round(vv?.offsetTop ?? 0));
-  const offsetLeft = Math.max(0, Math.round(vv?.offsetLeft ?? 0));
+  const height = Math.round(vv?.height ?? window.innerHeight);
+  const width = Math.round(vv?.width ?? window.innerWidth);
 
-  root.style.setProperty('--app-height', `${height}px`);
-  root.style.setProperty('--app-width', `${width}px`);
-  root.style.setProperty('--app-offset-top', `${offsetTop}px`);
-  root.style.setProperty('--app-offset-left', `${offsetLeft}px`);
+  // Ignore transient 0×0 / tiny values during iOS PWA launch.
+  if (height >= 80) root.style.setProperty('--vv-height', `${height}px`);
+  if (width >= 80) root.style.setProperty('--vv-width', `${width}px`);
 }
 
 export function lockMobileViewport() {
@@ -28,7 +25,6 @@ export function lockMobileViewport() {
 
   const onViewportChange = () => applyAppViewport();
   const onOrientation = () => {
-    // iOS often reports stale insets until after the rotation settles.
     window.setTimeout(applyAppViewport, 50);
     window.setTimeout(applyAppViewport, 250);
   };

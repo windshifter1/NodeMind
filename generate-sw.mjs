@@ -32,12 +32,23 @@ const serviceWorker = `const CACHE_NAME = ${JSON.stringify(cacheName)};
 const BASE_PATH = ${JSON.stringify(basePath)};
 const PRECACHE_URLS = ${JSON.stringify(urls, null, 2)};
 
-self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then((cache) => cache.addAll(PRECACHE_URLS))
-      .then(() => self.skipWaiting())
+async function precache() {
+  const cache = await caches.open(CACHE_NAME);
+  // Prefer individual puts so one missing asset cannot abort SW install.
+  await Promise.all(
+    PRECACHE_URLS.map(async (url) => {
+      try {
+        const response = await fetch(url, { cache: 'reload' });
+        if (response && response.ok) await cache.put(url, response.clone());
+      } catch (error) {
+        /* ignore individual precache failures */
+      }
+    })
   );
+}
+
+self.addEventListener('install', (event) => {
+  event.waitUntil(precache().then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', (event) => {
@@ -53,6 +64,15 @@ function isAppRequest(request) {
   return request.method === 'GET' && url.origin === self.location.origin && url.pathname.startsWith(BASE_PATH);
 }
 
+function isNavigationRequest(request) {
+  return request.mode === 'navigate' || request.destination === 'document';
+}
+
+function isHashedAsset(request) {
+  const url = new URL(request.url);
+  return url.pathname.includes('/assets/');
+}
+
 async function networkThenCache(request) {
   const cache = await caches.open(CACHE_NAME);
   try {
@@ -65,25 +85,41 @@ async function networkThenCache(request) {
   }
 }
 
-async function cacheThenNetwork(request) {
-  const cached = await caches.match(request);
-  if (cached) return cached;
-
+async function staleWhileRevalidate(request) {
   const cache = await caches.open(CACHE_NAME);
-  const response = await fetch(request);
-  if (response && response.ok) cache.put(request, response.clone());
-  return response;
+  const cached = await cache.match(request);
+  const networkPromise = fetch(request)
+    .then((response) => {
+      if (response && response.ok) cache.put(request, response.clone());
+      return response;
+    })
+    .catch(() => null);
+
+  if (cached) {
+    networkPromise.catch(() => {});
+    return cached;
+  }
+
+  const network = await networkPromise;
+  return network || cache.match(BASE_PATH) || cache.match(\`\${BASE_PATH}index.html\`);
 }
 
 self.addEventListener('fetch', (event) => {
   if (!isAppRequest(event.request)) return;
 
-  if (event.request.mode === 'navigate') {
+  // Always prefer network for HTML so hashed asset references stay current.
+  if (isNavigationRequest(event.request) || event.request.url.endsWith('/NodeMind/') || event.request.url.endsWith('/NodeMind/index.html')) {
     event.respondWith(networkThenCache(event.request));
     return;
   }
 
-  event.respondWith(cacheThenNetwork(event.request));
+  // Hashed assets can be cache-first; everything else revalidates.
+  if (isHashedAsset(event.request)) {
+    event.respondWith(staleWhileRevalidate(event.request));
+    return;
+  }
+
+  event.respondWith(networkThenCache(event.request));
 });
 `;
 

@@ -255,7 +255,7 @@ export default function Canvas() {
   const editingNode = active.nodes.find((n) => n.id === editingNodeId) || null;
 
   return (
-    <div className="absolute inset-0 overflow-hidden bg-nm-page">
+    <div className="fixed inset-0 overflow-hidden bg-nm-page">
       <CanvasBoard
         nodes={active.nodes}
         edges={active.edges}

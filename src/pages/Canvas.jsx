@@ -19,10 +19,8 @@ import {
   workspaceNodesBounds,
   zoomToFrameBounds,
 } from '@/lib/canvasConstants';
-import { readViewFrame } from '@/lib/viewportFrame';
 import {
   isFullscreenActive,
-  isFullscreenAvailable,
   subscribeFullscreenChange,
   toggleFullscreen as toggleAppFullscreen,
 } from '@/lib/fullscreen';
@@ -67,13 +65,10 @@ export default function Canvas() {
 
   const createWorkspace = (workspace) => dispatch({ type: 'ADD_WORKSPACE', workspace });
   const selectWorkspace = (id) => dispatch({ type: 'SET_ACTIVE', id });
-  const viewportCenterWorld = () => {
-    const { cx, cy } = readViewFrame();
-    return {
-      x: (cx - pan.x) / zoom,
-      y: (cy - pan.y) / zoom,
-    };
-  };
+  const viewportCenterWorld = () => ({
+    x: (window.innerWidth / 2 - pan.x) / zoom,
+    y: (window.innerHeight / 2 - pan.y) / zoom,
+  });
   const organiseWorkspaceNodes = (workspace, orientation = workspace.orientation, settings = workspace.layoutSettings) =>
     autoOrganiseNodes(workspace.nodes || [], workspace.edges || [], orientation, settings, viewportCenterWorld());
   const updateWorkspaceMeta = (id, patch) => {
@@ -195,7 +190,8 @@ export default function Canvas() {
 
   const zoomToCenter = (newZoom) => {
     const z = clampZoom(newZoom);
-    const { cx, cy } = readViewFrame();
+    const cx = window.innerWidth / 2;
+    const cy = window.innerHeight / 2;
     const wx = (cx - pan.x) / zoom;
     const wy = (cy - pan.y) / zoom;
     setPan({ x: cx - wx * z, y: cy - wy * z });
@@ -240,8 +236,9 @@ export default function Canvas() {
       return;
     }
     const bounds = workspaceNodesBounds(nodes);
-    const { cx, cy, viewW, viewH } = readViewFrame();
-    const fitZoom = clampZoom(zoomToFrameBounds(bounds, viewW, viewH));
+    const fitZoom = clampZoom(zoomToFrameBounds(bounds, window.innerWidth, window.innerHeight));
+    const cx = window.innerWidth / 2;
+    const cy = window.innerHeight / 2;
     animateCamera(
       { x: cx - bounds.centroid.x * fitZoom, y: cy - bounds.centroid.y * fitZoom },
       fitZoom
@@ -249,21 +246,8 @@ export default function Canvas() {
   }, [active.nodes, animateCamera]);
 
   const [isFullscreen, setIsFullscreen] = useState(() => isFullscreenActive());
-  const [fullscreenAvailable, setFullscreenAvailable] = useState(() => isFullscreenAvailable());
-  useEffect(() => {
-    const syncAvailability = () => setFullscreenAvailable(isFullscreenAvailable());
-    syncAvailability();
-    const mq = window.matchMedia?.('(hover: hover) and (pointer: fine)');
-    mq?.addEventListener?.('change', syncAvailability);
-    window.addEventListener('resize', syncAvailability);
-    return () => {
-      mq?.removeEventListener?.('change', syncAvailability);
-      window.removeEventListener('resize', syncAvailability);
-    };
-  }, []);
   useEffect(() => subscribeFullscreenChange(setIsFullscreen), []);
   const toggleFullscreen = async () => {
-    if (!isFullscreenAvailable()) return;
     await toggleAppFullscreen();
     setIsFullscreen(isFullscreenActive());
   };
@@ -271,7 +255,7 @@ export default function Canvas() {
   const editingNode = active.nodes.find((n) => n.id === editingNodeId) || null;
 
   return (
-    <div className="absolute inset-0 overflow-hidden bg-nm-page">
+    <div className="absolute inset-0 overflow-hidden bg-nm-canvas">
       <CanvasBoard
         nodes={active.nodes}
         edges={active.edges}
@@ -312,7 +296,6 @@ export default function Canvas() {
         onRecenter={recenterView}
         isFullscreen={isFullscreen}
         onToggleFullscreen={toggleFullscreen}
-        showFullscreen={fullscreenAvailable}
         onOpenSettings={() => setSettingsOpen(true)}
         onAddNodeCenter={() => addNode(-nodeWidthForTitle('') / 2, -TOP_BAR_HEIGHT / 2)}
       />

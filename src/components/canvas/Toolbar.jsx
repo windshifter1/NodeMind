@@ -164,7 +164,6 @@ export default function Toolbar({
   onRecenter,
   isFullscreen,
   onToggleFullscreen,
-  showFullscreen = true,
   onAddNodeCenter,
   onOpenSettings,
 }) {
@@ -181,34 +180,32 @@ export default function Toolbar({
     return () => mq.removeEventListener('change', update);
   }, []);
 
-  const viewOptions = [
-    { label: 'Zoom In', icon: ZoomIn, action: () => onZoom(zoom * 1.2) },
-    { label: 'Zoom Out', icon: ZoomOut, action: () => onZoom(zoom / 1.2) },
-    { label: 'Recenter', icon: Home, action: onRecenter },
-  ];
-  if (showFullscreen) {
-    viewOptions.push({
-      label: isFullscreen ? 'Exit Full Screen' : 'Full Screen',
-      icon: isFullscreen ? Minimize : Maximize,
-      action: onToggleFullscreen,
-    });
-  }
-
   return (
     <>
       <div
-        className="absolute z-50 flex max-w-[min(96vw,calc(var(--app-view-width,100%)-2rem-var(--safe-left)-var(--safe-right)))] -translate-x-1/2 items-center gap-1 rounded-2xl border border-nm-border bg-nm-chrome px-2 py-2 shadow-xl backdrop-blur-md sm:gap-2 sm:px-3 sm:py-2.5"
-        style={{
-          top: 'calc(var(--app-bleed-y, 0px) + 1rem + var(--safe-top))',
-          left: 'calc(var(--app-bleed-x, 0px) + (var(--app-view-width, 100%) * 0.5))',
-        }}
+        className="absolute left-1/2 z-50 flex max-w-[min(96vw,calc(100%-2rem-var(--safe-left)-var(--safe-right)))] -translate-x-1/2 items-center gap-1 rounded-2xl border border-nm-border bg-nm-chrome px-2 py-2 shadow-xl backdrop-blur-md sm:gap-2 sm:px-3 sm:py-2.5"
+        style={{ top: 'calc(1rem + var(--safe-top))' }}
       >
         <ToolbarButton onClick={onAddNodeCenter} title="Add note"><Plus size={16} /></ToolbarButton>
         <div className="w-px h-6 bg-nm-divider mx-1" />
         <ToolbarGroup
           icon={Search}
           title="View controls"
-          options={viewOptions}
+          options={[
+            { label: 'Zoom In', icon: ZoomIn, action: () => onZoom(zoom * 1.2) },
+            { label: 'Zoom Out', icon: ZoomOut, action: () => onZoom(zoom / 1.2) },
+            { label: 'Recenter', icon: Home, action: onRecenter },
+            // Full screen is desktop-only — mobile Safari has no reliable Fullscreen API.
+            ...(!showMobileSelection
+              ? [
+                  {
+                    label: isFullscreen ? 'Exit Full Screen' : 'Full Screen',
+                    icon: isFullscreen ? Minimize : Maximize,
+                    action: onToggleFullscreen,
+                  },
+                ]
+              : []),
+          ]}
         />
         <span className="hidden sm:inline text-xs text-nm-text-muted w-10 text-center tabular-nums">{Math.round(zoom * 100)}%</span>
         {showMobileSelection && (

@@ -1,33 +1,21 @@
-import { VIEWPORT_BLEED_RATIO } from '@/lib/viewportFrame';
-
 /**
  * Mobile / PWA viewport helpers.
  *
- * iOS Safari notes:
- * - `100vh` maps to the *large* viewport (URL bar hidden), so a full-height
- *   shell is clipped at top/bottom while browser chrome is visible.
- * - `documentElement.clientHeight` reflects our own CSS height — never use it
- *   to measure, or oversized `100vh` gets locked in permanently.
- * - Soft keyboard shrinks `visualViewport` (and sometimes `innerHeight`); we
- *   keep the last stable layout size so toolbar/workspace chrome do not jump.
- * - Canvas paint size is view * (1 + 2 * bleed) so a short measurement still
- *   covers the physical screen; UI chrome is offset back onto the view.
+ * iOS Safari often reports innerHeight / 100svh shorter than the area a
+ * `position:fixed; inset:0` element actually covers — leaving blank bands
+ * above/below the canvas. We measure a fixed inset probe instead, then lock
+ * that pixel height so the soft keyboard cannot shrink the shell.
  */
 
 let lockedHeight = 0;
 let lockedWidth = 0;
 
 function isStandalonePwa() {
-  // Do not use display-mode:fullscreen — that also matches the native Fullscreen API.
   return (
     window.matchMedia?.('(display-mode: standalone)').matches ||
+    window.matchMedia?.('(display-mode: fullscreen)').matches ||
     window.navigator.standalone === true
   );
-}
-
-/** Pseudo or native fullscreen requested by the in-app control (mobile web / desktop). */
-function isAppFullscreenMode() {
-  return document.documentElement.dataset.nmFullscreen === '1';
 }
 
 function isMobileLike() {
@@ -56,49 +44,52 @@ function isKeyboardLikelyOpen(layoutHeight) {
   return vv.height < layoutHeight * 0.82 || layoutHeight - vv.height > 120;
 }
 
+/** True size of a fixed inset:0 layer — avoids baking in a short --app-frame-height. */
+function measureFixedInsetSize() {
+  const probe = document.createElement('div');
+  probe.setAttribute('aria-hidden', 'true');
+  probe.style.cssText =
+    'position:fixed;top:0;right:0;bottom:0;left:0;width:auto;height:auto;visibility:hidden;pointer-events:none;z-index:-1;';
+  document.documentElement.appendChild(probe);
+  const rect = probe.getBoundingClientRect();
+  probe.remove();
+  return {
+    height: Math.round(rect.height),
+    width: Math.round(rect.width),
+  };
+}
+
 function measureLayoutSize() {
   const vv = window.visualViewport;
-  // Layout viewport — updates when Safari chrome shows/hides, stable vs 100vh.
   const innerH = Math.round(window.innerHeight || 0);
   const innerW = Math.round(window.innerWidth || 0);
+  const inset = measureFixedInsetSize();
   const vvH = vv ? Math.round(vv.height) : 0;
   const vvW = vv ? Math.round(vv.width) : 0;
 
-  let height = innerH;
-  let width = innerW;
+  // Prefer the fixed-inset probe — that is the area the canvas shell can fill.
+  let height = Math.max(innerH, inset.height || 0);
+  let width = Math.max(innerW, inset.width || 0);
 
-  if (isStandalonePwa() || isAppFullscreenMode()) {
-    // PWA, or mobile-web / desktop "Full Screen": fill the device screen.
-    height = Math.max(innerH, Math.round(screenHeightForOrientation() || 0));
-    width = Math.max(innerW, Math.round(screenWidthForOrientation() || 0));
+  if (isStandalonePwa()) {
+    height = Math.max(height, Math.round(screenHeightForOrientation() || 0));
+    width = Math.max(width, Math.round(screenWidthForOrientation() || 0));
   } else if (isMobileLike()) {
-    // Mobile Safari/Chrome in-browser: size to the *visible* layout viewport.
-    // Prefer innerHeight (matches 100svh). Only grow with visualViewport when
-    // it is larger (chrome retracting) — never adopt a smaller vv (keyboard).
+    // Grow with a larger visual viewport (chrome retracted); never shrink to vv (keyboard).
     if (vvH > height) height = vvH;
     if (vvW > width) width = vvW;
-  } else if (vv) {
-    height = Math.max(innerH, vvH);
-    width = Math.max(innerW, vvW);
   }
 
   return { height, width };
-}
-
-/** Clear locked sizes so the next apply can grow/shrink (e.g. entering fullscreen). */
-export function resetViewportLock() {
-  lockedHeight = 0;
-  lockedWidth = 0;
 }
 
 function pinScroll() {
   if (window.scrollX || window.scrollY) {
     window.scrollTo(0, 0);
   }
-  // iOS may pan the visual viewport to focused inputs — snap it back.
   const vv = window.visualViewport;
   if (vv && (Math.abs(vv.offsetTop) > 0.5 || Math.abs(vv.offsetLeft) > 0.5)) {
-    window.scrollTo({ top: 0, left: 0, behavior: 'instant' in window ? 'instant' : 'auto' });
+    window.scrollTo(0, 0);
   }
 }
 
@@ -119,19 +110,12 @@ export function applyAppFrameHeight() {
     if (width >= 80) lockedWidth = width;
   }
 
-  if (height >= 80 && width >= 80) {
-    const bleedX = Math.round(width * VIEWPORT_BLEED_RATIO);
-    const bleedY = Math.round(height * VIEWPORT_BLEED_RATIO);
-    const paintW = width + bleedX * 2;
-    const paintH = height + bleedY * 2;
-
-    root.style.setProperty('--app-view-width', `${width}px`);
-    root.style.setProperty('--app-view-height', `${height}px`);
-    root.style.setProperty('--app-bleed-x', `${bleedX}px`);
-    root.style.setProperty('--app-bleed-y', `${bleedY}px`);
-    root.style.setProperty('--app-frame-width', `${paintW}px`);
-    root.style.setProperty('--app-frame-height', `${paintH}px`);
-    root.style.setProperty('--vv-width', `${paintW}px`);
+  if (height >= 80) {
+    root.style.setProperty('--app-frame-height', `${height}px`);
+  }
+  if (width >= 80) {
+    root.style.setProperty('--app-frame-width', `${width}px`);
+    root.style.setProperty('--vv-width', `${width}px`);
   }
 
   pinScroll();
@@ -176,6 +160,11 @@ export function lockMobileViewport() {
     if (event.cancelable) event.preventDefault();
   };
 
+  const onVvScroll = () => {
+    pinScroll();
+    applyAppFrameHeight();
+  };
+
   applyAppFrameHeight();
   window.setTimeout(applyAppFrameHeight, 0);
   window.setTimeout(applyAppFrameHeight, 250);
@@ -187,11 +176,6 @@ export function lockMobileViewport() {
   document.addEventListener('touchmove', onTouchMove, { passive: false });
   window.addEventListener('resize', onViewportChange);
   window.addEventListener('orientationchange', onOrientation);
-  const onVvScroll = () => {
-    pinScroll();
-    applyAppFrameHeight();
-  };
-
   window.addEventListener('scroll', pinScroll, { passive: true });
   window.visualViewport?.addEventListener('resize', onViewportChange);
   window.visualViewport?.addEventListener('scroll', onVvScroll);

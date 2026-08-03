@@ -90,10 +90,10 @@ export default function WorkspaceEditDialog({ workspace, open, onClose, onSave, 
     <div
       className="fixed inset-0 z-[100] flex items-center justify-center"
       style={{
-        paddingTop: 'calc(var(--app-bleed-y, 0px) + 1rem + var(--safe-top))',
-        paddingRight: 'calc(var(--app-bleed-x, 0px) + 1rem + var(--safe-right))',
-        paddingBottom: 'calc(var(--app-bleed-y, 0px) + 1rem + var(--safe-bottom))',
-        paddingLeft: 'calc(var(--app-bleed-x, 0px) + 1rem + var(--safe-left))',
+        paddingTop: 'calc(1rem + var(--safe-top))',
+        paddingRight: 'calc(1rem + var(--safe-right))',
+        paddingBottom: 'calc(1rem + var(--safe-bottom))',
+        paddingLeft: 'calc(1rem + var(--safe-left))',
       }}
     >
       <div className="absolute inset-0 bg-nm-overlay backdrop-blur-md" onClick={onClose} />

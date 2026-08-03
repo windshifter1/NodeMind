@@ -14,6 +14,7 @@ import {
   rectsIntersect,
   socketWorld,
 } from '@/lib/canvasConstants';
+import { readViewFrame } from '@/lib/viewportFrame';
 
 function clampZoom(z) {
   return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z));
@@ -100,17 +101,11 @@ export default function CanvasBoard({
   const binRectRef = useRef(null);
   const dragVisual = useRef({ raf: 0, ids: [], dx: 0, dy: 0, positions: {} });
   const readViewportSize = () => {
-    const styles = getComputedStyle(document.documentElement);
-    const frameH = Number.parseFloat(styles.getPropertyValue('--app-frame-height'));
-    const frameW = Number.parseFloat(styles.getPropertyValue('--app-frame-width'));
-    // Prefer locked frame size so the soft keyboard does not resize the board/chrome.
-    const w = Math.round(
-      Number.isFinite(frameW) && frameW >= 80 ? frameW : window.innerWidth
-    );
-    const h = Math.round(
-      Number.isFinite(frameH) && frameH >= 80 ? frameH : window.innerHeight
-    );
-    return { w, h };
+    const { frameW, frameH } = readViewFrame();
+    return {
+      w: Math.round(frameW >= 80 ? frameW : window.innerWidth),
+      h: Math.round(frameH >= 80 ? frameH : window.innerHeight),
+    };
   };
   const [vp, setVp] = useState(() => readViewportSize());
 
@@ -244,9 +239,10 @@ export default function CanvasBoard({
     setOverBin(false);
   }, [clearEdgeClickListeners]);
 
-  // Center origin on mount
+  // Center origin on the visible viewport (not the oversized paint frame)
   useEffect(() => {
-    setPan({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
+    const { cx, cy } = readViewFrame();
+    setPan({ x: cx, y: cy });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -996,8 +992,8 @@ export default function CanvasBoard({
           className="absolute z-50 rounded-2xl border bg-nm-bin backdrop-blur-md p-2 shadow-xl transition-all"
           style={{
             pointerEvents: 'none',
-            right: 'calc(1rem + var(--safe-right))',
-            bottom: 'calc(1rem + var(--safe-bottom))',
+            right: 'calc(var(--app-bleed-x, 0px) + 1rem + var(--safe-right))',
+            bottom: 'calc(var(--app-bleed-y, 0px) + 1rem + var(--safe-bottom))',
             borderColor: overBin ? '#ef4444' : 'var(--nm-border)',
             backgroundColor: overBin ? 'rgba(239,68,68,0.2)' : 'var(--nm-bin)',
             color: overBin ? '#ef4444' : 'var(--nm-text-secondary)',

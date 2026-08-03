@@ -1,3 +1,5 @@
+import { VIEWPORT_BLEED_RATIO } from '@/lib/viewportFrame';
+
 /**
  * Mobile / PWA viewport helpers.
  *
@@ -8,17 +10,24 @@
  *   to measure, or oversized `100vh` gets locked in permanently.
  * - Soft keyboard shrinks `visualViewport` (and sometimes `innerHeight`); we
  *   keep the last stable layout size so toolbar/workspace chrome do not jump.
+ * - Canvas paint size is view * (1 + 2 * bleed) so a short measurement still
+ *   covers the physical screen; UI chrome is offset back onto the view.
  */
 
 let lockedHeight = 0;
 let lockedWidth = 0;
 
 function isStandalonePwa() {
+  // Do not use display-mode:fullscreen — that also matches the native Fullscreen API.
   return (
     window.matchMedia?.('(display-mode: standalone)').matches ||
-    window.matchMedia?.('(display-mode: fullscreen)').matches ||
     window.navigator.standalone === true
   );
+}
+
+/** Pseudo or native fullscreen requested by the in-app control (mobile web / desktop). */
+function isAppFullscreenMode() {
+  return document.documentElement.dataset.nmFullscreen === '1';
 }
 
 function isMobileLike() {
@@ -58,8 +67,8 @@ function measureLayoutSize() {
   let height = innerH;
   let width = innerW;
 
-  if (isStandalonePwa()) {
-    // Installed PWA: fill the real screen (black-translucent / home indicator).
+  if (isStandalonePwa() || isAppFullscreenMode()) {
+    // PWA, or mobile-web / desktop "Full Screen": fill the device screen.
     height = Math.max(innerH, Math.round(screenHeightForOrientation() || 0));
     width = Math.max(innerW, Math.round(screenWidthForOrientation() || 0));
   } else if (isMobileLike()) {
@@ -74,6 +83,12 @@ function measureLayoutSize() {
   }
 
   return { height, width };
+}
+
+/** Clear locked sizes so the next apply can grow/shrink (e.g. entering fullscreen). */
+export function resetViewportLock() {
+  lockedHeight = 0;
+  lockedWidth = 0;
 }
 
 function pinScroll() {
@@ -104,12 +119,19 @@ export function applyAppFrameHeight() {
     if (width >= 80) lockedWidth = width;
   }
 
-  if (height >= 80) {
-    root.style.setProperty('--app-frame-height', `${height}px`);
-  }
-  if (width >= 80) {
-    root.style.setProperty('--app-frame-width', `${width}px`);
-    root.style.setProperty('--vv-width', `${width}px`);
+  if (height >= 80 && width >= 80) {
+    const bleedX = Math.round(width * VIEWPORT_BLEED_RATIO);
+    const bleedY = Math.round(height * VIEWPORT_BLEED_RATIO);
+    const paintW = width + bleedX * 2;
+    const paintH = height + bleedY * 2;
+
+    root.style.setProperty('--app-view-width', `${width}px`);
+    root.style.setProperty('--app-view-height', `${height}px`);
+    root.style.setProperty('--app-bleed-x', `${bleedX}px`);
+    root.style.setProperty('--app-bleed-y', `${bleedY}px`);
+    root.style.setProperty('--app-frame-width', `${paintW}px`);
+    root.style.setProperty('--app-frame-height', `${paintH}px`);
+    root.style.setProperty('--vv-width', `${paintW}px`);
   }
 
   pinScroll();

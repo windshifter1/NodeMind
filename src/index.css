@@ -129,8 +129,14 @@
     /*
      * iOS Safari: 100vh == large viewport (URL bar hidden) → clipped top/bottom
      * while chrome is visible. 100svh fits the visible area on first paint.
-     * JS then locks a pixel height from innerHeight (not clientHeight).
+     * JS then locks pixel sizes: view = detected, frame = view + 10% bleed each side.
      */
+    --app-view-width: 100vw;
+    --app-view-width: 100svw;
+    --app-view-height: 100vh;
+    --app-view-height: 100svh;
+    --app-bleed-x: 0px;
+    --app-bleed-y: 0px;
     --app-frame-height: 100vh;
     --app-frame-height: 100svh;
     --app-frame-width: 100vw;
@@ -155,8 +161,9 @@
   body {
     @apply bg-background text-foreground font-body;
     position: fixed;
-    top: 0;
-    left: 0;
+    /* Pull the oversized paint frame back so the view aligns with the screen */
+    top: calc(-1 * var(--app-bleed-y, 0px));
+    left: calc(-1 * var(--app-bleed-x, 0px));
     width: var(--app-frame-width, 100%);
     height: var(--app-frame-height, 100svh);
     min-height: -webkit-fill-available;
@@ -181,6 +188,11 @@
   body.app-fullscreen,
   html.app-fullscreen #root {
     overflow: hidden;
+  }
+
+  /* Mobile-web pseudo fullscreen: keep the shell pinned while sized to screen */
+  html.app-fullscreen body {
+    position: fixed;
   }
 
   @media (max-width: 768px) {

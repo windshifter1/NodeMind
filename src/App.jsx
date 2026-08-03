@@ -26,8 +26,8 @@ export default function App() {
         <div
           className="absolute z-[120] rounded-full border border-amber-500/40 bg-amber-500/15 px-3 py-1.5 text-xs font-medium text-amber-700 shadow-lg backdrop-blur dark:text-amber-100"
           style={{
-            right: 'calc(0.75rem + var(--safe-right))',
-            bottom: 'calc(0.75rem + var(--safe-bottom))',
+            right: 'calc(var(--app-bleed-x, 0px) + 0.75rem + var(--safe-right))',
+            bottom: 'calc(var(--app-bleed-y, 0px) + 0.75rem + var(--safe-bottom))',
           }}
         >
           Offline mode

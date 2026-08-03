@@ -72,7 +72,7 @@ function ToolbarButton({
   );
 }
 
-function ToolbarGroup({ icon: Icon, title, options }) {
+function ToolbarGroup({ icon: Icon, title, options, dataOnboarding }) {
   const [hoverOpen, setHoverOpen] = useState(false);
   const [clickedOpen, setClickedOpen] = useState(false);
   const groupRef = useRef(null);
@@ -110,6 +110,7 @@ function ToolbarGroup({ icon: Icon, title, options }) {
     <div
       ref={groupRef}
       className="relative"
+      data-onboarding={dataOnboarding}
       onMouseEnter={() => canHover.current && setHoverOpen(true)}
       onMouseLeave={() => canHover.current && setHoverOpen(false)}
     >
@@ -183,14 +184,18 @@ export default function Toolbar({
   return (
     <>
       <div
+        data-onboarding="toolbar"
         className="absolute left-1/2 z-50 flex max-w-[min(96vw,calc(100%-2rem-var(--safe-left)-var(--safe-right)))] -translate-x-1/2 items-center gap-1 rounded-2xl border border-nm-border bg-nm-chrome px-2 py-2 shadow-xl backdrop-blur-md sm:gap-2 sm:px-3 sm:py-2.5"
         style={{ top: 'calc(1rem + var(--safe-top))' }}
       >
-        <ToolbarButton onClick={onAddNodeCenter} title="Add note"><Plus size={16} /></ToolbarButton>
+        <span data-onboarding="toolbar-add" className="inline-flex">
+          <ToolbarButton onClick={onAddNodeCenter} title="Add note"><Plus size={16} /></ToolbarButton>
+        </span>
         <div className="w-px h-6 bg-nm-divider mx-1" />
         <ToolbarGroup
           icon={Search}
           title="View controls"
+          dataOnboarding="toolbar-view"
           options={[
             { label: 'Zoom In', icon: ZoomIn, action: () => onZoom(zoom * 1.2) },
             { label: 'Zoom Out', icon: ZoomOut, action: () => onZoom(zoom / 1.2) },
@@ -209,19 +214,22 @@ export default function Toolbar({
         />
         <span className="hidden sm:inline text-xs text-nm-text-muted w-10 text-center tabular-nums">{Math.round(zoom * 100)}%</span>
         {showMobileSelection && (
-          <ToolbarButton
-            data-selection-arm-button
-            active={selectionArmed}
-            onClick={onToggleSelectionArm}
-            title={selectionArmed ? 'Selection Mode armed — drag on canvas' : 'Selection Mode'}
-          >
-            <SquareDashed size={16} />
-          </ToolbarButton>
+          <span data-onboarding="toolbar-selection" className="inline-flex">
+            <ToolbarButton
+              data-selection-arm-button
+              active={selectionArmed}
+              onClick={onToggleSelectionArm}
+              title={selectionArmed ? 'Selection Mode armed — drag on canvas' : 'Selection Mode'}
+            >
+              <SquareDashed size={16} />
+            </ToolbarButton>
+          </span>
         )}
         <div className="w-px h-6 bg-nm-divider mx-1" />
         <ToolbarGroup
           icon={Wrench}
           title="Tools"
+          dataOnboarding="toolbar-tools"
           options={[
             { label: 'Auto Organise All', icon: AutoOrganiseAllIcon, action: onAutoOrganise },
             {
@@ -247,7 +255,9 @@ export default function Toolbar({
         />
         <ToolbarButton onClick={onClear} title="Clear all"><Trash2 size={16} /></ToolbarButton>
         <div className="w-px h-6 bg-nm-divider mx-1" />
-        <ToolbarButton onClick={onOpenSettings} title="Settings"><Settings size={16} /></ToolbarButton>
+        <span data-onboarding="toolbar-settings" className="inline-flex">
+          <ToolbarButton onClick={onOpenSettings} title="Settings"><Settings size={16} /></ToolbarButton>
+        </span>
         <input ref={fileRef} type="file" accept="application/json" className="hidden" onChange={onImport} />
       </div>
 

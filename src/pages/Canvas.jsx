@@ -7,6 +7,7 @@ import WorkspaceEditDialog from '@/components/canvas/WorkspaceEditDialog';
 import TextExportDialog from '@/components/canvas/TextExportDialog';
 import TerminalDialog from '@/components/canvas/TerminalDialog';
 import SettingsDialog from '@/components/canvas/SettingsDialog';
+import OnboardingTour from '@/components/onboarding/OnboardingTour';
 import { useWorkspaces } from '@/hooks/useWorkspaces';
 import {
   LAYOUT_ON_ORIENTATION_CHANGE,
@@ -24,6 +25,7 @@ import {
   subscribeFullscreenChange,
   toggleFullscreen as toggleAppFullscreen,
 } from '@/lib/fullscreen';
+import { shouldStartOnboarding } from '@/lib/onboarding';
 import { applyDocumentTheme, persistTheme, readStoredTheme } from '@/lib/theme';
 
 function clampZoom(z) {
@@ -43,10 +45,18 @@ export default function Canvas() {
   const [selectedNodeIds, setSelectedNodeIds] = useState([]);
   const [selectionArmed, setSelectionArmed] = useState(false);
   const [nodeTheme, setNodeTheme] = useState(() => readStoredTheme());
+  const [onboardingOpen, setOnboardingOpen] = useState(false);
   useEffect(() => {
     applyDocumentTheme(nodeTheme);
     persistTheme(nodeTheme);
   }, [nodeTheme]);
+
+  useEffect(() => {
+    if (!shouldStartOnboarding()) return undefined;
+    // Wait a tick so toolbar / workspace targets are mounted and measured.
+    const t = window.setTimeout(() => setOnboardingOpen(true), 450);
+    return () => window.clearTimeout(t);
+  }, []);
 
   const addNode = (x, y) => dispatch({ type: 'ADD_NODE', x, y });
   const updateNode = (id, patch) => dispatch({ type: 'UPDATE_NODE', id, patch });
@@ -354,6 +364,8 @@ export default function Canvas() {
         nodeTheme={nodeTheme}
         onThemeChange={setNodeTheme}
       />
+
+      <OnboardingTour open={onboardingOpen} onClose={() => setOnboardingOpen(false)} />
 
       <TerminalDialog
         open={terminalOpen}

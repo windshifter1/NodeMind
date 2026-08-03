@@ -873,6 +873,7 @@ export default function CanvasBoard({
     <div
       ref={boardRef}
       data-canvas-board
+      data-onboarding="canvas"
       className="absolute inset-0 overflow-hidden"
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}

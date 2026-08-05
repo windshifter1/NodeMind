@@ -70,9 +70,9 @@ export const ONBOARDING_STEPS = [
     title: 'Welcome to NodeMind',
     body: {
       desktop:
-        'A local-first mind map canvas. This short tour covers the essentials — you can skip anytime.',
+        'A local-first mind map canvas. This short tour is interactive — try the highlighted controls as you go, or skip anytime.',
       mobile:
-        'A local-first mind map canvas. This short tour covers the essentials for touch — you can skip anytime.',
+        'A local-first mind map canvas. This short tour is interactive — try the highlighted controls as you go, or skip anytime.',
     },
   },
   {
@@ -81,9 +81,9 @@ export const ONBOARDING_STEPS = [
     title: 'Navigate the canvas',
     body: {
       desktop:
-        'Drag empty space to pan. Use the scroll wheel, trackpad pinch, or touch pinch to zoom.',
+        'Try it: drag empty space to pan. Use the scroll wheel, trackpad pinch, or touch pinch to zoom.',
       mobile:
-        'Drag with one finger to pan. Pinch to zoom.',
+        'Try it: drag with one finger to pan. Pinch to zoom.',
     },
   },
   {
@@ -91,8 +91,8 @@ export const ONBOARDING_STEPS = [
     target: 'toolbar-recenter',
     title: 'Recenter',
     body: {
-      desktop: 'Click the home button to frame all notes in view.',
-      mobile: 'Tap the home button to frame all notes in view.',
+      desktop: 'Try it: click the home button to frame all notes in view.',
+      mobile: 'Try it: tap the home button to frame all notes in view.',
     },
   },
   {
@@ -101,9 +101,9 @@ export const ONBOARDING_STEPS = [
     title: 'Create notes',
     body: {
       desktop:
-        'Click the + button to add a note at the centre, or click empty canvas to place one where you click.',
+        'Try it: click + to add a note at the centre, or click empty canvas to place one where you click.',
       mobile:
-        'Tap + to add a note at the centre, or tap empty canvas to place one where you tap.',
+        'Try it: tap + to add a note at the centre, or tap empty canvas to place one where you tap.',
     },
   },
   {
@@ -112,9 +112,9 @@ export const ONBOARDING_STEPS = [
     title: 'Connect & disconnect',
     body: {
       desktop:
-        'Drag from a coloured socket to another to link notes. Click a connection line to delete it.',
+        'Try it: drag from a coloured socket to another to link notes. Click a connection line to delete it.',
       mobile:
-        'Drag from a coloured socket to another to link notes. Tap a connection line to delete it.',
+        'Try it: drag from a coloured socket to another to link notes. Tap a connection line to delete it.',
     },
   },
   {
@@ -123,9 +123,9 @@ export const ONBOARDING_STEPS = [
     title: 'Select, move & delete',
     body: {
       desktop:
-        'Click a note to select it, then drag to move. Drag selected notes onto the bin that appears to delete them. Double-click the title to rename inline, or use the pencil for colour and pin settings.',
+        'Try it: click a note to select it, then drag to move. Drag selected notes onto the bin to delete. Double-click the title to rename, or use the pencil for colour and pin.',
       mobile:
-        'Tap a note to select it, then drag to move. Drag selected notes onto the bin that appears to delete them. Double-tap the title to rename inline, or use the pencil for colour and pin settings.',
+        'Try it: tap a note to select it, then drag to move. Drag selected notes onto the bin to delete. Double-tap the title to rename, or use the pencil for colour and pin.',
     },
   },
   {
@@ -135,7 +135,7 @@ export const ONBOARDING_STEPS = [
     title: 'Multi-select',
     body: {
       desktop:
-        'Drag a selection box on empty canvas to select several notes, or hold Shift while clicking notes to add or remove them from the selection. Shift also adds box-selected notes to the current selection. Move or delete them together, or use Auto Organise Selected in Tools.',
+        'Try it: drag a selection box on empty canvas, or hold Shift while clicking notes to add or remove them. Shift also merges box-selected notes into the current selection.',
     },
   },
   {
@@ -145,7 +145,7 @@ export const ONBOARDING_STEPS = [
     title: 'Selection tool',
     body: {
       mobile:
-        'Tap the dashed-square button to arm Selection Mode, then drag on the canvas to multi-select. Tap it again or tap outside to cancel.',
+        'Try it: tap the dashed-square button to arm Selection Mode, then drag on the canvas to multi-select. Tap it again or tap outside to cancel.',
     },
   },
   {
@@ -154,9 +154,9 @@ export const ONBOARDING_STEPS = [
     title: 'Tools drawer',
     body: {
       desktop:
-        'Auto Organise All lays out the whole workspace. Auto Organise Selected rearranges only your current selection.',
+        'Open Tools for Auto Organise All (whole workspace) or Auto Organise Selected (current selection).',
       mobile:
-        'Auto Organise All lays out the whole workspace. Auto Organise Selected rearranges only your current selection (select two or more notes first).',
+        'Open Tools for Auto Organise All (whole workspace) or Auto Organise Selected (select two or more notes first).',
     },
   },
   {
@@ -176,9 +176,9 @@ export const ONBOARDING_STEPS = [
     title: 'Settings & theme',
     body: {
       desktop:
-        'Open Settings to switch Light or Dark theme for notes and app chrome. You can also replay this tour from here later.',
+        'Open Settings to switch Light or Dark theme. You can also replay this tour from here later.',
       mobile:
-        'Open Settings to switch Light or Dark theme for notes and app chrome. You can also replay this tour from here later.',
+        'Open Settings to switch Light or Dark theme. You can also replay this tour from here later.',
     },
   },
   {

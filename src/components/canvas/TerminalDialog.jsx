@@ -807,10 +807,26 @@ export default function TerminalDialog({ open, onClose, workspace, dispatch, onE
         </div>
 
         <div className="relative flex min-h-0 flex-1 flex-col">
+          {/* In-flow band under the header so the prompt and output stay uncovered. */}
+          <TerminalTutorial
+            open={tutorialOpen}
+            step={tutorialStep}
+            index={tutorialIndex}
+            total={tutorialSteps.length}
+            platform={platform}
+            onContinue={advanceTutorial}
+            onSkip={() => {
+              setTutorialOpen(false);
+              write('Tutorial skipped. Type tutorial to restart.');
+            }}
+            inputRef={formRef}
+            outputRef={scrollRef}
+          />
+
           <div
             ref={scrollRef}
             data-terminal-output
-            className={`flex-1 cursor-text select-text overflow-auto bg-nm-terminal px-4 py-3 text-[13px] leading-relaxed text-nm-terminal-text ${
+            className={`min-h-0 flex-1 cursor-text select-text overflow-auto bg-nm-terminal px-4 py-3 text-[13px] leading-relaxed text-nm-terminal-text ${
               outputHighlight ? 'ring-2 ring-inset ring-indigo-400/80' : ''
             }`}
             onClick={() => {
@@ -829,7 +845,7 @@ export default function TerminalDialog({ open, onClose, workspace, dispatch, onE
           <form
             ref={formRef}
             data-terminal-input
-            className={`flex items-center gap-2 border-t border-nm-border bg-nm-terminal px-4 py-3 text-[13px] text-nm-terminal-text ${
+            className={`flex shrink-0 items-center gap-2 border-t border-nm-border bg-nm-terminal px-4 py-3 text-[13px] text-nm-terminal-text ${
               inputHighlight ? 'ring-2 ring-inset ring-indigo-400/80' : ''
             }`}
             onSubmit={(e) => {
@@ -855,21 +871,6 @@ export default function TerminalDialog({ open, onClose, workspace, dispatch, onE
               enterKeyHint="go"
             />
           </form>
-
-          <TerminalTutorial
-            open={tutorialOpen}
-            step={tutorialStep}
-            index={tutorialIndex}
-            total={tutorialSteps.length}
-            platform={platform}
-            onContinue={advanceTutorial}
-            onSkip={() => {
-              setTutorialOpen(false);
-              write('Tutorial skipped. Type tutorial to restart.');
-            }}
-            inputRef={formRef}
-            outputRef={scrollRef}
-          />
         </div>
       </div>
     </div>

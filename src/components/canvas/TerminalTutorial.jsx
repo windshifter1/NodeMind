@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 
 /**
- * Compact tutorial card that sits inside the terminal chrome.
- * Same visual language as OnboardingTour (indigo chips, panel card).
+ * In-flow tutorial band inside the terminal chrome.
+ * Sits in the layout (not an overlay) so it never covers the input or output.
  */
 export default function TerminalTutorial({
   open,
@@ -46,24 +46,23 @@ export default function TerminalTutorial({
 
   return (
     <div
-      className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex justify-center px-3 pb-3"
+      className="shrink-0 border-b border-nm-border bg-nm-panel/95 px-3 py-3 backdrop-blur-sm sm:px-4"
       style={{
-        paddingBottom: 'calc(0.75rem + var(--safe-bottom, 0px))',
         opacity: visible ? 1 : 0,
         transition: 'opacity 180ms ease',
       }}
+      onPointerDown={(e) => e.stopPropagation()}
     >
       <div
-        className="pointer-events-auto w-full max-w-md rounded-2xl border border-nm-border bg-nm-panel p-4 shadow-2xl"
+        className="mx-auto w-full max-w-md rounded-2xl border border-nm-border bg-nm-panel p-3 shadow-lg sm:p-4"
         style={{
           boxShadow:
             step.highlight === 'input' || step.highlight === 'output'
-              ? '0 0 0 2px rgba(165,180,252,0.85), 0 0 28px 4px rgba(99,102,241,0.45), 0 16px 40px rgba(0,0,0,0.35)'
+              ? '0 0 0 2px rgba(165,180,252,0.85), 0 0 28px 4px rgba(99,102,241,0.45)'
               : undefined,
-          transform: visible ? 'translateY(0)' : 'translateY(8px)',
+          transform: visible ? 'translateY(0)' : 'translateY(6px)',
           transition: 'transform 200ms ease, opacity 180ms ease',
         }}
-        onPointerDown={(e) => e.stopPropagation()}
       >
         <div className="mb-2 flex items-center gap-2">
           <span className="rounded-full bg-indigo-500/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-indigo-300">

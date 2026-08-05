@@ -1,6 +1,8 @@
-import React, { useRef, useEffect } from 'react';
-import { ChevronDown, ChevronUp, Pencil } from 'lucide-react';
+import React, { useRef, useEffect, useState } from 'react';
+import { ChevronDown, ChevronUp, Pencil, Pin } from 'lucide-react';
 import { nodeWidthForTitle, TOP_BAR_HEIGHT, SOCKET_RADIUS } from '@/lib/canvasConstants';
+
+const DOUBLE_TAP_MS = 450;
 
 function selectionGlow(color) {
   return `0 0 0 3px ${color}f2, 0 0 0 7px ${color}80, 0 0 24px 6px ${color}a6, 0 12px 36px rgba(0, 0, 0, 0.45)`;
@@ -8,7 +10,6 @@ function selectionGlow(color) {
 
 function Socket({ type, color, nodeId, pending, orientation, onStartConnect }) {
   const isTarget = pending && pending.fromNode !== nodeId && pending.fromType !== type;
-  // Generous, mostly-outward invisible hitbox; visible circle stays half-in/half-out.
   const HIT = 36;
   const OUT = 28;
   const vertical = orientation === 'vertical';
@@ -85,11 +86,18 @@ export default function NoteNode({
   selected,
   ghost,
   onUpdate,
+  onSelectNode,
+  onArmNodeDrag,
+  onCancelNodeDrag,
   onStartNodeDrag,
   onStartConnect,
   onOpenEdit,
 }) {
   const textareaRef = useRef(null);
+  const titleInputRef = useRef(null);
+  const lastTitleTapRef = useRef(0);
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [titleDraft, setTitleDraft] = useState(node.title || '');
 
   const autoResize = () => {
     const ta = textareaRef.current;
@@ -101,7 +109,61 @@ export default function NoteNode({
 
   useEffect(autoResize, [node.content, node.collapsed]);
 
+  useEffect(() => {
+    if (!editingTitle) setTitleDraft(node.title || '');
+  }, [node.title, editingTitle]);
+
+  useEffect(() => {
+    if (!editingTitle) return undefined;
+    const input = titleInputRef.current;
+    if (!input) return undefined;
+    input.focus();
+    input.select();
+    return undefined;
+  }, [editingTitle]);
+
+  const cancelTitleEdit = () => {
+    setTitleDraft(node.title || '');
+    setEditingTitle(false);
+  };
+
+  const commitTitle = () => {
+    if (!editingTitle) return;
+    const next = titleDraft.trim();
+    setEditingTitle(false);
+    if (next !== (node.title || '')) onUpdate({ title: next });
+  };
+
+  const beginTitleEdit = () => {
+    lastTitleTapRef.current = 0;
+    onCancelNodeDrag?.();
+    setTitleDraft(node.title || '');
+    setEditingTitle(true);
+  };
+
+  const handleTitlePointerDown = (e) => {
+    if (editingTitle) return;
+    e.stopPropagation();
+    onArmNodeDrag?.(node.id, e, (ev) => {
+      const now = Date.now();
+      if (now - lastTitleTapRef.current < DOUBLE_TAP_MS) {
+        lastTitleTapRef.current = 0;
+        beginTitleEdit();
+        return;
+      }
+      lastTitleTapRef.current = now;
+      onSelectNode?.(node.id, ev);
+    });
+  };
+
+  const handleTitleDoubleClick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    beginTitleEdit();
+  };
+
   const startDrag = (e) => {
+    if (editingTitle) return;
     e.stopPropagation();
     onStartNodeDrag(node.id, e);
   };
@@ -113,7 +175,7 @@ export default function NoteNode({
       style={{
         left: node.x,
         top: node.y,
-        width: nodeWidthForTitle(node.title),
+        width: nodeWidthForTitle(editingTitle ? titleDraft : node.title),
         zIndex: node.z,
         borderWidth: selected ? 3 : 2,
         borderStyle: 'solid',
@@ -143,18 +205,18 @@ export default function NoteNode({
         onStartConnect={onStartConnect}
       />
 
-      {/* Top bar */}
       <div
         className="relative flex items-center gap-1 px-2"
         style={{
           height: TOP_BAR_HEIGHT,
-          cursor: 'grab',
+          cursor: editingTitle ? 'text' : 'grab',
           backgroundColor: node.color + '22',
           borderBottom: `1px solid ${node.color}33`,
         }}
         onPointerDown={startDrag}
       >
         <button
+          type="button"
           onPointerDown={(e) => e.stopPropagation()}
           onClick={() => onUpdate({ collapsed: !node.collapsed })}
           className={`relative z-[21] p-1 rounded-md active:scale-95 transition ${darkNodes ? 'text-zinc-300 hover:bg-white/10' : 'text-slate-600 hover:bg-black/10'}`}
@@ -163,29 +225,57 @@ export default function NoteNode({
           {node.collapsed ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
         </button>
 
-        <span
-          className={`flex-1 truncate text-sm font-medium px-1 ${darkNodes ? 'text-zinc-100' : 'text-slate-800'}`}
-          onPointerDown={startDrag}
-          onDoubleClick={(e) => {
-            e.stopPropagation();
-            onOpenEdit(node.id);
-          }}
-        >
-          {node.title || 'Untitled'}
-        </span>
+        {editingTitle ? (
+          <input
+            ref={titleInputRef}
+            value={titleDraft}
+            onChange={(e) => setTitleDraft(e.target.value)}
+            onBlur={commitTitle}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                commitTitle();
+              } else if (e.key === 'Escape') {
+                e.preventDefault();
+                cancelTitleEdit();
+              }
+            }}
+            onPointerDown={(e) => e.stopPropagation()}
+            placeholder="Untitled"
+            className={`relative z-[21] flex-1 min-w-0 rounded border bg-white/90 px-1.5 py-0.5 text-sm font-medium outline-none dark:bg-black/20 ${darkNodes ? 'text-zinc-100 placeholder:text-zinc-500' : 'text-slate-800 placeholder:text-slate-400'}`}
+            style={{ fontSize: 14, borderColor: node.color }}
+          />
+        ) : (
+          <span
+            className={`flex-1 truncate text-sm font-medium px-1 ${darkNodes ? 'text-zinc-100' : 'text-slate-800'}`}
+            onPointerDown={handleTitlePointerDown}
+            onDoubleClick={handleTitleDoubleClick}
+          >
+            {node.title || 'Untitled'}
+          </span>
+        )}
+
+        {node.pinned && (
+          <span
+            className={`relative z-[21] p-1 ${darkNodes ? 'text-zinc-400' : 'text-slate-500'}`}
+            title="Position pinned"
+          >
+            <Pin size={14} />
+          </span>
+        )}
 
         <button
+          type="button"
           onPointerDown={(e) => e.stopPropagation()}
           onClick={() => onOpenEdit(node.id)}
           className={`relative z-[21] p-1 rounded-md active:scale-95 transition ${darkNodes ? 'text-zinc-300 hover:bg-white/10' : 'text-slate-600 hover:bg-black/10'}`}
-          title="Edit title & colour"
+          title="Edit colour & pin"
         >
           <Pencil size={14} />
         </button>
 
       </div>
 
-      {/* Adaptive text field */}
       {!node.collapsed && (
         <textarea
           ref={textareaRef}

@@ -81,18 +81,18 @@ export const ONBOARDING_STEPS = [
     title: 'Navigate the canvas',
     body: {
       desktop:
-        'Drag empty space to pan. Use the scroll wheel to zoom. Open View for Zoom In, Zoom Out, Recenter, and Full Screen.',
+        'Drag empty space to pan. Use the scroll wheel, trackpad pinch, or touch pinch to zoom.',
       mobile:
-        'Drag with one finger to pan. Pinch to zoom. Open View for Zoom In, Zoom Out, and Recenter.',
+        'Drag with one finger to pan. Pinch to zoom.',
     },
   },
   {
     id: 'view-controls',
-    target: 'toolbar-view',
-    title: 'View controls',
+    target: 'toolbar-recenter',
+    title: 'Recenter',
     body: {
-      desktop: 'Zoom, recenter the graph, or enter full screen from this drawer.',
-      mobile: 'Zoom and recenter the graph from this drawer.',
+      desktop: 'Click the home button to frame all notes in view.',
+      mobile: 'Tap the home button to frame all notes in view.',
     },
   },
   {
@@ -123,9 +123,9 @@ export const ONBOARDING_STEPS = [
     title: 'Select, move & delete',
     body: {
       desktop:
-        'Click a note to select it, then drag to move. Drag selected notes onto the bin that appears to delete them. Double-click the title (or use the pencil) to edit.',
+        'Click a note to select it, then drag to move. Drag selected notes onto the bin that appears to delete them. Double-click the title to rename inline, or use the pencil for colour and pin settings.',
       mobile:
-        'Tap a note to select it, then drag to move. Drag selected notes onto the bin that appears to delete them. Double-tap the title (or use the pencil) to edit.',
+        'Tap a note to select it, then drag to move. Drag selected notes onto the bin that appears to delete them. Double-tap the title to rename inline, or use the pencil for colour and pin settings.',
     },
   },
   {
@@ -135,7 +135,7 @@ export const ONBOARDING_STEPS = [
     title: 'Multi-select',
     body: {
       desktop:
-        'Drag a selection box on empty canvas to select several notes. Move or delete them together, or use Auto Organise Selected in Tools.',
+        'Drag a selection box on empty canvas to select several notes, or hold Shift while clicking notes to add or remove them from the selection. Shift also adds box-selected notes to the current selection. Move or delete them together, or use Auto Organise Selected in Tools.',
     },
   },
   {

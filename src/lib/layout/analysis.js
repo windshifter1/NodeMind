@@ -1,4 +1,4 @@
-import { byStableOrder, componentLinks } from './graphModel';
+import { byStableOrder, componentLinks } from './graphModel.js';
 
 function hasDirectedCycle(ids, links) {
   const indegree = new Map(ids.map((id) => [id, 0]));
@@ -74,14 +74,14 @@ export function analyseComponent(model, ids) {
 
   let type = 'dag';
   if (n === 1 && m === 0) type = 'floating';
-  else if (hubScore >= 0.55 && n >= 5) type = 'hub';
   else if (treeLike) type = roots.length === 1 && leaves.length > 1 ? 'tree' : 'mind-map';
   else if (mostlyTree) type = 'mostly-tree';
+  else if (hubScore >= 0.55 && n >= 5) type = 'hub';
   else if (!cyclic) type = 'dag';
   else if (density >= 0.28 || m > n * 2.2) type = 'dense';
   else type = n <= 12 ? 'organic' : 'cyclic';
 
-  if (hints.datedShare > 0.8 && longChainScore > 0.5 && !cyclic) type = 'timeline';
+  if (hints.datedShare > 0.8 && longChainScore > 0.5 && !cyclic && !treeLike) type = 'timeline';
 
   return {
     ids,

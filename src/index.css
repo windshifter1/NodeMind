@@ -178,12 +178,6 @@
     background-color: var(--nm-canvas);
   }
 
-  html.app-fullscreen,
-  body.app-fullscreen,
-  html.app-fullscreen #root {
-    overflow: hidden;
-  }
-
   @media (max-width: 768px) {
     input,
     textarea,

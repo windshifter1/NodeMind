@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Download, Upload, Trash2, Plus, ZoomIn, ZoomOut, Maximize, Minimize, Copy, Terminal, Search, Share2, Wrench, Settings, Home, SquareDashed } from 'lucide-react';
+import { Download, Upload, Trash2, Plus, Copy, Terminal, Share2, Wrench, Settings, Home, SquareDashed } from 'lucide-react';
 
 function AutoOrganiseAllIcon({ size = 15 }) {
   return (
@@ -161,10 +161,7 @@ export default function Toolbar({
   selectionArmed = false,
   onToggleSelectionArm,
   zoom,
-  onZoom,
   onRecenter,
-  isFullscreen,
-  onToggleFullscreen,
   onAddNodeCenter,
   onOpenSettings,
 }) {
@@ -192,26 +189,11 @@ export default function Toolbar({
           <ToolbarButton onClick={onAddNodeCenter} title="Add note"><Plus size={16} /></ToolbarButton>
         </span>
         <div className="w-px h-6 bg-nm-divider mx-1" />
-        <ToolbarGroup
-          icon={Search}
-          title="View controls"
-          dataOnboarding="toolbar-view"
-          options={[
-            { label: 'Zoom In', icon: ZoomIn, action: () => onZoom(zoom * 1.2) },
-            { label: 'Zoom Out', icon: ZoomOut, action: () => onZoom(zoom / 1.2) },
-            { label: 'Recenter', icon: Home, action: onRecenter },
-            // Full screen is desktop-only — mobile Safari has no reliable Fullscreen API.
-            ...(!showMobileSelection
-              ? [
-                  {
-                    label: isFullscreen ? 'Exit Full Screen' : 'Full Screen',
-                    icon: isFullscreen ? Minimize : Maximize,
-                    action: onToggleFullscreen,
-                  },
-                ]
-              : []),
-          ]}
-        />
+        <span data-onboarding="toolbar-recenter" className="inline-flex">
+          <ToolbarButton onClick={onRecenter} title="Recenter">
+            <Home size={16} />
+          </ToolbarButton>
+        </span>
         <span className="hidden sm:inline text-xs text-nm-text-muted w-10 text-center tabular-nums">{Math.round(zoom * 100)}%</span>
         {showMobileSelection && (
           <span data-onboarding="toolbar-selection" className="inline-flex">

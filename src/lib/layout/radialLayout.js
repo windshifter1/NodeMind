@@ -1,4 +1,4 @@
-import { byStableOrder } from './graphModel';
+import { byStableOrder } from './graphModel.js';
 
 export function layoutRadial(model, analysis, orientation, settings) {
   const positions = new Map();

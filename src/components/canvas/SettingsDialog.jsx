@@ -1,10 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { Moon, Sun, X } from 'lucide-react';
+import { Moon, RotateCcw, Sun, X } from 'lucide-react';
+import OptionHelpRow from './OptionHelpRow';
 import {
   readOnboardingReplayPending,
   setOnboardingCompleted,
   setOnboardingReplayPending,
 } from '@/lib/onboarding';
+
+const REPLAY_HELP =
+  'Resets the first-run flag. After the tour shows again, this option turns itself off automatically.';
 
 export default function SettingsDialog({ open, onClose, nodeTheme, onThemeChange }) {
   const [section, setSection] = useState('style');
@@ -114,26 +118,21 @@ export default function SettingsDialog({ open, onClose, nodeTheme, onThemeChange
                 <h3 className="text-sm font-semibold text-nm-text">Help</h3>
                 <p className="mt-1 text-xs text-nm-text-muted">
                   First-run guidance for desktop and mobile. Enabling replay does not start the tour
-                  now — it runs automatically the next time you reload.
+                  now — it runs automatically the next time you reload. Open the Terminal and run{' '}
+                  <span className="font-mono text-nm-text">tutorial</span> for an interactive
+                  command walkthrough.
                 </p>
 
-                <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-xl border border-nm-border bg-nm-option px-3 py-3 transition hover:bg-nm-hover">
-                  <input
-                    type="checkbox"
-                    checked={replayPending}
-                    onChange={(e) => setReplay(e.target.checked)}
-                    className="mt-0.5 h-4 w-4 shrink-0 rounded border-nm-border accent-indigo-500"
+                <div className="mt-4">
+                  <OptionHelpRow
+                    icon={RotateCcw}
+                    label="Replay Onboarding on Next Reload"
+                    compactLabel
+                    selected={replayPending}
+                    onToggle={() => setReplay(!replayPending)}
+                    helpText={REPLAY_HELP}
                   />
-                  <span>
-                    <span className="block text-sm font-medium text-nm-text">
-                      Replay Onboarding on Next Reload
-                    </span>
-                    <span className="mt-1 block text-xs leading-relaxed text-nm-text-muted">
-                      Resets the first-run flag. After the tour shows again, this option turns itself
-                      off automatically.
-                    </span>
-                  </span>
-                </label>
+                </div>
               </>
             )}
           </section>

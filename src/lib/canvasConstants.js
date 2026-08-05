@@ -234,12 +234,29 @@ export function layoutBranchByOrientation(nodes, rootId, origin, orientation = G
   return nodes.map((node) => (updates.has(node.id) ? { ...node, ...updates.get(node.id) } : node));
 }
 
-export function autoOrganiseNodes(nodes, edges, orientation = GRAPH_ORIENTATIONS.HORIZONTAL, layoutSettings = {}, centre = { x: 0, y: 0 }) {
+export function autoOrganiseNodes(
+  nodes,
+  edges,
+  orientation = GRAPH_ORIENTATIONS.HORIZONTAL,
+  layoutSettings = {},
+  centre = { x: 0, y: 0 },
+  options = {}
+) {
   if (!nodes.length) return nodes;
 
   const settings = normalizeLayoutSettings(layoutSettings);
   const graphOrientation = normalizeOrientation(orientation);
-  return autoOrganiseGraph(nodes, edges, graphOrientation, settings, centre, { nodeSizeForLayout }).nodes;
+  const fixedIds = new Set(options.fixedIds || []);
+  nodes.forEach((node) => {
+    if (node.pinned) fixedIds.add(node.id);
+  });
+
+  return autoOrganiseGraph(nodes, edges, graphOrientation, settings, centre, {
+    nodeSizeForLayout,
+    fixedIds,
+    preferredRootIds: options.preferredRootIds || [],
+    fixComponentRoots: !!options.fixComponentRoots,
+  }).nodes;
 }
 
 export function nodeLayoutRect(node) {
@@ -264,7 +281,10 @@ export function autoOrganiseSelectedNodes(
   if (selected.length < 2) return allNodes;
 
   const internalEdges = allEdges.filter((e) => idSet.has(e.fromNode) && idSet.has(e.toNode));
-  const arranged = autoOrganiseNodes(selected, internalEdges, orientation, layoutSettings, centre);
+  const arranged = autoOrganiseNodes(selected, internalEdges, orientation, layoutSettings, centre, {
+    fixComponentRoots: true,
+    preferredRootIds: selectedIds,
+  });
   const posMap = new Map(arranged.map((n) => [n.id, { x: n.x, y: n.y }]));
   return allNodes.map((n) => (posMap.has(n.id) ? { ...n, ...posMap.get(n.id) } : n));
 }

@@ -20,11 +20,6 @@ import {
   workspaceNodesBounds,
   zoomToFrameBounds,
 } from '@/lib/canvasConstants';
-import {
-  isFullscreenActive,
-  subscribeFullscreenChange,
-  toggleFullscreen as toggleAppFullscreen,
-} from '@/lib/fullscreen';
 import { shouldStartOnboarding } from '@/lib/onboarding';
 import { applyDocumentTheme, persistTheme, readStoredTheme } from '@/lib/theme';
 
@@ -198,16 +193,6 @@ export default function Canvas() {
     }
   };
 
-  const zoomToCenter = (newZoom) => {
-    const z = clampZoom(newZoom);
-    const cx = window.innerWidth / 2;
-    const cy = window.innerHeight / 2;
-    const wx = (cx - pan.x) / zoom;
-    const wy = (cy - pan.y) / zoom;
-    setPan({ x: cx - wx * z, y: cy - wy * z });
-    setZoom(z);
-  };
-
   const panRef = useRef(pan);
   panRef.current = pan;
   const zoomRef = useRef(zoom);
@@ -255,13 +240,6 @@ export default function Canvas() {
     );
   }, [active.nodes, animateCamera]);
 
-  const [isFullscreen, setIsFullscreen] = useState(() => isFullscreenActive());
-  useEffect(() => subscribeFullscreenChange(setIsFullscreen), []);
-  const toggleFullscreen = async () => {
-    await toggleAppFullscreen();
-    setIsFullscreen(isFullscreenActive());
-  };
-
   const editingNode = active.nodes.find((n) => n.id === editingNodeId) || null;
 
   return (
@@ -302,10 +280,7 @@ export default function Canvas() {
         selectionArmed={selectionArmed}
         onToggleSelectionArm={() => setSelectionArmed((armed) => !armed)}
         zoom={zoom}
-        onZoom={zoomToCenter}
         onRecenter={recenterView}
-        isFullscreen={isFullscreen}
-        onToggleFullscreen={toggleFullscreen}
         onOpenSettings={() => setSettingsOpen(true)}
         onAddNodeCenter={() => addNode(-nodeWidthForTitle('') / 2, -TOP_BAR_HEIGHT / 2)}
       />

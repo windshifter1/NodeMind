@@ -4,17 +4,11 @@ export function edgeDirection(edge) {
     : { id: edge.id, source: edge.toNode, target: edge.fromNode };
 }
 
-export function stableNodeOrder(nodes, orientation) {
-  const vertical = orientation === 'vertical';
+export function stableNodeOrder(nodes) {
+  // Deterministic ID order — layout must not depend on prior canvas positions.
   return new Map(
     [...nodes]
-      .sort((a, b) => {
-        const primary = vertical ? a.x - b.x : a.y - b.y;
-        if (primary !== 0) return primary;
-        const secondary = vertical ? a.y - b.y : a.x - b.x;
-        if (secondary !== 0) return secondary;
-        return String(a.id).localeCompare(String(b.id), undefined, { numeric: true });
-      })
+      .sort((a, b) => String(a.id).localeCompare(String(b.id), undefined, { numeric: true }))
       .map((node, index) => [node.id, index])
   );
 }

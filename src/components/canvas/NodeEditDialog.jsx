@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { X } from 'lucide-react';
+import { Pin, X } from 'lucide-react';
+import OptionHelpRow from './OptionHelpRow';
 
 const COLORS = [
   '#6366f1', '#ef4444', '#f59e0b', '#10b981',
@@ -7,21 +8,24 @@ const COLORS = [
   '#f97316', '#64748b',
 ];
 
+const PIN_HELP =
+  'Pinned nodes stay in their current position when using Auto Organise or Auto Organise Selected. Other connected nodes will reorganise around them.';
+
 export default function NodeEditDialog({ node, open, onClose, onSave, onDelete }) {
-  const [title, setTitle] = useState('');
   const [color, setColor] = useState('#6366f1');
+  const [pinned, setPinned] = useState(false);
 
   useEffect(() => {
     if (node) {
-      setTitle(node.title || '');
       setColor(node.color || '#6366f1');
+      setPinned(!!node.pinned);
     }
   }, [node]);
 
   if (!open || !node) return null;
 
   const save = () => {
-    onSave(node.id, { title: title.trim(), color });
+    onSave(node.id, { color, pinned });
     onClose();
   };
 
@@ -52,18 +56,16 @@ export default function NodeEditDialog({ node, open, onClose, onSave, onDelete }
         </div>
 
         <div className="px-4 sm:px-5 py-4">
-          <label className="text-sm font-medium text-nm-label">Title</label>
-          <input
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && save()}
-            placeholder="Untitled"
-            autoFocus
-            className="w-full mt-1 mb-4 rounded-lg border border-nm-border bg-nm-input px-3 py-2 text-nm-text placeholder:text-nm-text-muted outline-none focus:border-indigo-400 focus:bg-nm-hover"
-            style={{ fontSize: 16 }}
+          <OptionHelpRow
+            icon={Pin}
+            label="Pin node position"
+            selected={pinned}
+            onToggle={() => setPinned((value) => !value)}
+            helpText={PIN_HELP}
+            ariaLabel={pinned ? 'Unpin node position' : 'Pin node position'}
           />
 
-          <label className="text-sm font-medium text-nm-label">Outline colour</label>
+          <label className="mt-4 block text-sm font-medium text-nm-label">Outline colour</label>
           <div className="flex flex-wrap gap-2 mt-2 mb-5">
             {COLORS.map((c) => (
               <button

@@ -1,4 +1,4 @@
-import { byStableOrder } from './graphModel';
+import { byStableOrder } from './graphModel.js';
 
 function groupKey(node) {
   const titleToken = String(node.title || '')

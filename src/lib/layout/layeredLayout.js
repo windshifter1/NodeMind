@@ -1,4 +1,4 @@
-import { byStableOrder } from './graphModel';
+import { byStableOrder } from './graphModel.js';
 
 function assignLayers(model, analysis) {
   const ids = analysis.ids;

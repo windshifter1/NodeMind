@@ -77,6 +77,9 @@ export default function CanvasBoard({
   selectionArmedRef.current = selectionArmed;
   const selectedNodeIdsRef = useRef(selectedNodeIds);
   selectedNodeIdsRef.current = selectedNodeIds;
+  const nodeDragMovedRef = useRef(false);
+  const dragReleaseRef = useRef(null);
+  const draggingNodeRef = useRef(null);
 
   const [marqueeRect, setMarqueeRect] = useState(null);
   const edgeClickRef = useRef(null);
@@ -630,7 +633,11 @@ export default function CanvasBoard({
         const hits = nodesRef.current
           .filter((node) => rectsIntersect(nodeLayoutRect(node), worldRect))
           .map((node) => node.id);
-        onSelectionChange(hits);
+        if (e.shiftKey) {
+          onSelectionChange([...new Set([...selectedNodeIdsRef.current, ...hits])]);
+        } else {
+          onSelectionChange(hits);
+        }
         if (selectionArmedRef.current) onSelectionArmConsumed?.();
       } else if (panState.current.button === 0 && !moved && !pinch.current.active) {
         const hasSelection = selectedNodeIdsRef.current.length > 0;
@@ -694,15 +701,46 @@ export default function CanvasBoard({
   }, [setPan, setZoom]);
 
   // --- Node dragging ---
-  const startNodeDrag = useCallback(
+  const selectNode = useCallback(
     (nodeId, e) => {
+      if (e && !isPrimaryPointerStart(e)) return;
+      const shiftKey = e?.shiftKey;
+      const currentSelection = selectedNodeIdsRef.current;
+
+      if (shiftKey) {
+        if (currentSelection.includes(nodeId)) {
+          onSelectionChange?.(currentSelection.filter((id) => id !== nodeId));
+        } else {
+          onSelectionChange?.([...currentSelection, nodeId]);
+        }
+      } else {
+        onSelectionChange?.([nodeId]);
+      }
+      onBringToFront(nodeId);
+    },
+    [onBringToFront, onSelectionChange]
+  );
+
+  const startNodeDrag = useCallback(
+    (nodeId, e, { armed = false, onRelease = null } = {}) => {
       if (!isPrimaryPointerStart(e) || shouldSuppressPrimaryPointer(e, 'down')) return;
       const node = nodes.find((n) => n.id === nodeId);
       if (!node) return;
 
+      const shiftKey = e.shiftKey;
       const currentSelection = selectedNodeIdsRef.current;
       let dragIds;
-      if (currentSelection.includes(nodeId) && currentSelection.length > 1) {
+      let shiftToggleOff = false;
+
+      if (shiftKey) {
+        if (currentSelection.includes(nodeId)) {
+          shiftToggleOff = true;
+          dragIds = currentSelection.filter((id) => nodes.some((n) => n.id === id));
+        } else {
+          dragIds = [...currentSelection, nodeId];
+          onSelectionChange?.(dragIds);
+        }
+      } else if (currentSelection.includes(nodeId) && currentSelection.length > 1) {
         dragIds = currentSelection.filter((id) => nodes.some((n) => n.id === id));
       } else {
         onSelectionChange?.([nodeId]);
@@ -722,6 +760,8 @@ export default function CanvasBoard({
         positions[id] = { finalX: origins[id].x, finalY: origins[id].y };
       });
 
+      nodeDragMovedRef.current = false;
+      dragReleaseRef.current = armed ? onRelease : null;
       dragVisual.current = {
         raf: 0,
         ids: dragIds,
@@ -730,32 +770,73 @@ export default function CanvasBoard({
         positions,
       };
       binRectRef.current = null;
-      setDraggingNode({
+      const nextDrag = {
         ids: dragIds,
+        nodeId,
         startX: e.clientX,
         startY: e.clientY,
         origins,
-      });
+        shiftToggleOff,
+        armed,
+      };
+      draggingNodeRef.current = nextDrag;
+      setDraggingNode(nextDrag);
     },
     [nodes, onBringToFront, onSelectionChange]
   );
 
+  const armNodeDrag = useCallback(
+    (nodeId, e, onRelease) => {
+      startNodeDrag(nodeId, e, { armed: true, onRelease });
+    },
+    [startNodeDrag]
+  );
+
+  const cancelNodeDrag = useCallback(() => {
+    dragReleaseRef.current = null;
+    draggingNodeRef.current = null;
+    if (dragVisual.current.raf) {
+      cancelAnimationFrame(dragVisual.current.raf);
+      dragVisual.current.raf = 0;
+    }
+    setDraggingNode(null);
+  }, []);
+
   useEffect(() => {
     if (!draggingNode) {
+      draggingNodeRef.current = null;
       overBinRef.current = false;
       setOverBin(false);
       binRectRef.current = null;
       return;
     }
+    draggingNodeRef.current = draggingNode;
+
     const onMove = (e) => {
-      const dx = (e.clientX - draggingNode.startX) / zoomRef.current;
-      const dy = (e.clientY - draggingNode.startY) / zoomRef.current;
+      let drag = draggingNodeRef.current;
+      if (!drag) return;
+
+      const dist =
+        Math.abs(e.clientX - drag.startX) + Math.abs(e.clientY - drag.startY);
+
+      if (drag.armed) {
+        if (dist <= PAN_DRAG_THRESHOLD) return;
+        nodeDragMovedRef.current = true;
+        drag = { ...drag, armed: false };
+        draggingNodeRef.current = drag;
+        setDraggingNode(drag);
+      } else if (dist > PAN_DRAG_THRESHOLD) {
+        nodeDragMovedRef.current = true;
+      }
+
+      const dx = (e.clientX - drag.startX) / zoomRef.current;
+      const dy = (e.clientY - drag.startY) / zoomRef.current;
       const positions = {};
-      draggingNode.ids.forEach((id) => {
-        const origin = draggingNode.origins[id];
+      drag.ids.forEach((id) => {
+        const origin = drag.origins[id];
         if (origin) positions[id] = { finalX: origin.x + dx, finalY: origin.y + dy };
       });
-      scheduleDragVisual({ ids: draggingNode.ids, dx, dy, positions });
+      scheduleDragVisual({ ids: drag.ids, dx, dy, positions });
       const el = binRef.current;
       if (el) {
         const r = binRectRef.current || el.getBoundingClientRect();
@@ -770,17 +851,40 @@ export default function CanvasBoard({
         setOverBin((prev) => (prev === inside ? prev : inside));
       }
     };
-    const onUp = () => {
+    const onUp = (e) => {
+      const drag = draggingNodeRef.current;
       if (dragVisual.current.raf) {
         cancelAnimationFrame(dragVisual.current.raf);
         dragVisual.current.raf = 0;
       }
+
+      if (drag?.armed && !nodeDragMovedRef.current) {
+        dragReleaseRef.current?.(e);
+        dragReleaseRef.current = null;
+        overBinRef.current = false;
+        binRectRef.current = null;
+        setOverBin(false);
+        draggingNodeRef.current = null;
+        setDraggingNode(null);
+        return;
+      }
+
+      if (drag?.shiftToggleOff && !nodeDragMovedRef.current) {
+        onSelectionChange?.(selectedNodeIdsRef.current.filter((id) => id !== drag.nodeId));
+        overBinRef.current = false;
+        binRectRef.current = null;
+        setOverBin(false);
+        draggingNodeRef.current = null;
+        setDraggingNode(null);
+        return;
+      }
+
       const { ids, positions } = dragVisual.current;
       if (overBinRef.current) {
-        if (onDeleteNodes) onDeleteNodes(draggingNode.ids);
-        else draggingNode.ids.forEach((id) => onDeleteNode(id));
+        if (onDeleteNodes) onDeleteNodes(drag.ids);
+        else drag.ids.forEach((id) => onDeleteNode(id));
       } else {
-        draggingNode.ids.forEach((id) => {
+        drag.ids.forEach((id) => {
           const pos = positions[id];
           if (pos) onUpdateNode(id, { x: pos.finalX, y: pos.finalY });
         });
@@ -788,6 +892,8 @@ export default function CanvasBoard({
       overBinRef.current = false;
       binRectRef.current = null;
       setOverBin(false);
+      draggingNodeRef.current = null;
+      dragReleaseRef.current = null;
       setDraggingNode(null);
       requestAnimationFrame(() => {
         ids.forEach((id) => {
@@ -805,7 +911,7 @@ export default function CanvasBoard({
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('pointerup', onUp);
     };
-  }, [draggingNode, onUpdateNode, onDeleteNode, onDeleteNodes, scheduleDragVisual]);
+  }, [draggingNode, onUpdateNode, onDeleteNode, onDeleteNodes, onSelectionChange, scheduleDragVisual]);
 
   // --- Socket connection drag ---
   const startConnect = useCallback(
@@ -972,6 +1078,9 @@ export default function CanvasBoard({
             selected={selectedSet.has(node.id)}
             ghost={overBin && draggingSet?.has(node.id)}
             onUpdate={(patch) => onUpdateNode(node.id, patch)}
+            onSelectNode={selectNode}
+            onArmNodeDrag={armNodeDrag}
+            onCancelNodeDrag={cancelNodeDrag}
             onStartNodeDrag={startNodeDrag}
             onStartConnect={startConnect}
             onOpenEdit={onOpenEdit}

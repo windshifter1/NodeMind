@@ -1,4 +1,4 @@
-import { byStableOrder } from './graphModel';
+import { byStableOrder } from './graphModel.js';
 
 function initialCircle(model, ids, settings) {
   const positions = new Map();

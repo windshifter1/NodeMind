@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Terminal, X } from 'lucide-react';
+import { GraduationCap, Terminal, X } from 'lucide-react';
 import {
   allocateNumericNodeIds,
   layoutBranchByOrientation,
@@ -12,6 +12,10 @@ import {
   getVersionHelpLines,
   getVersionReportLines,
 } from '@/lib/appVersion';
+import { isDesktopPlatform } from '@/lib/onboarding';
+import { COMMAND_NAMES, HELP_ALL, helpFor } from '@/lib/terminal/help';
+import { commandMatchesStep, getTerminalTutorialSteps } from '@/lib/terminal/tutorial';
+import TerminalTutorial from './TerminalTutorial';
 
 const COLORS = {
   red: '#ef4444',
@@ -263,118 +267,32 @@ function matchesDateQuery(node, query) {
   });
 }
 
-const HELP_DIVIDER = '════════════════════════════════════════════';
-
-const HELP_SECTIONS = {
-  help: [
-    'help [command]',
-    '    Show all commands, or detailed help for a specific command.',
-  ],
-  cd: [
-    'cd <node|..|cd..|\\|path>',
-    '    Change the current hierarchy path.',
-  ],
-  dir: ['dir', '    List child nodes.'],
-  open: ['open <node>', '    Open a child node by title or ID and make it the current node.'],
-  info: [
-    'info [all|/title <text>|/id <id>]',
-    '    Display node information.',
-    '    • info            → current node',
-    '    • info all        → every node',
-    '    • info /title ... → search by title',
-    '    • info /id ...    → search by ID',
-  ],
-  find: [
-    'find [/title|/desc|/description|/id|/date] <text>',
-    '    Search nodes using the selected field. [/date] accepts DD/MM/YY, MM/YY, and YY formats.',
-  ],
-  title: ['title "Text"', '    Replace the current node title.'],
-  desc: [
-    'desc "Text"',
-    'description "Text"',
-    '    Replace the current node description.',
-  ],
-  append: ['append "Text"', '    Add text to the end of the description.'],
-  prepend: ['prepend "Text"', '    Add text to the beginning of the description.'],
-  clear: [
-    'clear title',
-    '    Clear the node title.',
-    '',
-    'clear desc',
-    'clear description',
-    '    Clear the node description.',
-  ],
-  color: [
-    'color "Red"',
-    'colour "Red"',
-    'color #RRGGBB',
-    'colour #RRGGBB',
-    '    Change the current node colour.',
-  ],
-  new: ['new "Title"', '    Create a child node.'],
-  duplicate: ['duplicate', '    Duplicate the current node and all descendants.'],
-  move: ['move <path>', '    Move the current branch to another location.'],
-  copy: ['copy <path>', '    Copy the current branch to another location.'],
-  delete: [
-    'delete',
-    '    Delete the current node and its descendants.',
-    '    Run the command twice to confirm.',
-  ],
-  link: ['link <id>', '    Create a graph link to another node.'],
-  unlink: ['unlink <id>', '    Remove a graph link.'],
-  links: ['links', '    Display all incoming and outgoing graph links.'],
-  arrange: ['arrange', '    Auto organise the workspace using the current orientation.'],
-  export: ['export', '    Download the workspace as JSON.'],
-  import: ['import', '    Open the JSON import dialog.'],
-  version: getVersionHelpLines(),
-  terminal: [
-    'terminal exit',
-    '    Close Terminal Mode.',
-    '',
-    'terminal clear',
-    '    Clear all terminal output and scroll back to the top.',
-    '',
-    'terminal about',
-    '    Display credits.',
-    '',
-    'terminal date',
-    '    Display the current UTC date and time (DD/MM/YYYY).',
-  ],
-};
-
-const HELP_GROUPS = [
-  { title: null, keys: ['help'] },
-  { title: 'NAVIGATION', keys: ['cd', 'dir', 'open'] },
-  { title: 'VIEW & SEARCH', keys: ['info', 'find'] },
-  { title: 'EDIT', keys: ['title', 'desc', 'append', 'prepend', 'clear', 'color'] },
-  { title: 'NODE MANAGEMENT', keys: ['new', 'duplicate', 'move', 'copy', 'delete'] },
-  { title: 'GRAPH LINKS', keys: ['link', 'unlink', 'links'] },
-  { title: 'WORKSPACE', keys: ['arrange', 'export', 'import'] },
-  { title: 'VERSION', keys: ['version'] },
-  { title: 'TERMINAL', keys: ['terminal'] },
-];
-
-function sectionLines(key) {
-  return HELP_SECTIONS[key] || [];
+function renderTerminalLine(line) {
+  if (typeof line !== 'string') return line;
+  const marker = 'Example:';
+  const idx = line.indexOf(marker);
+  if (idx === -1) return line;
+  return (
+    <>
+      {line.slice(0, idx)}
+      <strong className="font-semibold text-nm-terminal-text">{marker}</strong>
+      {line.slice(idx + marker.length)}
+    </>
+  );
 }
 
-function buildHelpAll() {
-  const lines = [HELP_DIVIDER, 'HELP', HELP_DIVIDER, '', ...sectionLines('help')];
-  HELP_GROUPS.slice(1).forEach(({ title, keys }) => {
-    lines.push('', HELP_DIVIDER, title, HELP_DIVIDER, '');
-    keys.forEach((key, index) => {
-      if (index > 0) lines.push('');
-      lines.push(...sectionLines(key));
-    });
+function completeCommandToken(token) {
+  if (!token) return null;
+  const lower = token.toLowerCase();
+  const hits = COMMAND_NAMES.filter((name) => name.startsWith(lower));
+  if (!hits.length) return null;
+  if (hits.length === 1) return hits[0];
+  const shared = hits.reduce((prefix, name) => {
+    let i = 0;
+    while (i < prefix.length && i < name.length && prefix[i] === name[i]) i += 1;
+    return prefix.slice(0, i);
   });
-  return lines;
-}
-
-const HELP_ALL = buildHelpAll();
-
-function helpFor(topic) {
-  const key = commandKey(topic.trim().split(/\s+/)[0]);
-  return HELP_SECTIONS[key];
+  return shared.length > lower.length ? shared : null;
 }
 
 export default function TerminalDialog({ open, onClose, workspace, dispatch, onExport, onImport, onArrange, orientation }) {
@@ -383,8 +301,18 @@ export default function TerminalDialog({ open, onClose, workspace, dispatch, onE
   const [lines, setLines] = useState([]);
   const [welcomeHidden, setWelcomeHidden] = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const [history, setHistory] = useState([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+  const [tutorialOpen, setTutorialOpen] = useState(false);
+  const [tutorialIndex, setTutorialIndex] = useState(0);
   const inputRef = useRef(null);
+  const formRef = useRef(null);
   const scrollRef = useRef(null);
+  const linesRef = useRef([]);
+
+  const platform = useMemo(() => (isDesktopPlatform() ? 'desktop' : 'mobile'), []);
+  const tutorialSteps = useMemo(() => getTerminalTutorialSteps(platform), [platform]);
+  const tutorialStep = tutorialOpen ? tutorialSteps[tutorialIndex] || null : null;
 
   const nodes = workspace.nodes || [];
   const graphOrientation = normalizeOrientation(orientation || workspace.orientation);
@@ -392,8 +320,14 @@ export default function TerminalDialog({ open, onClose, workspace, dispatch, onE
   const prompt = `${workspace.name || 'Workspace'}:\\${pathParts.join('\\')}>`;
 
   useEffect(() => {
+    linesRef.current = lines;
+  }, [lines]);
+
+  useEffect(() => {
     if (open) {
       setWelcomeHidden(false);
+      setTutorialOpen(false);
+      setTutorialIndex(0);
       setTimeout(() => inputRef.current?.focus(), 0);
     }
   }, [open]);
@@ -407,7 +341,7 @@ export default function TerminalDialog({ open, onClose, workspace, dispatch, onE
   }, [cwdId, nodes]);
 
   const welcome = useMemo(
-    () => [`NodeMind Terminal`, `Type help for commands.`, ''],
+    () => [`NodeMind Terminal`, `Type help for commands, or tutorial to learn by doing.`, ''],
     []
   );
 
@@ -422,12 +356,50 @@ export default function TerminalDialog({ open, onClose, workspace, dispatch, onE
     setLines((prev) => [...prev, ...values]);
   };
 
+  const echoCommand = (commandLine) => {
+    setLines((prev) => {
+      const next = [...prev];
+      if (next.length > 0) {
+        if (next[next.length - 1] !== '') next.push('');
+      } else if (!welcomeHidden) {
+        /* welcome already ends with a blank line */
+      } else {
+        /* cleared session — no leading blank needed */
+      }
+      next.push(`${prompt} ${commandLine}`);
+      return next;
+    });
+  };
+
+  const advanceTutorial = () => {
+    if (tutorialIndex >= tutorialSteps.length - 1) {
+      setTutorialOpen(false);
+      setTutorialIndex(0);
+      write('Tutorial complete. Type tutorial to replay.');
+      return;
+    }
+    setTutorialIndex((i) => i + 1);
+  };
+
+  const startTutorial = () => {
+    setTutorialOpen(true);
+    setTutorialIndex(0);
+    write('Tutorial started — follow the card below.');
+  };
+
   const run = (raw) => {
     const commandLine = normalizeCommandLine(raw);
     if (!commandLine) {
-      write(`${prompt} ${commandLine}`);
+      echoCommand(commandLine);
       return;
     }
+
+    setHistory((prev) => {
+      if (prev[prev.length - 1] === commandLine) return prev;
+      return [...prev, commandLine].slice(-80);
+    });
+    setHistoryIndex(-1);
+
     const [command = '', ...args] = quoteAwareSplit(commandLine);
     const rest = commandLine.slice(command.length).trim();
     const current = nodes.find((node) => node.id === cwdId) || null;
@@ -435,7 +407,7 @@ export default function TerminalDialog({ open, onClose, workspace, dispatch, onE
     const isTerminalClear = cmd === 'terminal' && args[0]?.toLowerCase() === 'clear';
 
     if (!isTerminalClear) {
-      write(`${prompt} ${commandLine}`);
+      echoCommand(commandLine);
     }
 
     const requireCurrent = () => {
@@ -448,10 +420,15 @@ export default function TerminalDialog({ open, onClose, workspace, dispatch, onE
 
     if (cmd !== 'delete') setConfirmDeleteId(null);
 
+    let handled = true;
+
     switch (cmd) {
       case 'help':
         if (args[0]) write(helpFor(args[0]) || [`No help for "${args[0]}".`]);
         else write(HELP_ALL);
+        break;
+      case 'tutorial':
+        startTutorial();
         break;
       case 'terminal': {
         const sub = args[0]?.toLowerCase();
@@ -473,6 +450,7 @@ export default function TerminalDialog({ open, onClose, workspace, dispatch, onE
             break;
           default:
             write('Unknown terminal command. Type help terminal.');
+            handled = false;
         }
         break;
       }
@@ -484,8 +462,10 @@ export default function TerminalDialog({ open, onClose, workspace, dispatch, onE
       case 'cd':
       case 'open': {
         const target = resolvePath(nodes, cwdId, rest || '\\');
-        if (target === undefined) write(`Path not found: ${rest}`);
-        else setCwdId(target);
+        if (target === undefined) {
+          write(`Path not found: ${rest}`);
+          handled = false;
+        } else setCwdId(target);
         break;
       }
       case 'info': {
@@ -501,7 +481,10 @@ export default function TerminalDialog({ open, onClose, workspace, dispatch, onE
           const node = nodes.find((n) => n.id === id);
           write(node ? formatNode(nodes, node) : `ID not found: ${args[1]}`);
         } else if (current) write(formatNode(nodes, current));
-        else write('No node selected.');
+        else {
+          write('No node selected.');
+          handled = false;
+        }
         break;
       }
       case 'find': {
@@ -523,27 +506,45 @@ export default function TerminalDialog({ open, onClose, workspace, dispatch, onE
       case 'prepend':
       case 'clear':
       case 'color': {
-        if (!requireCurrent()) break;
+        if (!requireCurrent()) {
+          handled = false;
+          break;
+        }
         const patch = { updatedAt: new Date().toISOString() };
         if (cmd === 'title') {
-          if (!requireQuoted(rest, write)) break;
+          if (!requireQuoted(rest, write)) {
+            handled = false;
+            break;
+          }
           patch.title = unquote(rest);
         } else if (cmd === 'desc') {
-          if (!requireQuoted(rest, write)) break;
+          if (!requireQuoted(rest, write)) {
+            handled = false;
+            break;
+          }
           patch.content = unquote(rest);
         } else if (cmd === 'append') {
-          if (!requireQuoted(rest, write)) break;
+          if (!requireQuoted(rest, write)) {
+            handled = false;
+            break;
+          }
           const text = unquote(rest);
           patch.content = `${current.content || ''}${current.content ? '\n' : ''}${text}`;
         } else if (cmd === 'prepend') {
-          if (!requireQuoted(rest, write)) break;
+          if (!requireQuoted(rest, write)) {
+            handled = false;
+            break;
+          }
           const text = unquote(rest);
           patch.content = `${text}${current.content ? '\n' : ''}${current.content || ''}`;
         } else if (cmd === 'clear') {
           const target = args[0]?.toLowerCase();
           patch[target === 'title' ? 'title' : 'content'] = '';
         } else if (cmd === 'color') {
-          if (!requireQuotedOrHex(rest, write)) break;
+          if (!requireQuotedOrHex(rest, write)) {
+            handled = false;
+            break;
+          }
           const text = unquote(rest);
           patch.color = COLORS[text.toLowerCase()] || text;
         }
@@ -552,7 +553,10 @@ export default function TerminalDialog({ open, onClose, workspace, dispatch, onE
         break;
       }
       case 'new': {
-        if (!requireQuoted(rest, write)) break;
+        if (!requireQuoted(rest, write)) {
+          handled = false;
+          break;
+        }
         const title = unquote(rest) || 'Untitled';
         const pos = nextChildGraphPosition(nodes, cwdId, title, graphOrientation);
         const now = new Date().toISOString();
@@ -564,6 +568,7 @@ export default function TerminalDialog({ open, onClose, workspace, dispatch, onE
           content: '',
           color: '#6366f1',
           collapsed: false,
+          pinned: false,
           parentId: cwdId || null,
           z: workspace.nextZ || 1,
           createdAt: now,
@@ -576,22 +581,33 @@ export default function TerminalDialog({ open, onClose, workspace, dispatch, onE
       }
       case 'duplicate':
       case 'copy': {
-        if (!requireCurrent()) break;
+        if (!requireCurrent()) {
+          handled = false;
+          break;
+        }
         const parentId = cmd === 'copy' ? resolvePath(nodes, cwdId, rest || '\\') : current.parentId || null;
         if (parentId === undefined) {
           write(`Path not found: ${rest}`);
+          handled = false;
           break;
         }
         const pos = nextChildGraphPosition(nodes, parentId, current.title, graphOrientation);
-        replaceWorkspace({ nodes: cloneBranch(nodes, current.id, parentId, pos, graphOrientation), nextZ: (workspace.nextZ || 1) + branchIds(nodes, current.id).size });
+        replaceWorkspace({
+          nodes: cloneBranch(nodes, current.id, parentId, pos, graphOrientation),
+          nextZ: (workspace.nextZ || 1) + branchIds(nodes, current.id).size,
+        });
         write(cmd === 'copy' ? 'Copied branch.' : 'Duplicated branch.');
         break;
       }
       case 'move': {
-        if (!requireCurrent()) break;
+        if (!requireCurrent()) {
+          handled = false;
+          break;
+        }
         const parentId = resolvePath(nodes, cwdId, rest || '\\');
         if (parentId === undefined || parentId === current.id || branchIds(nodes, current.id).has(parentId)) {
           write('Invalid target.');
+          handled = false;
           break;
         }
         const pos = nextChildGraphPosition(nodes, parentId, current.title, graphOrientation);
@@ -601,7 +617,10 @@ export default function TerminalDialog({ open, onClose, workspace, dispatch, onE
         break;
       }
       case 'delete': {
-        if (!requireCurrent()) break;
+        if (!requireCurrent()) {
+          handled = false;
+          break;
+        }
         if (confirmDeleteId !== current.id) {
           setConfirmDeleteId(current.id);
           write('Run delete again to confirm.');
@@ -619,10 +638,14 @@ export default function TerminalDialog({ open, onClose, workspace, dispatch, onE
       }
       case 'link':
       case 'unlink': {
-        if (!requireCurrent()) break;
+        if (!requireCurrent()) {
+          handled = false;
+          break;
+        }
         const targetId = matchNodeId(nodes, args[0]);
         if (!targetId || targetId === current.id) {
           write('Invalid target.');
+          handled = false;
           break;
         }
         if (cmd === 'link') {
@@ -648,7 +671,10 @@ export default function TerminalDialog({ open, onClose, workspace, dispatch, onE
         break;
       }
       case 'links': {
-        if (!requireCurrent()) break;
+        if (!requireCurrent()) {
+          handled = false;
+          break;
+        }
         const outgoing = workspace.edges.filter((edge) => edge.fromNode === current.id).map((edge) => nodes.find((n) => n.id === edge.toNode));
         const incoming = workspace.edges.filter((edge) => edge.toNode === current.id).map((edge) => nodes.find((n) => n.id === edge.fromNode));
         const outgoingLines = outgoing.filter(Boolean).map((node) => `  ${displayId(nodes, node.id)} ${normaliseTitle(node.title)}`);
@@ -688,12 +714,64 @@ export default function TerminalDialog({ open, onClose, workspace, dispatch, onE
           break;
         }
         write([`Unknown version command: ${sub}.`, '', ...getVersionHelpLines()]);
+        handled = false;
         break;
       }
       default:
         write(`Unknown command: ${command}. Type help.`);
+        handled = false;
+    }
+
+    if (tutorialOpen && tutorialStep && commandMatchesStep(tutorialStep, commandLine) && handled) {
+      window.setTimeout(() => advanceTutorial(), 120);
+    } else if (tutorialOpen && tutorialStep?.expect?.kind === 'command' && !commandMatchesStep(tutorialStep, commandLine)) {
+      /* keep going — wrong command does not advance */
     }
   };
+
+  const onInputKeyDown = (e) => {
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (!history.length) return;
+      const next = historyIndex < 0 ? history.length - 1 : Math.max(0, historyIndex - 1);
+      setHistoryIndex(next);
+      setInput(history[next] || '');
+      return;
+    }
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (historyIndex < 0) return;
+      const next = historyIndex + 1;
+      if (next >= history.length) {
+        setHistoryIndex(-1);
+        setInput('');
+      } else {
+        setHistoryIndex(next);
+        setInput(history[next] || '');
+      }
+      return;
+    }
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      const parts = input.split(/\s+/);
+      if (parts.length !== 1) return;
+      const completed = completeCommandToken(parts[0]);
+      if (completed) setInput(completed);
+    }
+  };
+
+  const pasteIntoInput = async () => {
+    try {
+      const text = await navigator.clipboard?.readText?.();
+      if (!text) return;
+      setInput((prev) => `${prev}${text}`);
+    } catch {
+      /* clipboard denied */
+    }
+  };
+
+  const inputHighlight = tutorialStep?.highlight === 'input';
+  const outputHighlight = tutorialStep?.highlight === 'output';
 
   return (
     <div
@@ -706,49 +784,93 @@ export default function TerminalDialog({ open, onClose, workspace, dispatch, onE
       }}
     >
       <div className="absolute inset-0 bg-nm-overlay backdrop-blur-md" onClick={onClose} />
-      <div className="relative w-full max-w-3xl h-[78vh] rounded-2xl bg-nm-panel border border-nm-border shadow-2xl flex flex-col overflow-hidden font-mono">
-        <div className="flex items-center gap-2 px-3 sm:px-4 py-3 border-b border-nm-border bg-nm-header">
+      <div className="relative flex h-[78vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-nm-border bg-nm-panel font-mono shadow-2xl">
+        <div className="flex items-center gap-2 border-b border-nm-border bg-nm-header px-3 py-3 sm:px-4">
           <Terminal size={16} className="text-nm-terminal-prompt" />
           <h2 className="text-sm font-semibold text-nm-text">NodeMind Terminal</h2>
           <div className="flex-1" />
-          <button onClick={onClose} className="p-2 rounded-lg text-nm-text-faint hover:text-nm-text hover:bg-nm-hover transition">
+          <button
+            type="button"
+            title="Interactive tutorial"
+            onClick={startTutorial}
+            className={`rounded-lg p-2 transition active:scale-95 ${
+              tutorialOpen
+                ? 'bg-indigo-500/30 text-indigo-200'
+                : 'text-nm-text-faint hover:bg-nm-hover hover:text-nm-text'
+            }`}
+          >
+            <GraduationCap size={18} />
+          </button>
+          <button onClick={onClose} className="rounded-lg p-2 text-nm-text-faint transition hover:bg-nm-hover hover:text-nm-text">
             <X size={18} />
           </button>
         </div>
-        <div
-          ref={scrollRef}
-          className="flex-1 overflow-auto px-4 py-3 text-[13px] leading-relaxed text-nm-terminal-text bg-nm-terminal select-text cursor-text"
-          onClick={() => {
-            const sel = window.getSelection();
-            if (sel && sel.toString().length > 0) return;
-            inputRef.current?.focus();
-          }}
-        >
-          {[...(welcomeHidden ? [] : welcome), ...lines].map((line, index) => (
-            <div key={index} className="whitespace-pre-wrap break-words min-h-[1.4em]">
-              {line}
-            </div>
-          ))}
-        </div>
-        <form
-          className="flex items-center gap-2 border-t border-nm-border bg-nm-terminal px-4 py-3 text-[13px] text-nm-terminal-text"
-          onSubmit={(e) => {
-            e.preventDefault();
-            const value = input;
-            setInput('');
-            run(value);
-          }}
-        >
-          <span className="shrink-0 text-nm-terminal-prompt">{prompt}</span>
-          <input
-            ref={inputRef}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            className="min-w-0 flex-1 bg-transparent outline-none text-nm-terminal-text caret-nm-terminal-prompt"
-            autoComplete="off"
-            spellCheck={false}
+
+        <div className="relative flex min-h-0 flex-1 flex-col">
+          <div
+            ref={scrollRef}
+            data-terminal-output
+            className={`flex-1 cursor-text select-text overflow-auto bg-nm-terminal px-4 py-3 text-[13px] leading-relaxed text-nm-terminal-text ${
+              outputHighlight ? 'ring-2 ring-inset ring-indigo-400/80' : ''
+            }`}
+            onClick={() => {
+              const sel = window.getSelection();
+              if (sel && sel.toString().length > 0) return;
+              inputRef.current?.focus();
+            }}
+          >
+            {[...(welcomeHidden ? [] : welcome), ...lines].map((line, index) => (
+              <div key={index} className="min-h-[1.4em] whitespace-pre-wrap break-words">
+                {renderTerminalLine(line)}
+              </div>
+            ))}
+          </div>
+
+          <form
+            ref={formRef}
+            data-terminal-input
+            className={`flex items-center gap-2 border-t border-nm-border bg-nm-terminal px-4 py-3 text-[13px] text-nm-terminal-text ${
+              inputHighlight ? 'ring-2 ring-inset ring-indigo-400/80' : ''
+            }`}
+            onSubmit={(e) => {
+              e.preventDefault();
+              const value = input;
+              setInput('');
+              run(value);
+            }}
+          >
+            <span className="shrink-0 text-nm-terminal-prompt">{prompt}</span>
+            <input
+              ref={inputRef}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={onInputKeyDown}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                pasteIntoInput();
+              }}
+              className="min-w-0 flex-1 bg-transparent text-nm-terminal-text caret-nm-terminal-prompt outline-none"
+              autoComplete="off"
+              spellCheck={false}
+              enterKeyHint="go"
+            />
+          </form>
+
+          <TerminalTutorial
+            open={tutorialOpen}
+            step={tutorialStep}
+            index={tutorialIndex}
+            total={tutorialSteps.length}
+            platform={platform}
+            onContinue={advanceTutorial}
+            onSkip={() => {
+              setTutorialOpen(false);
+              write('Tutorial skipped. Type tutorial to restart.');
+            }}
+            inputRef={formRef}
+            outputRef={scrollRef}
           />
-        </form>
+        </div>
       </div>
     </div>
   );

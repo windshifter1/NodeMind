@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { ChevronDown, ChevronUp, Pencil, Pin } from 'lucide-react';
 import { nodeWidthForTitle, TOP_BAR_HEIGHT, SOCKET_RADIUS } from '@/lib/canvasConstants';
+import { emitTutorial } from '@/lib/tutorialEvents';
 
 const DOUBLE_TAP_MS = 450;
 
@@ -132,6 +133,7 @@ export default function NoteNode({
     const next = titleDraft.trim();
     setEditingTitle(false);
     if (next !== (node.title || '')) onUpdate({ title: next });
+    emitTutorial('node.rename');
   };
 
   const beginTitleEdit = () => {
@@ -267,7 +269,10 @@ export default function NoteNode({
         <button
           type="button"
           onPointerDown={(e) => e.stopPropagation()}
-          onClick={() => onOpenEdit(node.id)}
+          onClick={() => {
+            onOpenEdit(node.id);
+            emitTutorial('node.edit.open');
+          }}
           className={`relative z-[21] p-1 rounded-md active:scale-95 transition ${darkNodes ? 'text-zinc-300 hover:bg-white/10' : 'text-slate-600 hover:bg-black/10'}`}
           title="Edit colour & pin"
         >

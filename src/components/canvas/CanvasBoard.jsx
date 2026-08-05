@@ -14,6 +14,7 @@ import {
   rectsIntersect,
   socketWorld,
 } from '@/lib/canvasConstants';
+import { emitTutorial } from '@/lib/tutorialEvents';
 
 function clampZoom(z) {
   return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z));
@@ -429,7 +430,10 @@ export default function CanvasBoard({
       const dist =
         Math.abs(e.clientX - click.startX) + Math.abs(e.clientY - click.startY);
       const overEdge = isPointerOverEdge(click.edgeId, e.clientX, e.clientY);
-      if (overEdge || dist <= PAN_DRAG_THRESHOLD) onDeleteEdge(click.edgeId);
+      if (overEdge || dist <= PAN_DRAG_THRESHOLD) {
+        onDeleteEdge(click.edgeId);
+        emitTutorial('canvas.edge.delete');
+      }
     },
     [clearEdgeClickListeners, onDeleteEdge, onSelectionChange]
   );
@@ -515,6 +519,7 @@ export default function CanvasBoard({
         lastY: e.clientY,
         moved: false,
         suppressContextMenu: false,
+        tutorialPanEmitted: false,
       };
       if (useMarquee) setMarqueeRect(null);
     } else if (pointers.current.size === 2) {
@@ -541,14 +546,16 @@ export default function CanvasBoard({
       const pts = [...pointers.current.values()];
       const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
       const ratio = dist / (pinch.current.startDist || 1);
+      const prevZoom = zoomRef.current;
       const newZoom = clampZoom(pinch.current.startZoom * ratio);
       const rect = boardRef.current.getBoundingClientRect();
       const cx = pinch.current.midX - rect.left;
       const cy = pinch.current.midY - rect.top;
-      const wx = (cx - panRef.current.x) / zoomRef.current;
-      const wy = (cy - panRef.current.y) / zoomRef.current;
+      const wx = (cx - panRef.current.x) / prevZoom;
+      const wy = (cy - panRef.current.y) / prevZoom;
       setPan({ x: cx - wx * newZoom, y: cy - wy * newZoom });
       setZoom(newZoom);
+      if (newZoom !== prevZoom) emitTutorial('canvas.zoom.pinch');
       return;
     }
 
@@ -577,6 +584,12 @@ export default function CanvasBoard({
         if (Math.abs(dx) + Math.abs(dy) > PAN_DRAG_THRESHOLD) panState.current.moved = true;
         if (panState.current.button === 1 || panState.current.button === 2) e.preventDefault();
         setPan((p) => ({ x: p.x + dx, y: p.y + dy }));
+        if (!panState.current.tutorialPanEmitted && (Math.abs(dx) > 0 || Math.abs(dy) > 0)) {
+          panState.current.tutorialPanEmitted = true;
+          if (panState.current.button === 1) emitTutorial('canvas.pan.middle');
+          else if (panState.current.button === 2) emitTutorial('canvas.pan.right');
+          else emitTutorial('canvas.pan.touch');
+        }
       }
 
       panState.current.lastX = e.clientX;
@@ -639,6 +652,7 @@ export default function CanvasBoard({
           onSelectionChange(hits);
         }
         if (selectionArmedRef.current) onSelectionArmConsumed?.();
+        emitTutorial('canvas.select.marquee');
       } else if (panState.current.button === 0 && !moved && !pinch.current.active) {
         const hasSelection = selectedNodeIdsRef.current.length > 0;
         if (hasSelection) {
@@ -647,6 +661,7 @@ export default function CanvasBoard({
           onSelectionChange?.([]);
           const w = screenToWorld(e.clientX, e.clientY);
           onAddNode(w.x - nodeWidthForTitle('') / 2, w.y - TOP_BAR_HEIGHT / 2);
+          emitTutorial('canvas.node.create-click');
         }
       }
       panState.current.panning = false;
@@ -690,11 +705,13 @@ export default function CanvasBoard({
       const cx = e.clientX - rect.left;
       const cy = e.clientY - rect.top;
       const delta = -e.deltaY * 0.0015;
-      const newZoom = clampZoom(zoomRef.current * (1 + delta));
-      const wx = (cx - panRef.current.x) / zoomRef.current;
-      const wy = (cy - panRef.current.y) / zoomRef.current;
+      const prevZoom = zoomRef.current;
+      const newZoom = clampZoom(prevZoom * (1 + delta));
+      const wx = (cx - panRef.current.x) / prevZoom;
+      const wy = (cy - panRef.current.y) / prevZoom;
       setPan({ x: cx - wx * newZoom, y: cy - wy * newZoom });
       setZoom(newZoom);
+      if (newZoom !== prevZoom) emitTutorial('canvas.zoom');
     };
     el.addEventListener('wheel', handler, { passive: false });
     return () => el.removeEventListener('wheel', handler);
@@ -706,15 +723,22 @@ export default function CanvasBoard({
       if (e && !isPrimaryPointerStart(e)) return;
       const shiftKey = e?.shiftKey;
       const currentSelection = selectedNodeIdsRef.current;
+      // Selection mode (mobile) toggles membership like Shift on desktop.
+      const toggle = shiftKey || selectionArmedRef.current;
 
-      if (shiftKey) {
+      if (toggle) {
         if (currentSelection.includes(nodeId)) {
           onSelectionChange?.(currentSelection.filter((id) => id !== nodeId));
+          emitTutorial('canvas.select.shift-remove');
+          emitTutorial('canvas.select.modify');
         } else {
           onSelectionChange?.([...currentSelection, nodeId]);
+          emitTutorial('canvas.select.shift-add');
+          emitTutorial('canvas.select.modify');
         }
       } else {
         onSelectionChange?.([nodeId]);
+        emitTutorial('canvas.node.select');
       }
       onBringToFront(nodeId);
     },
@@ -732,19 +756,23 @@ export default function CanvasBoard({
       let dragIds;
       let shiftToggleOff = false;
 
-      if (shiftKey) {
+      const toggle = shiftKey || selectionArmedRef.current;
+      if (toggle) {
         if (currentSelection.includes(nodeId)) {
           shiftToggleOff = true;
           dragIds = currentSelection.filter((id) => nodes.some((n) => n.id === id));
         } else {
           dragIds = [...currentSelection, nodeId];
           onSelectionChange?.(dragIds);
+          emitTutorial('canvas.select.shift-add');
+          emitTutorial('canvas.select.modify');
         }
       } else if (currentSelection.includes(nodeId) && currentSelection.length > 1) {
         dragIds = currentSelection.filter((id) => nodes.some((n) => n.id === id));
       } else {
         onSelectionChange?.([nodeId]);
         dragIds = [nodeId];
+        emitTutorial('canvas.node.select');
       }
 
       const origins = {};
@@ -871,6 +899,8 @@ export default function CanvasBoard({
 
       if (drag?.shiftToggleOff && !nodeDragMovedRef.current) {
         onSelectionChange?.(selectedNodeIdsRef.current.filter((id) => id !== drag.nodeId));
+        emitTutorial('canvas.select.shift-remove');
+        emitTutorial('canvas.select.modify');
         overBinRef.current = false;
         binRectRef.current = null;
         setOverBin(false);
@@ -883,6 +913,13 @@ export default function CanvasBoard({
       if (overBinRef.current) {
         if (onDeleteNodes) onDeleteNodes(drag.ids);
         else drag.ids.forEach((id) => onDeleteNode(id));
+        emitTutorial('canvas.node.delete-bin');
+      } else if (nodeDragMovedRef.current) {
+        drag.ids.forEach((id) => {
+          const pos = positions[id];
+          if (pos) onUpdateNode(id, { x: pos.finalX, y: pos.finalY });
+        });
+        emitTutorial('canvas.node.move');
       } else {
         drag.ids.forEach((id) => {
           const pos = positions[id];
@@ -952,11 +989,13 @@ export default function CanvasBoard({
           const toType = socketEl.getAttribute('data-socket-type');
           if (toNode && toType && toNode !== cur.fromNode && toType !== cur.fromType) {
             onAddEdge(cur.fromNode, cur.fromType, toNode, toType);
+            emitTutorial('canvas.edge.create');
           }
         } else if (!overNode) {
           const w = screenToWorld(e.clientX, e.clientY);
           const pos = connectedNodePositionAtSocket(w, cur.fromType, graphOrientation);
           onAddConnectedNode(pos.x, pos.y, cur.fromNode, cur.fromType);
+          emitTutorial('canvas.node.create-connected');
         }
       }
       pendingRef.current = null;

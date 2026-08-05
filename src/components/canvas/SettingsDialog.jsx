@@ -6,6 +6,7 @@ import {
   setOnboardingCompleted,
   setOnboardingReplayPending,
 } from '@/lib/onboarding';
+import { emitTutorial } from '@/lib/tutorialEvents';
 
 const REPLAY_HELP =
   'Resets the first-run flag. After the tour shows again, this option turns itself off automatically.';
@@ -37,7 +38,7 @@ export default function SettingsDialog({ open, onClose, nodeTheme, onThemeChange
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center"
+      className="fixed inset-0 z-[210] flex items-center justify-center"
       style={{
         paddingTop: 'calc(1rem + var(--safe-top))',
         paddingRight: 'calc(1rem + var(--safe-right))',
@@ -70,7 +71,11 @@ export default function SettingsDialog({ open, onClose, nodeTheme, onThemeChange
               <button
                 key={item.id}
                 type="button"
-                onClick={() => setSection(item.id)}
+                data-onboarding={item.id === 'help' ? 'settings-help' : undefined}
+                onClick={() => {
+                  setSection(item.id);
+                  if (item.id === 'help') emitTutorial('settings.replay.find');
+                }}
                 className={`mb-1 w-full rounded-xl px-3 py-2 text-left text-sm font-medium transition ${
                   section === item.id
                     ? 'bg-nm-hover text-nm-text'
@@ -84,7 +89,7 @@ export default function SettingsDialog({ open, onClose, nodeTheme, onThemeChange
 
           <section className="overflow-auto p-4">
             {section === 'style' && (
-              <>
+              <div data-onboarding="settings-theme">
                 <h3 className="text-sm font-semibold text-nm-text">Style</h3>
                 <p className="mt-1 text-xs text-nm-text-muted">
                   Choose how notes and application windows are displayed.
@@ -96,7 +101,10 @@ export default function SettingsDialog({ open, onClose, nodeTheme, onThemeChange
                       <button
                         key={value}
                         type="button"
-                        onClick={() => onThemeChange(value)}
+                        onClick={() => {
+                          if (value !== nodeTheme) emitTutorial('settings.theme');
+                          onThemeChange(value);
+                        }}
                         className="flex items-center gap-3 rounded-xl border px-3 py-3 text-left transition hover:bg-nm-hover"
                         style={{
                           backgroundColor: selected ? 'rgba(99,102,241,0.18)' : 'var(--nm-option)',
@@ -110,11 +118,11 @@ export default function SettingsDialog({ open, onClose, nodeTheme, onThemeChange
                     );
                   })}
                 </div>
-              </>
+              </div>
             )}
 
             {section === 'help' && (
-              <>
+              <div data-onboarding="settings-help">
                 <h3 className="text-sm font-semibold text-nm-text">Help</h3>
                 <p className="mt-1 text-xs text-nm-text-muted">
                   First-run guidance for desktop and mobile. Enabling replay does not start the tour
@@ -133,7 +141,7 @@ export default function SettingsDialog({ open, onClose, nodeTheme, onThemeChange
                     helpText={REPLAY_HELP}
                   />
                 </div>
-              </>
+              </div>
             )}
           </section>
         </div>

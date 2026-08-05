@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Download, Upload, Trash2, Plus, Copy, Terminal, Share2, Wrench, Settings, Home, SquareDashed } from 'lucide-react';
+import { emitTutorial } from '@/lib/tutorialEvents';
 
 function AutoOrganiseAllIcon({ size = 15 }) {
   return (
@@ -100,11 +101,18 @@ function ToolbarGroup({ icon: Icon, title, options, dataOnboarding }) {
     return () => document.removeEventListener('pointerdown', close, true);
   }, [open]);
 
-  const run = (action) => {
+  const run = (action, eventName) => {
     action();
+    if (eventName) emitTutorial(eventName);
     setHoverOpen(false);
     setClickedOpen(false);
   };
+
+  useEffect(() => {
+    if (open && dataOnboarding === 'toolbar-tools') {
+      emitTutorial('toolbar.tools.open');
+    }
+  }, [open, dataOnboarding]);
 
   return (
     <div
@@ -126,10 +134,10 @@ function ToolbarGroup({ icon: Icon, title, options, dataOnboarding }) {
         }`}
       >
         <div className="flex flex-col gap-1 p-2">
-          {options.map(({ label, icon: OptionIcon, action, disabled = false, title: optionTitle }) => (
+          {options.map(({ label, icon: OptionIcon, action, disabled = false, title: optionTitle, tutorialEvent }) => (
             <button
               key={label}
-              onClick={() => !disabled && run(action)}
+              onClick={() => !disabled && run(action, tutorialEvent)}
               disabled={disabled}
               title={optionTitle || label}
               tabIndex={open && !disabled ? 0 : -1}
@@ -186,11 +194,25 @@ export default function Toolbar({
         style={{ top: 'calc(1rem + var(--safe-top))' }}
       >
         <span data-onboarding="toolbar-add" className="inline-flex">
-          <ToolbarButton onClick={onAddNodeCenter} title="Add note"><Plus size={16} /></ToolbarButton>
+          <ToolbarButton
+            onClick={() => {
+              onAddNodeCenter();
+              emitTutorial('toolbar.node.create');
+            }}
+            title="Add note"
+          >
+            <Plus size={16} />
+          </ToolbarButton>
         </span>
         <div className="w-px h-6 bg-nm-divider mx-1" />
         <span data-onboarding="toolbar-recenter" className="inline-flex">
-          <ToolbarButton onClick={onRecenter} title="Recenter">
+          <ToolbarButton
+            onClick={() => {
+              onRecenter();
+              emitTutorial('toolbar.recenter');
+            }}
+            title="Recenter"
+          >
             <Home size={16} />
           </ToolbarButton>
         </span>
@@ -200,7 +222,11 @@ export default function Toolbar({
             <ToolbarButton
               data-selection-arm-button
               active={selectionArmed}
-              onClick={onToggleSelectionArm}
+              onClick={() => {
+                const next = !selectionArmed;
+                onToggleSelectionArm();
+                if (next) emitTutorial('toolbar.selection.arm');
+              }}
               title={selectionArmed ? 'Selection Mode armed — drag on canvas' : 'Selection Mode'}
             >
               <SquareDashed size={16} />
@@ -213,7 +239,12 @@ export default function Toolbar({
           title="Tools"
           dataOnboarding="toolbar-tools"
           options={[
-            { label: 'Auto Organise All', icon: AutoOrganiseAllIcon, action: onAutoOrganise },
+            {
+              label: 'Auto Organise All',
+              icon: AutoOrganiseAllIcon,
+              action: onAutoOrganise,
+              tutorialEvent: 'toolbar.organise.all',
+            },
             {
               label: 'Auto Organise Selected',
               icon: AutoOrganiseSelectedIcon,
@@ -222,6 +253,7 @@ export default function Toolbar({
               title: canOrganiseSelected
                 ? 'Auto Organise Selected'
                 : 'Select two or more nodes to organise',
+              tutorialEvent: 'toolbar.organise.selected',
             },
           ]}
         />
@@ -238,7 +270,15 @@ export default function Toolbar({
         <ToolbarButton onClick={onClear} title="Clear all"><Trash2 size={16} /></ToolbarButton>
         <div className="w-px h-6 bg-nm-divider mx-1" />
         <span data-onboarding="toolbar-settings" className="inline-flex">
-          <ToolbarButton onClick={onOpenSettings} title="Settings"><Settings size={16} /></ToolbarButton>
+          <ToolbarButton
+            onClick={() => {
+              onOpenSettings();
+              emitTutorial('toolbar.settings.open');
+            }}
+            title="Settings"
+          >
+            <Settings size={16} />
+          </ToolbarButton>
         </span>
         <input ref={fileRef} type="file" accept="application/json" className="hidden" onChange={onImport} />
       </div>

@@ -53,6 +53,29 @@ export default function Canvas() {
     return () => window.clearTimeout(t);
   }, []);
 
+  // Desktop tutorial asks users to switch boards — ensure a second workspace exists.
+  const tutorialWsBootRef = useRef(false);
+  useEffect(() => {
+    if (!onboardingOpen) {
+      tutorialWsBootRef.current = false;
+      return;
+    }
+    if (tutorialWsBootRef.current) return;
+    tutorialWsBootRef.current = true;
+    if (state.workspaces.length >= 2) return;
+    const prevId = state.activeId;
+    dispatch({
+      type: 'ADD_WORKSPACE',
+      workspace: {
+        name: 'Practice Board',
+        colour: '#22c55e',
+        icon: 'note',
+        orientation: 'horizontal',
+      },
+    });
+    if (prevId) dispatch({ type: 'SET_ACTIVE', id: prevId });
+  }, [onboardingOpen, state.workspaces.length, state.activeId, dispatch]);
+
   const addNode = (x, y) => dispatch({ type: 'ADD_NODE', x, y });
   const updateNode = (id, patch) => dispatch({ type: 'UPDATE_NODE', id, patch });
   const deleteNode = (id) => dispatch({ type: 'DELETE_NODE', id });

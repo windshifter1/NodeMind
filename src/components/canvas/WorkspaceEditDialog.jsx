@@ -9,6 +9,7 @@ import {
   normalizeOrientation,
 } from '@/lib/canvasConstants';
 import { WORKSPACE_ICONS, WORKSPACE_ICON_KEYS, WORKSPACE_COLORS } from '@/lib/workspaceIcons';
+import { emitTutorial } from '@/lib/tutorialEvents';
 
 function OrientationIcon({ orientation }) {
   const vertical = orientation === GRAPH_ORIENTATIONS.VERTICAL;
@@ -75,20 +76,39 @@ export default function WorkspaceEditDialog({ workspace, open, onClose, onSave, 
   };
 
   const save = () => {
-    onSave(workspace.id, {
-      name: name.trim() || 'Untitled',
+    const nextName = name.trim() || 'Untitled';
+    const patch = {
+      name: nextName,
       colour,
       icon,
       orientation,
       layoutOnOrientationChange,
       layoutSettings,
-    });
+    };
+    onSave(workspace.id, patch);
+    if (mode === 'create') {
+      emitTutorial('workspace.create.save');
+    } else {
+      if (nextName !== (workspace.name || '')) emitTutorial('workspace.rename');
+      const colourChanged = colour !== (workspace.colour || WORKSPACE_COLORS[0]);
+      const iconChanged = icon !== (workspace.icon || 'note');
+      const orientationChanged = orientation !== normalizeOrientation(workspace.orientation);
+      const layoutModeChanged =
+        layoutOnOrientationChange !==
+        normalizeLayoutOnOrientationChange(workspace.layoutOnOrientationChange);
+      const settingsChanged =
+        JSON.stringify(layoutSettings) !==
+        JSON.stringify(normalizeLayoutSettings(workspace.layoutSettings));
+      if (colourChanged || iconChanged || orientationChanged || layoutModeChanged || settingsChanged) {
+        emitTutorial('workspace.settings.save');
+      }
+    }
     onClose();
   };
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center"
+      className="fixed inset-0 z-[210] flex items-center justify-center"
       style={{
         paddingTop: 'calc(1rem + var(--safe-top))',
         paddingRight: 'calc(1rem + var(--safe-right))',

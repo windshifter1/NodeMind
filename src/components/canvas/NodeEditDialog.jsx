@@ -31,7 +31,7 @@ export default function NodeEditDialog({ node, open, onClose, onSave, onDelete }
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center"
+      className="fixed inset-0 z-[210] flex items-center justify-center"
       style={{
         paddingTop: 'calc(1rem + var(--safe-top))',
         paddingRight: 'calc(1rem + var(--safe-right))',

@@ -69,7 +69,9 @@ export default function OptionHelpRow({
   return (
     <>
       <div
-        className="flex items-center gap-2 rounded-xl border px-3 py-3 transition hover:bg-nm-hover"
+        className={`flex gap-2 rounded-xl border px-3 py-3 transition hover:bg-nm-hover ${
+          compactLabel ? 'items-start sm:items-center' : 'items-center'
+        }`}
         style={{
           backgroundColor: selected ? 'rgba(99,102,241,0.18)' : 'var(--nm-option)',
           borderColor: selected ? '#818cf8' : 'var(--nm-border)',
@@ -81,10 +83,20 @@ export default function OptionHelpRow({
           onClick={onToggle}
           aria-pressed={selected}
           aria-label={ariaLabel || label}
-          className="flex min-w-0 flex-1 items-center gap-3 text-left"
+          className={`flex min-w-0 flex-1 gap-3 text-left ${
+            compactLabel ? 'items-start sm:items-center' : 'items-center'
+          }`}
         >
-          <Icon size={18} className="shrink-0" />
-          <span className={`font-medium whitespace-nowrap ${compactLabel ? 'text-xs' : 'text-sm'}`}>{label}</span>
+          <Icon size={18} className="mt-0.5 shrink-0 sm:mt-0" />
+          <span
+            className={`font-medium ${
+              compactLabel
+                ? 'text-xs leading-snug whitespace-normal sm:whitespace-nowrap sm:leading-normal'
+                : 'text-sm whitespace-nowrap'
+            }`}
+          >
+            {label}
+          </span>
         </button>
 
         <button
@@ -106,7 +118,9 @@ export default function OptionHelpRow({
               hoverLeaveTimer.current = 0;
             }, 120);
           }}
-          className="shrink-0 rounded-lg p-1.5 text-nm-text-faint transition hover:bg-nm-hover/80 hover:text-nm-text active:scale-95"
+          className={`shrink-0 rounded-lg p-1.5 text-nm-text-faint transition hover:bg-nm-hover/80 hover:text-nm-text active:scale-95 ${
+            compactLabel ? 'mt-0.5 sm:mt-0' : ''
+          }`}
         >
           <HelpCircle size={16} />
         </button>

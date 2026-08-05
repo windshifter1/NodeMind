@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Plus, Pencil } from 'lucide-react';
 import { WORKSPACE_ICONS } from '@/lib/workspaceIcons';
+import { emitTutorial } from '@/lib/tutorialEvents';
 
 function workspaceActiveGlow(colour) {
   return `0 0 0 2px ${colour}f0, 0 0 0 5px ${colour}70, 0 0 16px 2px ${colour}88`;
@@ -80,6 +81,7 @@ export default function WorkspaceBar({ workspaces, activeId, onSelect, onCreate,
         style={{ bottom: 'calc(1rem + var(--safe-bottom))' }}
       >
         <button
+          data-onboarding="workspace-create"
           onClick={onCreate}
           title="New workspace"
           className="shrink-0 rounded-xl p-2.5 outline-none text-nm-text-secondary transition hover:bg-nm-hover hover:text-nm-text active:scale-95"
@@ -97,7 +99,10 @@ export default function WorkspaceBar({ workspaces, activeId, onSelect, onCreate,
                 if (el) buttonRefs.current.set(w.id, el);
                 else buttonRefs.current.delete(w.id);
               }}
-              onClick={() => onSelect(w.id)}
+              onClick={() => {
+                if (w.id !== activeId) emitTutorial('workspace.switch');
+                onSelect(w.id);
+              }}
               onPointerDown={(e) => handleDown(w.id, e)}
               onPointerUp={handleUp}
               onPointerLeave={handleUp}
@@ -120,7 +125,11 @@ export default function WorkspaceBar({ workspaces, activeId, onSelect, onCreate,
         })}
         <div className="h-7 w-px shrink-0 bg-nm-divider" />
         <button
-          onClick={onEdit}
+          data-onboarding="workspace-edit"
+          onClick={() => {
+            onEdit();
+            emitTutorial('workspace.edit.open');
+          }}
           title="Edit current workspace"
           className="shrink-0 rounded-xl p-2.5 outline-none text-nm-text-secondary transition hover:bg-nm-hover hover:text-nm-text active:scale-95"
         >

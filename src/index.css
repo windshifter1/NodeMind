@@ -186,3 +186,79 @@
     }
   }
 }
+
+/* Interactive tutorial */
+@keyframes nm-tutorial-glow {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 2px rgba(165, 180, 252, 0.85),
+      0 0 22px 4px rgba(99, 102, 241, 0.4);
+  }
+  50% {
+    box-shadow:
+      0 0 0 2px rgba(199, 210, 254, 1),
+      0 0 34px 8px rgba(99, 102, 241, 0.55);
+  }
+}
+
+@keyframes nm-tutorial-task-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(165, 180, 252, 0.45);
+  }
+  50% {
+    box-shadow: 0 0 0 5px rgba(165, 180, 252, 0);
+  }
+}
+
+@keyframes nm-tutorial-check-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  70% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.nm-tutorial-spotlight {
+  animation: nm-tutorial-glow 2.2s ease-in-out infinite;
+  transition:
+    top 300ms ease,
+    left 300ms ease,
+    width 300ms ease,
+    height 300ms ease;
+}
+
+.nm-tutorial-task-pulse {
+  animation: nm-tutorial-task-pulse 1.6s ease-out infinite;
+}
+
+.nm-tutorial-check-in {
+  animation: nm-tutorial-check-in 320ms ease-out both;
+}
+
+body[data-tutorial-highlight] [data-onboarding] {
+  transition: opacity 220ms ease, filter 220ms ease;
+}
+
+body[data-tutorial-highlight='toolbar-add'] [data-onboarding='toolbar'] > :not([data-onboarding='toolbar-add']):not(.w-px),
+body[data-tutorial-highlight='toolbar-recenter'] [data-onboarding='toolbar'] > :not([data-onboarding='toolbar-recenter']):not(.w-px),
+body[data-tutorial-highlight='toolbar-selection'] [data-onboarding='toolbar'] > :not([data-onboarding='toolbar-selection']):not(.w-px),
+body[data-tutorial-highlight='toolbar-tools'] [data-onboarding='toolbar'] > :not([data-onboarding='toolbar-tools']):not(.w-px),
+body[data-tutorial-highlight='toolbar-settings'] [data-onboarding='toolbar'] > :not([data-onboarding='toolbar-settings']):not(.w-px) {
+  opacity: 0.38;
+  filter: grayscale(0.15);
+}
+
+body[data-tutorial-highlight='workspace-create'] [data-onboarding='workspace-bar'] > :not([data-onboarding='workspace-create']):not(.h-7),
+body[data-tutorial-highlight='workspace-edit'] [data-onboarding='workspace-bar'] > :not([data-onboarding='workspace-edit']):not(.h-7) {
+  opacity: 0.4;
+  filter: grayscale(0.1);
+}

@@ -11,8 +11,9 @@ import { emitTutorial, subscribeTutorial } from '@/lib/tutorialEvents';
 
 const ADVANCE_DELAY_MS = 420;
 const SAFE = 12;
-const GAP = 14;
-const COACH_WIDTH = 300;
+const GAP = 16;
+const COACH_WIDTH_DESKTOP = 300;
+const COACH_WIDTH_MOBILE = 260;
 const FALLBACK_HEIGHT = 160;
 
 function clamp(n, min, max) {
@@ -49,6 +50,29 @@ function readTargetBox(target) {
   };
 }
 
+function centerOf(box) {
+  return {
+    x: box.left + box.width / 2,
+    y: box.top + box.height / 2,
+  };
+}
+
+function dist2(a, b) {
+  const dx = a.x - b.x;
+  const dy = a.y - b.y;
+  return dx * dx + dy * dy;
+}
+
+function overlaps(a, b, margin = 0) {
+  if (!a || !b) return false;
+  return !(
+    a.right + margin <= b.left ||
+    a.left - margin >= b.right ||
+    a.bottom + margin <= b.top ||
+    a.top - margin >= b.bottom
+  );
+}
+
 function overlapArea(a, b, margin = 0) {
   if (!a || !b) return 0;
   const left = Math.max(a.left - margin, b.left - margin);
@@ -60,21 +84,37 @@ function overlapArea(a, b, margin = 0) {
   return w > 0 && h > 0 ? w * h : 0;
 }
 
+/** Expand toolbar-* highlights to the full toolbar so the coach leaves that strip. */
+function resolvePrimaryAvoidBox(highlightTarget) {
+  const target = readTargetBox(highlightTarget);
+  if (!highlightTarget || highlightTarget === 'canvas') return target;
+  if (String(highlightTarget).startsWith('toolbar')) {
+    return readTargetBox('toolbar') || target;
+  }
+  if (String(highlightTarget).startsWith('workspace')) {
+    return readTargetBox('workspace-bar') || target;
+  }
+  return target;
+}
+
 function readChromeAvoidBoxes(highlightTarget) {
   const avoid = [];
   const toolbar = readTargetBox('toolbar');
   const workspace = readTargetBox('workspace-bar');
-  const selection = readTargetBox('toolbar-selection');
-  // Always keep clear of chrome strips so canvas-targeted steps do not cover them.
-  if (toolbar) avoid.push(toolbar);
-  if (workspace) avoid.push(workspace);
-  if (selection && highlightTarget !== 'toolbar-selection') avoid.push(selection);
+  if (toolbar && !String(highlightTarget || '').startsWith('toolbar')) avoid.push(toolbar);
+  if (workspace && !String(highlightTarget || '').startsWith('workspace')) avoid.push(workspace);
   return avoid;
 }
 
+function coachWidthForViewport(vw, platform) {
+  const cap = platform === 'mobile' ? COACH_WIDTH_MOBILE : COACH_WIDTH_DESKTOP;
+  // Keep enough side room so left vs right corners are meaningfully different.
+  return Math.min(cap, Math.max(200, vw * 0.72));
+}
+
 /**
- * Dock the coach to a screen corner that does not cover the highlighted control
- * (or toolbar / workspace chrome). Prefers top-left when clear.
+ * Dock the coach to the corner furthest from the highlighted control.
+ * Hard-rejects corners that still cover the primary target.
  */
 function placeCoachAwayFromTarget(targetBox, cardW, cardH, extraAvoid = []) {
   const vw = window.innerWidth || 1;
@@ -86,14 +126,14 @@ function placeCoachAwayFromTarget(targetBox, cardW, cardH, extraAvoid = []) {
   const padB = SAFE + safe.bottom;
 
   const candidates = [
-    { id: 'top-left', top: padT, left: padL, prefer: 40 },
-    { id: 'top-right', top: padT, left: vw - cardW - padR, prefer: 20 },
-    { id: 'bottom-left', top: vh - cardH - padB, left: padL, prefer: 10 },
-    { id: 'bottom-right', top: vh - cardH - padB, left: vw - cardW - padR, prefer: 0 },
+    { id: 'top-left', top: padT, left: padL },
+    { id: 'top-right', top: padT, left: vw - cardW - padR },
+    { id: 'bottom-left', top: vh - cardH - padB, left: padL },
+    { id: 'bottom-right', top: vh - cardH - padB, left: vw - cardW - padR },
   ];
 
-  let best = candidates[0];
-  let bestScore = -Infinity;
+  const targetCenter = targetBox ? centerOf(targetBox) : { x: vw / 2, y: vh / 2 };
+  const scored = [];
 
   for (const c of candidates) {
     const top = clamp(c.top, padT, Math.max(padT, vh - cardH - padB));
@@ -106,16 +146,32 @@ function placeCoachAwayFromTarget(targetBox, cardW, cardH, extraAvoid = []) {
       bottom: top + cardH,
       right: left + cardW,
     };
-    let hit = overlapArea(box, targetBox, GAP);
-    for (const a of extraAvoid) hit += overlapArea(box, a, GAP);
-    const score = c.prefer - hit * 4;
-    if (score > bestScore) {
-      bestScore = score;
-      best = { top, left, id: c.id };
-    }
+    const coversTarget = overlaps(box, targetBox, GAP);
+    let chromeHit = 0;
+    for (const a of extraAvoid) chromeHit += overlapArea(box, a, GAP / 2);
+    const distance = dist2(centerOf(box), targetCenter);
+    scored.push({
+      top,
+      left,
+      id: c.id,
+      coversTarget,
+      chromeHit,
+      distance,
+    });
   }
 
-  return { top: best.top, left: best.left };
+  // Prefer corners that do not cover the highlighted action, furthest first.
+  const clear = scored.filter((s) => !s.coversTarget);
+  const pool = clear.length ? clear : scored;
+  pool.sort((a, b) => {
+    if (a.chromeHit !== b.chromeHit) return a.chromeHit - b.chromeHit;
+    if (b.distance !== a.distance) return b.distance - a.distance;
+    // Stable tie-break: top-left → top-right → bottom-left → bottom-right
+    const order = { 'top-left': 0, 'top-right': 1, 'bottom-left': 2, 'bottom-right': 3 };
+    return order[a.id] - order[b.id];
+  });
+
+  return { top: pool[0].top, left: pool[0].left };
 }
 
 function TaskCue({ label, done, active, justCompleted }) {
@@ -177,14 +233,15 @@ function InteractiveTutorial({ open, onClose, platform }) {
   }, [onClose]);
 
   const measure = useCallback(() => {
-    const targetBox = readTargetBox(highlightTarget);
+    const vw = window.innerWidth || 1;
+    const targetBox = resolvePrimaryAvoidBox(highlightTarget);
     const cardEl = cardRef.current;
-    const cardW = Math.min(COACH_WIDTH, (window.innerWidth || COACH_WIDTH) - SAFE * 2);
+    const cardW = coachWidthForViewport(vw, platform);
     const cardH = cardEl?.offsetHeight || FALLBACK_HEIGHT;
     setCardPos(
       placeCoachAwayFromTarget(targetBox, cardW, cardH, readChromeAvoidBoxes(highlightTarget))
     );
-  }, [highlightTarget]);
+  }, [highlightTarget, platform]);
 
   const advanceAfterTask = useCallback(
     (sIdx, tIdx) => {
@@ -355,13 +412,15 @@ function InteractiveTutorial({ open, onClose, platform }) {
     <div
       ref={cardRef}
       data-onboarding-tour
-      className="pointer-events-auto fixed z-[230] w-[min(300px,calc(100vw-1.5rem))] rounded-2xl border border-nm-border bg-nm-chrome p-3 shadow-xl backdrop-blur-md transition-[top,left,opacity,transform] duration-250 ease-out"
+      className="pointer-events-auto fixed z-[230] rounded-2xl border border-nm-border bg-nm-chrome p-3 shadow-xl backdrop-blur-md transition-[top,left,opacity,transform] duration-250 ease-out"
       role="dialog"
       aria-modal="false"
       aria-labelledby="nm-onboarding-title"
       style={{
         top: cardPos.top,
         left: cardPos.left,
+        width: coachWidthForViewport(window.innerWidth || 1, platform),
+        maxWidth: 'calc(100vw - 1.5rem)',
         transform: visible ? 'translateY(0)' : 'translateY(6px)',
         opacity: visible ? 1 : 0,
       }}

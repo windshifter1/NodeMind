@@ -188,17 +188,13 @@
 }
 
 /* Interactive tutorial */
-@keyframes nm-tutorial-glow {
+@keyframes nm-tutorial-ring {
   0%,
   100% {
-    box-shadow:
-      0 0 0 2px rgba(165, 180, 252, 0.85),
-      0 0 22px 4px rgba(99, 102, 241, 0.4);
+    outline-color: rgba(165, 180, 252, 0.95);
   }
   50% {
-    box-shadow:
-      0 0 0 2px rgba(199, 210, 254, 1),
-      0 0 34px 8px rgba(99, 102, 241, 0.55);
+    outline-color: rgba(199, 210, 254, 1);
   }
 }
 
@@ -227,13 +223,11 @@
   }
 }
 
-.nm-tutorial-spotlight {
-  animation: nm-tutorial-glow 2.2s ease-in-out infinite;
-  transition:
-    top 300ms ease,
-    left 300ms ease,
-    width 300ms ease,
-    height 300ms ease;
+/* Outline-only cue — never change position/transform on chrome targets. */
+[data-tutorial-ring] {
+  outline: 2px solid rgba(165, 180, 252, 0.95);
+  outline-offset: 3px;
+  animation: nm-tutorial-ring 2.2s ease-in-out infinite;
 }
 
 .nm-tutorial-task-pulse {
@@ -245,7 +239,7 @@
 }
 
 body[data-tutorial-highlight] [data-onboarding] {
-  transition: opacity 220ms ease, filter 220ms ease;
+  transition: opacity 220ms ease, filter 220ms ease, outline-color 220ms ease;
 }
 
 body[data-tutorial-highlight='toolbar-add'] [data-onboarding='toolbar'] > :not([data-onboarding='toolbar-add']):not(.w-px),

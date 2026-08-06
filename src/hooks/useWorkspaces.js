@@ -87,6 +87,7 @@ function reducer(state, action) {
         edges: action.workspace?.edges,
         nextZ: action.workspace?.nextZ,
       });
+      if (action.workspace?.id) ws.id = action.workspace.id;
       const workspaces = action.prepend ? [ws, ...state.workspaces] : [...state.workspaces, ws];
       return { workspaces, activeId: action.activate === false ? state.activeId : ws.id };
     }

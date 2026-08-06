@@ -9,24 +9,43 @@ import {
 } from '@/lib/onboarding';
 import { emitTutorial, subscribeTutorial } from '@/lib/tutorialEvents';
 
-const PAD = 10;
-const CARD_WIDTH = 360;
-const GAP = 12;
-const SAFE = 12;
 const ADVANCE_DELAY_MS = 420;
+const SAFE = 12;
+const GAP = 14;
+const COACH_WIDTH = 300;
+const FALLBACK_HEIGHT = 160;
 
 function clamp(n, min, max) {
   return Math.min(max, Math.max(min, n));
 }
 
-function asBox(top, left, width, height) {
+function readSafeInsets() {
+  const styles = getComputedStyle(document.documentElement);
+  const num = (name) => {
+    const v = Number.parseFloat(styles.getPropertyValue(name));
+    return Number.isFinite(v) ? v : 0;
+  };
   return {
-    top,
-    left,
-    width,
-    height,
-    bottom: top + height,
-    right: left + width,
+    top: num('--safe-top'),
+    right: num('--safe-right'),
+    bottom: num('--safe-bottom'),
+    left: num('--safe-left'),
+  };
+}
+
+function readTargetBox(target) {
+  if (!target || target === 'canvas') return null;
+  const el = document.querySelector(`[data-onboarding="${target}"]`);
+  if (!el) return null;
+  const r = el.getBoundingClientRect();
+  if (r.width < 1 || r.height < 1) return null;
+  return {
+    top: r.top,
+    left: r.left,
+    width: r.width,
+    height: r.height,
+    bottom: r.bottom,
+    right: r.right,
   };
 }
 
@@ -41,197 +60,60 @@ function overlapArea(a, b, margin = 0) {
   return w > 0 && h > 0 ? w * h : 0;
 }
 
-function readElBox(selector) {
-  const el = document.querySelector(selector);
-  if (!el) return null;
-  const r = el.getBoundingClientRect();
-  if (r.width < 1 && r.height < 1) return null;
-  return asBox(r.top, r.left, r.width, r.height);
-}
-
-function readCanvasSpotlight(canvasRect) {
+/**
+ * Dock the coach to a screen corner that does not cover the highlighted control.
+ * Prefers top-left when clear.
+ */
+function placeCoachAwayFromTarget(targetBox, cardW, cardH) {
   const vw = window.innerWidth || 1;
   const vh = window.innerHeight || 1;
-  const toolbar = readElBox('[data-onboarding="toolbar"]');
-  const workspace = readElBox('[data-onboarding="workspace-bar"]');
-
-  const topLimit = toolbar ? toolbar.bottom + GAP : Math.max(canvasRect.top + 72, 72);
-  const bottomLimit = workspace ? workspace.top - GAP : Math.min(canvasRect.bottom - 72, vh - 72);
-  const sidePad = clamp(vw * 0.06, 20, 56);
-
-  let top = Math.max(canvasRect.top + 8, topLimit);
-  let bottom = Math.min(canvasRect.bottom - 8, bottomLimit);
-  let left = canvasRect.left + sidePad;
-  let right = canvasRect.right - sidePad;
-
-  const available = bottom - top;
-  const cardReserve = clamp(available * 0.34, 180, 280);
-  if (available > cardReserve + 140) {
-    bottom -= cardReserve;
-  }
-
-  const minW = Math.min(320, vw * 0.72);
-  const minH = Math.min(200, vh * 0.32);
-  if (right - left < minW) {
-    const mid = (left + right) / 2;
-    left = clamp(mid - minW / 2, SAFE, vw - minW - SAFE);
-    right = left + minW;
-  }
-  if (bottom - top < minH) {
-    const mid = (top + bottom) / 2;
-    top = clamp(mid - minH / 2, SAFE, vh - minH - SAFE);
-    bottom = top + minH;
-  }
-
-  return asBox(top, left, Math.max(120, right - left), Math.max(100, bottom - top));
-}
-
-function readTargetRect(target) {
-  if (!target) return null;
-  const el = document.querySelector(`[data-onboarding="${target}"]`);
-  if (!el) return null;
-  const rect = el.getBoundingClientRect();
-  if (rect.width < 1 && rect.height < 1) return null;
-
-  const box = asBox(rect.top, rect.left, rect.width, rect.height);
-  const vw = window.innerWidth || 1;
-  const vh = window.innerHeight || 1;
-  if (rect.width > vw * 0.85 && rect.height > vh * 0.7) {
-    return readCanvasSpotlight(box);
-  }
-  return box;
-}
-
-function chromeAvoidRects(target) {
-  const avoid = [];
-  const toolbar = readElBox('[data-onboarding="toolbar"]');
-  const workspace = readElBox('[data-onboarding="workspace-bar"]');
-  if (toolbar && target !== 'toolbar' && !String(target || '').startsWith('toolbar-')) {
-    avoid.push(toolbar);
-  }
-  if (workspace && target !== 'workspace-bar' && !String(target || '').startsWith('workspace-')) {
-    avoid.push(workspace);
-  }
-  return avoid;
-}
-
-function placeCard(rect, cardW, cardH, avoidRects = [], options = {}) {
-  const vw = window.innerWidth;
-  const vh = window.innerHeight;
-  const prefer = options.prefer || null;
-
-  if (prefer === 'top') {
-    return {
-      top: SAFE + 8,
-      left: clamp((vw - cardW) / 2, SAFE, Math.max(SAFE, vw - cardW - SAFE)),
-      placement: 'viewport-top',
-    };
-  }
-
-  if (prefer === 'top-left') {
-    return {
-      top: SAFE + 8,
-      left: SAFE + 8,
-      placement: 'viewport-top-left',
-    };
-  }
-
-  if (prefer === 'bottom') {
-    return {
-      top: clamp(vh - cardH - SAFE - 8, SAFE, Math.max(SAFE, vh - cardH - SAFE)),
-      left: clamp((vw - cardW) / 2, SAFE, Math.max(SAFE, vw - cardW - SAFE)),
-      placement: 'viewport-bottom',
-    };
-  }
-
-  if (!rect) {
-    return {
-      top: Math.max(SAFE, (vh - cardH) / 2),
-      left: Math.max(SAFE, (vw - cardW) / 2),
-      placement: 'center',
-    };
-  }
-
-  const centerX = () => clamp(rect.left + rect.width / 2 - cardW / 2, SAFE, vw - cardW - SAFE);
-  const alignMidY = () =>
-    clamp(rect.top + rect.height / 2 - cardH / 2, SAFE, Math.max(SAFE, vh - cardH - SAFE));
+  const safe = readSafeInsets();
+  const padL = SAFE + safe.left;
+  const padR = SAFE + safe.right;
+  const padT = SAFE + safe.top;
+  const padB = SAFE + safe.bottom;
 
   const candidates = [
-    { placement: 'below', top: rect.bottom + PAD + 8, left: centerX() },
-    { placement: 'above', top: rect.top - cardH - PAD - 8, left: centerX() },
-    { placement: 'right', top: alignMidY(), left: rect.right + PAD + 8 },
-    { placement: 'left', top: alignMidY(), left: rect.left - cardW - PAD - 8 },
-    { placement: 'below-left', top: rect.bottom + PAD + 8, left: clamp(rect.left, SAFE, vw - cardW - SAFE) },
-    { placement: 'below-right', top: rect.bottom + PAD + 8, left: clamp(rect.right - cardW, SAFE, vw - cardW - SAFE) },
-    { placement: 'viewport-bottom', top: vh - cardH - SAFE - 8, left: centerX() },
-    { placement: 'viewport-top', top: SAFE + 8, left: centerX() },
+    { id: 'top-left', top: padT, left: padL, prefer: 40 },
+    { id: 'top-right', top: padT, left: vw - cardW - padR, prefer: 20 },
+    { id: 'bottom-left', top: vh - cardH - padB, left: padL, prefer: 10 },
+    { id: 'bottom-right', top: vh - cardH - padB, left: vw - cardW - padR, prefer: 0 },
   ];
 
-  let best = null;
+  let best = candidates[0];
   let bestScore = -Infinity;
 
-  for (const raw of candidates) {
-    const top = clamp(raw.top, SAFE, Math.max(SAFE, vh - cardH - SAFE));
-    const left = clamp(raw.left, SAFE, Math.max(SAFE, vw - cardW - SAFE));
-    const cardBox = asBox(top, left, cardW, cardH);
-    const targetHit = overlapArea(cardBox, rect, 6);
-    let chromeHit = 0;
-    for (const a of avoidRects) chromeHit += overlapArea(cardBox, a, 4);
-    const sideBias =
-      raw.placement === 'below' || raw.placement === 'above'
-        ? 40
-        : raw.placement.startsWith('below') || raw.placement.startsWith('above')
-          ? 20
-          : 0;
-    const inView =
-      top >= SAFE - 1 &&
-      left >= SAFE - 1 &&
-      top + cardH <= vh - SAFE + 1 &&
-      left + cardW <= vw - SAFE + 1
-        ? 80
-        : -200;
-    const score = inView + sideBias - targetHit * 2.5 - chromeHit * 3;
+  for (const c of candidates) {
+    const top = clamp(c.top, padT, Math.max(padT, vh - cardH - padB));
+    const left = clamp(c.left, padL, Math.max(padL, vw - cardW - padR));
+    const box = {
+      top,
+      left,
+      width: cardW,
+      height: cardH,
+      bottom: top + cardH,
+      right: left + cardW,
+    };
+    const hit = overlapArea(box, targetBox, GAP);
+    const score = c.prefer - hit * 4;
     if (score > bestScore) {
       bestScore = score;
-      best = { top, left, placement: raw.placement };
+      best = { top, left, id: c.id };
     }
   }
 
-  return best || { top: SAFE, left: SAFE, placement: 'fallback' };
+  return { top: best.top, left: best.left };
 }
 
-function MaskPanels({ highlight }) {
-  if (!highlight) {
-    return <div aria-hidden className="pointer-events-auto absolute inset-0 bg-black/62" />;
-  }
-
-  const { top, left, width, height } = highlight;
-  const dim = 'pointer-events-none absolute bg-black/55';
-
+function TaskCue({ label, done, active, justCompleted }) {
   return (
-    <>
-      <div aria-hidden className={dim} style={{ top: 0, left: 0, right: 0, height: Math.max(0, top) }} />
-      <div aria-hidden className={dim} style={{ top: top + height, left: 0, right: 0, bottom: 0 }} />
-      <div aria-hidden className={dim} style={{ top, left: 0, width: Math.max(0, left), height }} />
-      <div aria-hidden className={dim} style={{ top, left: left + width, right: 0, height }} />
-      <div
-        aria-hidden
-        className="pointer-events-none absolute rounded-2xl nm-tutorial-spotlight"
-        style={{ top, left, width, height }}
-      />
-    </>
-  );
-}
-
-function TaskRow({ label, done, active, justCompleted }) {
-  return (
-    <li
-      className={`flex items-start gap-2.5 text-sm leading-snug transition-opacity duration-300 ${
-        done ? 'text-nm-text-secondary' : active ? 'text-nm-text' : 'text-nm-text-muted/55'
+    <div
+      className={`flex items-start gap-2 text-[13px] leading-snug transition-opacity duration-300 ${
+        done ? 'text-nm-text-secondary' : active ? 'text-nm-text' : 'text-nm-text-muted'
       }`}
     >
       <span
-        className={`relative mt-0.5 flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border transition-all duration-300 ${
+        className={`relative mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border transition-all duration-300 ${
           done
             ? 'border-emerald-400 bg-emerald-500 text-white'
             : active
@@ -242,14 +124,14 @@ function TaskRow({ label, done, active, justCompleted }) {
       >
         {done && (
           <Check
-            size={11}
+            size={10}
             strokeWidth={3}
             className={justCompleted ? 'nm-tutorial-check-in' : ''}
           />
         )}
       </span>
       <span className={done ? 'line-through decoration-nm-text-muted/40' : ''}>{label}</span>
-    </li>
+    </div>
   );
 }
 
@@ -260,8 +142,8 @@ function InteractiveTutorial({ open, onClose, platform }) {
   const [completed, setCompleted] = useState(() => ({}));
   const [justCompletedKey, setJustCompletedKey] = useState(null);
   const [visible, setVisible] = useState(false);
-  const [rect, setRect] = useState(null);
-  const [cardPos, setCardPos] = useState({ top: 0, left: 0 });
+  const [bodyExpanded, setBodyExpanded] = useState(false);
+  const [cardPos, setCardPos] = useState({ top: SAFE, left: SAFE });
   const cardRef = useRef(null);
   const advancingRef = useRef(false);
   const stateRef = useRef({ sectionIndex: 0, taskIndex: 0, completed: {} });
@@ -271,6 +153,7 @@ function InteractiveTutorial({ open, onClose, platform }) {
   const currentTask = tasks[taskIndex] || null;
   const highlightTarget = currentTask?.target ?? section?.target ?? null;
   const isFinish = section?.id === 'finish';
+  const showBody = taskIndex === 0 || bodyExpanded;
 
   stateRef.current = { sectionIndex, taskIndex, completed };
 
@@ -281,18 +164,12 @@ function InteractiveTutorial({ open, onClose, platform }) {
   }, [onClose]);
 
   const measure = useCallback(() => {
-    const nextRect = readTargetRect(highlightTarget);
-    setRect(nextRect);
+    const targetBox = readTargetBox(highlightTarget);
     const cardEl = cardRef.current;
-    const measuredH = cardEl?.offsetHeight || 280;
-    const measuredW = cardEl?.offsetWidth || CARD_WIDTH;
-    const avoid = chromeAvoidRects(highlightTarget);
-    setCardPos(
-      placeCard(nextRect, measuredW, measuredH, avoid, {
-        prefer: currentTask?.cardPlacement || null,
-      })
-    );
-  }, [highlightTarget, currentTask]);
+    const cardW = Math.min(COACH_WIDTH, (window.innerWidth || COACH_WIDTH) - SAFE * 2);
+    const cardH = cardEl?.offsetHeight || FALLBACK_HEIGHT;
+    setCardPos(placeCoachAwayFromTarget(targetBox, cardW, cardH));
+  }, [highlightTarget]);
 
   const advanceAfterTask = useCallback(
     (sIdx, tIdx) => {
@@ -300,11 +177,13 @@ function InteractiveTutorial({ open, onClose, platform }) {
       if (!sec) return;
       if (tIdx < sec.tasks.length - 1) {
         setTaskIndex(tIdx + 1);
+        setBodyExpanded(false);
         return;
       }
       if (sIdx < sections.length - 1) {
         setSectionIndex(sIdx + 1);
         setTaskIndex(0);
+        setBodyExpanded(false);
         return;
       }
       finish();
@@ -343,14 +222,14 @@ function InteractiveTutorial({ open, onClose, platform }) {
     setSectionIndex(0);
     setTaskIndex(0);
     setCompleted({});
+    setBodyExpanded(false);
     advancingRef.current = false;
     const t = window.setTimeout(() => setVisible(true), 40);
     return () => window.clearTimeout(t);
   }, [open]);
 
-  // Finish section: mark complete task immediately.
   useEffect(() => {
-    if (!open || !isFinish || !currentTask) return;
+    if (!open || !isFinish || !currentTask || !section) return;
     const key = `${section.id}:${currentTask.id}`;
     if (completed[key]) return;
     setCompleted((prev) => ({ ...prev, [key]: true }));
@@ -366,28 +245,64 @@ function InteractiveTutorial({ open, onClose, platform }) {
     });
   }, [open, completeCurrentTask]);
 
-  useLayoutEffect(() => {
+  useEffect(() => {
+    const clearRing = () => {
+      document.querySelectorAll('[data-tutorial-ring]').forEach((el) => {
+        delete el.dataset.tutorialRing;
+      });
+    };
+
     if (!open) {
       delete document.body.dataset.tutorialHighlight;
+      clearRing();
       return undefined;
     }
-    if (highlightTarget) document.body.dataset.tutorialHighlight = highlightTarget;
-    else delete document.body.dataset.tutorialHighlight;
 
-    measure();
-    let rafId = 0;
+    // Canvas is the interaction surface — no ring cue for the whole board.
+    if (!highlightTarget || highlightTarget === 'canvas') {
+      delete document.body.dataset.tutorialHighlight;
+      clearRing();
+      return undefined;
+    }
+
+    document.body.dataset.tutorialHighlight = highlightTarget;
     let attempts = 0;
-    const retryMeasure = () => {
-      const found = !highlightTarget || readTargetRect(highlightTarget);
+    let rafId = 0;
+    const applyRing = () => {
+      clearRing();
+      const target = document.querySelector(`[data-onboarding="${highlightTarget}"]`);
+      if (target) {
+        target.dataset.tutorialRing = '';
+        return;
+      }
+      attempts += 1;
+      if (attempts < 16) rafId = window.requestAnimationFrame(applyRing);
+    };
+    applyRing();
+
+    return () => {
+      window.cancelAnimationFrame(rafId);
+      delete document.body.dataset.tutorialHighlight;
+      clearRing();
+    };
+  }, [open, highlightTarget]);
+
+  useLayoutEffect(() => {
+    if (!open) return undefined;
+    measure();
+    let attempts = 0;
+    let rafId = 0;
+    const retry = () => {
       measure();
       attempts += 1;
-      if (!found && attempts < 12) {
-        rafId = window.requestAnimationFrame(retryMeasure);
+      // Retry while the target (e.g. delete-bin) may still be mounting.
+      if (highlightTarget && highlightTarget !== 'canvas' && !readTargetBox(highlightTarget) && attempts < 16) {
+        rafId = window.requestAnimationFrame(retry);
       }
     };
-    rafId = window.requestAnimationFrame(retryMeasure);
+    rafId = window.requestAnimationFrame(retry);
     return () => window.cancelAnimationFrame(rafId);
-  }, [open, measure, sectionIndex, taskIndex, highlightTarget]);
+  }, [open, measure, sectionIndex, taskIndex, highlightTarget, showBody, bodyExpanded]);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -416,108 +331,100 @@ function InteractiveTutorial({ open, onClose, platform }) {
     return () => window.removeEventListener('keydown', onKey);
   }, [open, finish]);
 
-  useEffect(() => {
-    if (!open) {
-      delete document.body.dataset.tutorialHighlight;
-    }
-    return () => {
-      delete document.body.dataset.tutorialHighlight;
-    };
-  }, [open]);
+  if (!open || !section || !currentTask) return null;
 
-  if (!open || !section) return null;
+  const currentKey = `${section.id}:${currentTask.id}`;
+  const currentDone = !!completed[currentKey];
 
-  const highlight = rect
-    ? {
-        top: rect.top - PAD,
-        left: rect.left - PAD,
-        width: rect.width + PAD * 2,
-        height: rect.height + PAD * 2,
-      }
-    : null;
-
-  const sectionDoneCount = tasks.filter((t) => completed[`${section.id}:${t.id}`]).length;
-
-  const overlayTarget = highlightTarget?.startsWith('settings-') ? null : highlight;
-  // Settings / edit dialogs sit at z-210; keep the card above them.
-  const hideDimForModal = Boolean(highlightTarget?.startsWith('settings-'));
-
-  const mask = (
-    <div
-      className="pointer-events-none fixed inset-0 z-[200]"
-      aria-hidden
-      style={{
-        opacity: visible ? 1 : 0,
-        transition: 'opacity 200ms ease',
-      }}
-    >
-      {!hideDimForModal && <MaskPanels highlight={overlayTarget} />}
-    </div>
-  );
-
-  const card = (
+  const coach = (
     <div
       ref={cardRef}
       data-onboarding-tour
-      className="pointer-events-auto fixed z-[230] w-[min(360px,calc(100vw-1.5rem))] rounded-2xl border border-nm-border bg-nm-panel p-4 shadow-2xl transition-[top,left,opacity,transform] duration-300 ease-out"
+      className="pointer-events-auto fixed z-[230] w-[min(300px,calc(100vw-1.5rem))] rounded-2xl border border-nm-border bg-nm-chrome p-3 shadow-xl backdrop-blur-md transition-[top,left,opacity,transform] duration-250 ease-out"
       role="dialog"
       aria-modal="false"
       aria-labelledby="nm-onboarding-title"
       style={{
         top: cardPos.top,
         left: cardPos.left,
-        transform: visible ? 'translateY(0) scale(1)' : 'translateY(8px) scale(0.98)',
+        transform: visible ? 'translateY(0)' : 'translateY(6px)',
         opacity: visible ? 1 : 0,
       }}
       onPointerDown={(e) => e.stopPropagation()}
     >
-      <div className="mb-3 flex items-center gap-2">
-        <span className="rounded-full bg-indigo-500/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-indigo-300">
-          {platform === 'desktop' ? 'Desktop' : 'Mobile'} tutorial
+      <div className="mb-2 flex items-center gap-2">
+        <span className="rounded-full bg-indigo-500/20 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-indigo-300">
+          {platform === 'desktop' ? 'Desktop' : 'Mobile'}
         </span>
-        <span className="text-[11px] tabular-nums text-nm-text-muted">
-          {sectionIndex + 1} / {sections.length}
+        <span className="text-[10px] tabular-nums text-nm-text-muted">
+          {sectionIndex + 1}/{sections.length}
         </span>
+        {tasks.length > 1 && (
+          <span className="text-[10px] tabular-nums text-nm-text-muted">
+            · {taskIndex + 1}/{tasks.length}
+          </span>
+        )}
         <div className="flex-1" />
         <button
           type="button"
           onClick={finish}
-          className="text-xs font-medium text-nm-text-muted transition hover:text-nm-text"
+          className="text-[11px] font-medium text-nm-text-muted transition hover:text-nm-text"
         >
           Skip
         </button>
       </div>
 
-      <h2 id="nm-onboarding-title" className="text-base font-semibold text-nm-text">
+      <h2 id="nm-onboarding-title" className="text-sm font-semibold text-nm-text">
         {section.title}
       </h2>
-      <p className="mt-2 text-sm leading-relaxed text-nm-text-secondary">{section.body}</p>
 
-      <ul className="mt-4 flex flex-col gap-2.5">
-        {tasks.map((task, i) => {
-          const key = `${section.id}:${task.id}`;
-          const done = !!completed[key];
-          const active = i === taskIndex && !done;
-          return (
-            <TaskRow
-              key={task.id}
-              label={task.label}
-              done={done}
-              active={active}
-              justCompleted={justCompletedKey === key}
-            />
-          );
-        })}
-      </ul>
+      {showBody ? (
+        <p className="mt-1.5 text-xs leading-relaxed text-nm-text-secondary">{section.body}</p>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setBodyExpanded(true)}
+          className="mt-1 text-[11px] text-nm-text-muted transition hover:text-nm-text-secondary"
+        >
+          Show tip
+        </button>
+      )}
 
-      <div className="mt-4 flex items-center gap-2">
+      {tasks.length > 1 && (
+        <div className="mt-2.5 flex items-center gap-1" aria-hidden>
+          {tasks.map((task, i) => {
+            const key = `${section.id}:${task.id}`;
+            const done = !!completed[key];
+            const active = i === taskIndex && !done;
+            return (
+              <span
+                key={task.id}
+                className={`h-1 flex-1 rounded-full transition-colors duration-300 ${
+                  done ? 'bg-emerald-400/80' : active ? 'bg-indigo-400' : 'bg-nm-border-strong'
+                }`}
+              />
+            );
+          })}
+        </div>
+      )}
+
+      <div className="mt-2.5">
+        <TaskCue
+          label={currentTask.label}
+          done={currentDone}
+          active={!currentDone}
+          justCompleted={justCompletedKey === currentKey}
+        />
+      </div>
+
+      <div className="mt-3 flex items-center gap-2">
         {currentTask?.kind === 'continue' && (
           <>
             <div className="flex-1" />
             <button
               type="button"
               onClick={() => emitTutorial('tutorial.continue')}
-              className="rounded-xl bg-indigo-500 px-4 py-2 text-sm font-medium text-white shadow-lg shadow-indigo-500/25 transition hover:bg-indigo-400 active:scale-[0.98]"
+              className="rounded-xl bg-indigo-500 px-3 py-1.5 text-xs font-medium text-white shadow-lg shadow-indigo-500/25 transition hover:bg-indigo-400 active:scale-[0.98]"
             >
               Continue
             </button>
@@ -529,27 +436,17 @@ function InteractiveTutorial({ open, onClose, platform }) {
             <button
               type="button"
               onClick={finish}
-              className="rounded-xl bg-indigo-500 px-4 py-2 text-sm font-medium text-white shadow-lg shadow-indigo-500/25 transition hover:bg-indigo-400 active:scale-[0.98]"
+              className="rounded-xl bg-indigo-500 px-3 py-1.5 text-xs font-medium text-white shadow-lg shadow-indigo-500/25 transition hover:bg-indigo-400 active:scale-[0.98]"
             >
               Start mapping
             </button>
           </>
         )}
-        {!currentTask?.kind && !isFinish && (
-          <p className="text-[11px] text-nm-text-muted">
-            Complete the highlighted task ({sectionDoneCount}/{tasks.length})
-          </p>
-        )}
       </div>
     </div>
   );
 
-  return (
-    <>
-      {createPortal(mask, document.body)}
-      {createPortal(card, document.body)}
-    </>
-  );
+  return createPortal(coach, document.body);
 }
 
 export default function OnboardingTour({ open, onClose }) {

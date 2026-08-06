@@ -1185,7 +1185,7 @@ export default function CanvasBoard({
             borderColor: overBin ? '#ef4444' : 'var(--nm-border)',
             backgroundColor: overBin ? 'rgba(239,68,68,0.2)' : 'var(--nm-bin)',
             color: overBin ? '#ef4444' : 'var(--nm-text-secondary)',
-            transform: overBin ? 'scale(1.08)' : tutorialBinVisible ? 'scale(1.04)' : 'none',
+            transform: overBin ? 'scale(1.08)' : 'none',
           }}
         >
           <span className="flex items-center justify-center" style={{ width: 38, height: 38 }}>

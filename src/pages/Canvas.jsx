@@ -55,6 +55,7 @@ export default function Canvas() {
 
   // Tutorial starts on a fresh blank "Tutorial" board at the front of the bar.
   const tutorialWsBootRef = useRef(false);
+  const tutorialWorkspaceIdRef = useRef(null);
   useEffect(() => {
     if (!onboardingOpen) {
       tutorialWsBootRef.current = false;
@@ -62,10 +63,13 @@ export default function Canvas() {
     }
     if (tutorialWsBootRef.current) return;
     tutorialWsBootRef.current = true;
+    const tutorialId = `w_tutorial_${Date.now().toString(36)}`;
+    tutorialWorkspaceIdRef.current = tutorialId;
     dispatch({
       type: 'ADD_WORKSPACE',
       prepend: true,
       workspace: {
+        id: tutorialId,
         name: 'Tutorial',
         colour: '#6366f1',
         icon: 'note',
@@ -81,6 +85,16 @@ export default function Canvas() {
       if (scroller) scroller.scrollLeft = 0;
     });
   }, [onboardingOpen, dispatch]);
+
+  const finishOnboarding = useCallback(() => {
+    setOnboardingOpen(false);
+    setSettingsOpen(false);
+    const tutorialId = tutorialWorkspaceIdRef.current;
+    tutorialWorkspaceIdRef.current = null;
+    if (tutorialId) {
+      dispatch({ type: 'DELETE_WORKSPACE', id: tutorialId });
+    }
+  }, [dispatch]);
 
   const addNode = (x, y) => dispatch({ type: 'ADD_NODE', x, y });
   const updateNode = (id, patch) => dispatch({ type: 'UPDATE_NODE', id, patch });
@@ -369,7 +383,7 @@ export default function Canvas() {
         onThemeChange={setNodeTheme}
       />
 
-      <OnboardingTour open={onboardingOpen} onClose={() => setOnboardingOpen(false)} />
+      <OnboardingTour open={onboardingOpen} onClose={finishOnboarding} />
 
       <TerminalDialog
         open={terminalOpen}

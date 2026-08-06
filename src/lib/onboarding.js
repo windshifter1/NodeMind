@@ -472,7 +472,7 @@ export const MOBILE_TUTORIAL_SECTIONS = [
         id: 'marquee-add',
         label: 'Enable selection mode again, then drag a selection box around the second note to add it to the selection.',
         event: 'canvas.select.marquee-add',
-        target: 'canvas',
+        target: 'toolbar-selection',
       },
     ],
   },

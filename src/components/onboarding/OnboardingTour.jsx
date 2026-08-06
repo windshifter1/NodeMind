@@ -60,11 +60,23 @@ function overlapArea(a, b, margin = 0) {
   return w > 0 && h > 0 ? w * h : 0;
 }
 
+function readChromeAvoidBoxes(highlightTarget) {
+  const avoid = [];
+  const toolbar = readTargetBox('toolbar');
+  const workspace = readTargetBox('workspace-bar');
+  const selection = readTargetBox('toolbar-selection');
+  // Always keep clear of chrome strips so canvas-targeted steps do not cover them.
+  if (toolbar) avoid.push(toolbar);
+  if (workspace) avoid.push(workspace);
+  if (selection && highlightTarget !== 'toolbar-selection') avoid.push(selection);
+  return avoid;
+}
+
 /**
- * Dock the coach to a screen corner that does not cover the highlighted control.
- * Prefers top-left when clear.
+ * Dock the coach to a screen corner that does not cover the highlighted control
+ * (or toolbar / workspace chrome). Prefers top-left when clear.
  */
-function placeCoachAwayFromTarget(targetBox, cardW, cardH) {
+function placeCoachAwayFromTarget(targetBox, cardW, cardH, extraAvoid = []) {
   const vw = window.innerWidth || 1;
   const vh = window.innerHeight || 1;
   const safe = readSafeInsets();
@@ -94,7 +106,8 @@ function placeCoachAwayFromTarget(targetBox, cardW, cardH) {
       bottom: top + cardH,
       right: left + cardW,
     };
-    const hit = overlapArea(box, targetBox, GAP);
+    let hit = overlapArea(box, targetBox, GAP);
+    for (const a of extraAvoid) hit += overlapArea(box, a, GAP);
     const score = c.prefer - hit * 4;
     if (score > bestScore) {
       bestScore = score;
@@ -168,7 +181,9 @@ function InteractiveTutorial({ open, onClose, platform }) {
     const cardEl = cardRef.current;
     const cardW = Math.min(COACH_WIDTH, (window.innerWidth || COACH_WIDTH) - SAFE * 2);
     const cardH = cardEl?.offsetHeight || FALLBACK_HEIGHT;
-    setCardPos(placeCoachAwayFromTarget(targetBox, cardW, cardH));
+    setCardPos(
+      placeCoachAwayFromTarget(targetBox, cardW, cardH, readChromeAvoidBoxes(highlightTarget))
+    );
   }, [highlightTarget]);
 
   const advanceAfterTask = useCallback(

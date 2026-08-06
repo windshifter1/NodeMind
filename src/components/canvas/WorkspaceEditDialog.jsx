@@ -10,6 +10,7 @@ import {
   normalizeOrientation,
 } from '@/lib/canvasConstants';
 import { WORKSPACE_ICONS, WORKSPACE_ICON_KEYS, WORKSPACE_COLORS } from '@/lib/workspaceIcons';
+import { isDesktopPlatform } from '@/lib/onboarding';
 import { emitTutorial } from '@/lib/tutorialEvents';
 
 function OrientationIcon({ orientation }) {
@@ -134,7 +135,7 @@ export default function WorkspaceEditDialog({ workspace, open, onClose, onSave, 
             onChange={(e) => setName(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && save()}
             placeholder="Untitled"
-            autoFocus
+            autoFocus={isDesktopPlatform()}
             className="w-full mt-1 mb-4 rounded-lg border border-nm-border bg-nm-input px-3 py-2 text-nm-text placeholder:text-nm-text-muted outline-none focus:border-indigo-400 focus:bg-nm-hover"
             style={{ fontSize: 16 }}
           />

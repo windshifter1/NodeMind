@@ -497,16 +497,16 @@ export const MOBILE_TUTORIAL_SECTIONS = [
     target: 'workspace-bar',
     tasks: [
       {
-        id: 'switch',
-        label: 'Switch to another workspace.',
-        event: 'workspace.switch',
-        target: 'workspace-bar',
-      },
-      {
         id: 'create',
         label: 'Create a new workspace using +. Edit the details, then Save to create it.',
         event: 'workspace.create.save',
         target: 'workspace-create',
+      },
+      {
+        id: 'switch',
+        label: 'Switch to the previous workspace.',
+        event: 'workspace.switch',
+        target: 'workspace-bar',
       },
       {
         id: 'edit',

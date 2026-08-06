@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Plus, Pencil } from 'lucide-react';
 import { WORKSPACE_ICONS } from '@/lib/workspaceIcons';
+import { isDesktopPlatform } from '@/lib/onboarding';
 import { emitTutorial } from '@/lib/tutorialEvents';
 
 function workspaceGlowShadow(colour, active) {
@@ -290,9 +291,19 @@ function WorkspaceTab({ workspace: w, isActive, buttonRef, onSelect, onPointerDo
 export default function WorkspaceBar({ workspaces, activeId, onSelect, onCreate, onEdit }) {
   const [shownId, setShownId] = useState(null);
   const [tooltipPos, setTooltipPos] = useState(null);
+  const [isDesktop, setIsDesktop] = useState(() => isDesktopPlatform());
   const holdTimer = useRef(null);
   const suppressMouse = useRef(false);
   const buttonRefs = useRef(new Map());
+
+  useEffect(() => {
+    const mq = window.matchMedia?.('(hover: hover) and (pointer: fine)');
+    if (!mq) return undefined;
+    const update = () => setIsDesktop(mq.matches);
+    update();
+    mq.addEventListener?.('change', update);
+    return () => mq.removeEventListener?.('change', update);
+  }, []);
 
   const clearHold = () => {
     if (holdTimer.current) {
@@ -357,8 +368,14 @@ export default function WorkspaceBar({ workspaces, activeId, onSelect, onCreate,
     <>
       <div
         data-onboarding="workspace-bar"
-        className="absolute left-1/2 z-50 flex w-max max-w-[min(70vw,calc(100%-2rem-var(--safe-left)-var(--safe-right)))] -translate-x-1/2 items-end gap-1.5 overflow-visible rounded-2xl border border-nm-border bg-nm-chrome px-2 pb-1.5 pt-2 shadow-xl backdrop-blur-md"
-        style={{ bottom: 'calc(1rem + var(--safe-bottom))' }}
+        className="absolute left-1/2 z-50 flex w-max -translate-x-1/2 items-end gap-1.5 overflow-visible rounded-2xl border border-nm-border bg-nm-chrome px-2 pb-1.5 pt-2 shadow-xl backdrop-blur-md"
+        style={{
+          bottom: 'calc(1rem + var(--safe-bottom))',
+          // Mobile: keep clear of the bottom-right bin; desktop can use more width.
+          maxWidth: isDesktop
+            ? 'min(70vw, calc(100% - 2rem - var(--safe-left) - var(--safe-right)))'
+            : 'min(50vw, calc(100% - 2rem - var(--safe-left) - var(--safe-right)))',
+        }}
       >
         <button
           data-onboarding="workspace-create"

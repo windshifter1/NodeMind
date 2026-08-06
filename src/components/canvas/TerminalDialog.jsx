@@ -152,8 +152,15 @@ function cloneBranch(nodes, rootId, parentId, origin, orientation) {
   return layoutBranchByOrientation([...nodes, ...clones], idMap.get(rootId), origin, orientation);
 }
 
+/** Normalize curly/smart quotes from mobile keyboards to ASCII quotes. */
+function normalizeQuotes(value) {
+  return String(value || '')
+    .replace(/[\u201C\u201D\u201E\u201F\u2033\u2036]/g, '"')
+    .replace(/[\u2018\u2019\u201A\u201B\u2032\u2035]/g, "'");
+}
+
 function normalizeCommandLine(input) {
-  return input.trim().replace(/^cd\.\./i, 'cd ..');
+  return normalizeQuotes(input).trim().replace(/^cd\.\./i, 'cd ..');
 }
 
 function commandKey(token) {
@@ -175,7 +182,7 @@ function formatNode(nodes, node) {
 }
 
 function unquote(value) {
-  const trimmed = (value || '').trim();
+  const trimmed = normalizeQuotes(value).trim();
   if (trimmed.startsWith('"') && trimmed.endsWith('"') && trimmed.length >= 2) {
     return trimmed.slice(1, -1);
   }
@@ -183,7 +190,7 @@ function unquote(value) {
 }
 
 function isQuoted(value) {
-  const trimmed = (value || '').trim();
+  const trimmed = normalizeQuotes(value).trim();
   return trimmed.startsWith('"') && trimmed.endsWith('"') && trimmed.length >= 2;
 }
 
@@ -269,6 +276,19 @@ function matchesDateQuery(node, query) {
 
 function renderTerminalLine(line) {
   if (typeof line !== 'string') return line;
+
+  // Echoed command lines: "Workspace 3:\> dir" — bold the prompt for scanability.
+  const promptEcho = line.match(/^(.+?:\\.*?>)(\s)(.*)$/);
+  if (promptEcho) {
+    return (
+      <>
+        <strong className="font-semibold text-nm-terminal-text">{promptEcho[1]}</strong>
+        {promptEcho[2]}
+        {promptEcho[3]}
+      </>
+    );
+  }
+
   const marker = 'Example:';
   const idx = line.indexOf(marker);
   if (idx === -1) return line;
@@ -344,6 +364,15 @@ export default function TerminalDialog({ open, onClose, workspace, dispatch, onE
     () => [`NodeMind Terminal`, `Type help for commands, or tutorial to learn by doing.`, ''],
     []
   );
+
+  const autocompleteGhost = useMemo(() => {
+    if (!input || /\s/.test(input)) return '';
+    const completed = completeCommandToken(input);
+    if (!completed) return '';
+    if (!completed.toLowerCase().startsWith(input.toLowerCase())) return '';
+    if (completed.length <= input.length) return '';
+    return completed.slice(input.length);
+  }, [input]);
 
   if (!open) return null;
 
@@ -826,7 +855,7 @@ export default function TerminalDialog({ open, onClose, workspace, dispatch, onE
           <div
             ref={scrollRef}
             data-terminal-output
-            className={`min-h-0 flex-1 cursor-text select-text overflow-auto bg-nm-terminal px-4 py-3 text-[13px] leading-relaxed text-nm-terminal-text ${
+            className={`nm-scrollbar min-h-0 flex-1 cursor-text select-text overflow-auto bg-nm-terminal px-4 py-3 text-[13px] leading-relaxed text-nm-terminal-text ${
               outputHighlight ? 'ring-2 ring-inset ring-indigo-400/80' : ''
             }`}
             onClick={() => {
@@ -856,20 +885,34 @@ export default function TerminalDialog({ open, onClose, workspace, dispatch, onE
             }}
           >
             <span className="shrink-0 text-nm-terminal-prompt">{prompt}</span>
-            <input
-              ref={inputRef}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={onInputKeyDown}
-              onContextMenu={(e) => {
-                e.preventDefault();
-                pasteIntoInput();
-              }}
-              className="min-w-0 flex-1 bg-transparent text-nm-terminal-text caret-nm-terminal-prompt outline-none"
-              autoComplete="off"
-              spellCheck={false}
-              enterKeyHint="go"
-            />
+            <div className="relative min-w-0 flex-1">
+              {autocompleteGhost ? (
+                <div
+                  aria-hidden
+                  className="pointer-events-none absolute inset-0 flex items-center overflow-hidden whitespace-pre font-mono text-[13px] leading-none"
+                >
+                  <span className="invisible">{input}</span>
+                  <span style={{ color: 'rgba(148, 163, 158, 0.38)' }}>{autocompleteGhost}</span>
+                </div>
+              ) : null}
+              <input
+                ref={inputRef}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={onInputKeyDown}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  pasteIntoInput();
+                }}
+                className="relative w-full min-w-0 bg-transparent text-nm-terminal-text caret-nm-terminal-prompt outline-none"
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="none"
+                spellCheck={false}
+                enterKeyHint="go"
+                inputMode="text"
+              />
+            </div>
           </form>
         </div>
       </div>

@@ -4,6 +4,7 @@ import {
   GRAPH_ORIENTATIONS,
   LAYOUT_DENSITIES,
   LAYOUT_ON_ORIENTATION_CHANGE,
+  layoutSettingsForDensity,
   normalizeLayoutOnOrientationChange,
   normalizeLayoutSettings,
   normalizeOrientation,
@@ -75,6 +76,11 @@ export default function WorkspaceEditDialog({ workspace, open, onClose, onSave, 
     setLayoutSettings((current) => normalizeLayoutSettings({ ...current, [key]: value }));
   };
 
+  const close = () => {
+    if (mode === 'edit') emitTutorial('workspace.edit.close');
+    onClose();
+  };
+
   const save = () => {
     const nextName = name.trim() || 'Untitled';
     const patch = {
@@ -88,21 +94,10 @@ export default function WorkspaceEditDialog({ workspace, open, onClose, onSave, 
     onSave(workspace.id, patch);
     if (mode === 'create') {
       emitTutorial('workspace.create.save');
-    } else {
-      if (nextName !== (workspace.name || '')) emitTutorial('workspace.rename');
-      const colourChanged = colour !== (workspace.colour || WORKSPACE_COLORS[0]);
-      const iconChanged = icon !== (workspace.icon || 'note');
-      const orientationChanged = orientation !== normalizeOrientation(workspace.orientation);
-      const layoutModeChanged =
-        layoutOnOrientationChange !==
-        normalizeLayoutOnOrientationChange(workspace.layoutOnOrientationChange);
-      const settingsChanged =
-        JSON.stringify(layoutSettings) !==
-        JSON.stringify(normalizeLayoutSettings(workspace.layoutSettings));
-      if (colourChanged || iconChanged || orientationChanged || layoutModeChanged || settingsChanged) {
-        emitTutorial('workspace.settings.save');
-      }
+      onClose();
+      return;
     }
+    emitTutorial('workspace.edit.close');
     onClose();
   };
 
@@ -116,7 +111,7 @@ export default function WorkspaceEditDialog({ workspace, open, onClose, onSave, 
         paddingLeft: 'calc(1rem + var(--safe-left))',
       }}
     >
-      <div className="absolute inset-0 bg-nm-overlay backdrop-blur-md" onClick={onClose} />
+      <div className="absolute inset-0 bg-nm-overlay backdrop-blur-md" onClick={close} />
       <div
         className="relative w-full max-w-sm max-h-[88vh] rounded-2xl bg-nm-panel border border-nm-border shadow-2xl flex flex-col overflow-hidden"
         onPointerDown={(e) => e.stopPropagation()}
@@ -125,7 +120,7 @@ export default function WorkspaceEditDialog({ workspace, open, onClose, onSave, 
           <h2 className="text-sm font-semibold text-nm-text">{mode === 'create' ? 'New workspace' : 'Edit workspace'}</h2>
           <div className="flex-1" />
           <button
-            onClick={onClose}
+            onClick={close}
             className="p-2 rounded-lg text-nm-text-faint hover:text-nm-text hover:bg-nm-hover transition active:scale-95"
           >
             <X size={18} />
@@ -247,7 +242,7 @@ export default function WorkspaceEditDialog({ workspace, open, onClose, onSave, 
                   return (
                     <button
                       key={option.value}
-                      onClick={() => updateLayoutSetting('density', option.value)}
+                      onClick={() => setLayoutSettings(layoutSettingsForDensity(option.value))}
                       className="rounded-lg border px-2 py-2 text-xs font-medium transition hover:bg-nm-hover"
                       style={optionStyle(selected, colour)}
                     >
@@ -284,7 +279,7 @@ export default function WorkspaceEditDialog({ workspace, open, onClose, onSave, 
                 onClick={() => {
                   if (window.confirm('Delete this workspace and all its content?')) {
                     onDelete(workspace.id);
-                    onClose();
+                    close();
                   }
                 }}
                 className="text-sm text-red-500 hover:text-red-400 font-medium transition"
@@ -296,7 +291,7 @@ export default function WorkspaceEditDialog({ workspace, open, onClose, onSave, 
             )}
             <div className="flex gap-2">
               <button
-                onClick={onClose}
+                onClick={close}
                 className="px-4 py-2 rounded-lg text-sm font-medium text-nm-text-faint hover:text-nm-text hover:bg-nm-hover transition"
               >
                 Cancel

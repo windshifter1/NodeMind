@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Download, Upload, Trash2, Plus, Copy, Terminal, Share2, Wrench, Settings, Home, SquareDashed } from 'lucide-react';
 import { emitTutorial } from '@/lib/tutorialEvents';
+import { useTutorialHighlight } from '@/hooks/useTutorialHighlight';
 
 function AutoOrganiseAllIcon({ size = 15 }) {
   return (
@@ -78,15 +79,33 @@ function ToolbarGroup({ icon: Icon, title, options, dataOnboarding }) {
   const [clickedOpen, setClickedOpen] = useState(false);
   const groupRef = useRef(null);
   const canHover = useRef(false);
-  const open = hoverOpen || clickedOpen;
+  const toolsOpenedByClickRef = useRef(false);
+  const toolsTutorialActive = useTutorialHighlight('toolbar-tools');
+  const clickOnlyOpen = dataOnboarding === 'toolbar-tools' && toolsTutorialActive;
+  const open = clickOnlyOpen ? clickedOpen : hoverOpen || clickedOpen;
+
+  const closeTools = (emitClose = false) => {
+    const wasOpen = open;
+    const openedByClick = toolsOpenedByClickRef.current;
+    setHoverOpen(false);
+    setClickedOpen(false);
+    toolsOpenedByClickRef.current = false;
+    if (
+      emitClose &&
+      wasOpen &&
+      openedByClick &&
+      dataOnboarding === 'toolbar-tools'
+    ) {
+      emitTutorial('toolbar.tools.close');
+    }
+  };
 
   useEffect(() => {
     canHover.current = window.matchMedia?.('(hover: hover) and (pointer: fine)').matches || false;
     const close = (e) => {
       if (!open || groupRef.current?.contains(e.target)) return;
 
-      setHoverOpen(false);
-      setClickedOpen(false);
+      closeTools(true);
 
       const interactive = e.target.closest?.(
         'button, input, textarea, select, [role="button"], [contenteditable="true"], [data-note-node]'
@@ -99,30 +118,42 @@ function ToolbarGroup({ icon: Icon, title, options, dataOnboarding }) {
     };
     document.addEventListener('pointerdown', close, true);
     return () => document.removeEventListener('pointerdown', close, true);
-  }, [open]);
+  }, [open, dataOnboarding]);
 
   const run = (action, eventName) => {
     action();
     if (eventName) emitTutorial(eventName);
-    setHoverOpen(false);
-    setClickedOpen(false);
+    closeTools(true);
   };
 
   useEffect(() => {
-    if (open && dataOnboarding === 'toolbar-tools') {
-      emitTutorial('toolbar.tools.open');
-    }
-  }, [open, dataOnboarding]);
+    if (clickOnlyOpen) setHoverOpen(false);
+  }, [clickOnlyOpen]);
 
   return (
     <div
       ref={groupRef}
       className="relative"
       data-onboarding={dataOnboarding}
-      onMouseEnter={() => canHover.current && setHoverOpen(true)}
-      onMouseLeave={() => canHover.current && setHoverOpen(false)}
+      onMouseEnter={() => canHover.current && !clickOnlyOpen && setHoverOpen(true)}
+      onMouseLeave={() => canHover.current && !clickOnlyOpen && setHoverOpen(false)}
     >
-      <ToolbarButton title={title} onClick={() => setClickedOpen((value) => !value)}>
+      <ToolbarButton
+        title={title}
+        onClick={() => {
+          setClickedOpen((value) => {
+            const next = !value;
+            if (dataOnboarding === 'toolbar-tools') {
+              if (next) toolsOpenedByClickRef.current = true;
+              else if (toolsOpenedByClickRef.current) {
+                toolsOpenedByClickRef.current = false;
+                emitTutorial('toolbar.tools.close');
+              }
+            }
+            return next;
+          });
+        }}
+      >
         <Icon size={16} />
       </ToolbarButton>
       <div

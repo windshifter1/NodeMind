@@ -115,9 +115,34 @@ function chromeAvoidRects(target) {
   return avoid;
 }
 
-function placeCard(rect, cardW, cardH, avoidRects = []) {
+function placeCard(rect, cardW, cardH, avoidRects = [], options = {}) {
   const vw = window.innerWidth;
   const vh = window.innerHeight;
+  const prefer = options.prefer || null;
+
+  if (prefer === 'top') {
+    return {
+      top: SAFE + 8,
+      left: clamp((vw - cardW) / 2, SAFE, Math.max(SAFE, vw - cardW - SAFE)),
+      placement: 'viewport-top',
+    };
+  }
+
+  if (prefer === 'top-left') {
+    return {
+      top: SAFE + 8,
+      left: SAFE + 8,
+      placement: 'viewport-top-left',
+    };
+  }
+
+  if (prefer === 'bottom') {
+    return {
+      top: clamp(vh - cardH - SAFE - 8, SAFE, Math.max(SAFE, vh - cardH - SAFE)),
+      left: clamp((vw - cardW) / 2, SAFE, Math.max(SAFE, vw - cardW - SAFE)),
+      placement: 'viewport-bottom',
+    };
+  }
 
   if (!rect) {
     return {
@@ -261,8 +286,13 @@ function InteractiveTutorial({ open, onClose, platform }) {
     const cardEl = cardRef.current;
     const measuredH = cardEl?.offsetHeight || 280;
     const measuredW = cardEl?.offsetWidth || CARD_WIDTH;
-    setCardPos(placeCard(nextRect, measuredW, measuredH, chromeAvoidRects(highlightTarget)));
-  }, [highlightTarget]);
+    const avoid = chromeAvoidRects(highlightTarget);
+    setCardPos(
+      placeCard(nextRect, measuredW, measuredH, avoid, {
+        prefer: currentTask?.cardPlacement || null,
+      })
+    );
+  }, [highlightTarget, currentTask]);
 
   const advanceAfterTask = useCallback(
     (sIdx, tIdx) => {
@@ -337,11 +367,27 @@ function InteractiveTutorial({ open, onClose, platform }) {
   }, [open, completeCurrentTask]);
 
   useLayoutEffect(() => {
-    if (!open) return undefined;
+    if (!open) {
+      delete document.body.dataset.tutorialHighlight;
+      return undefined;
+    }
+    if (highlightTarget) document.body.dataset.tutorialHighlight = highlightTarget;
+    else delete document.body.dataset.tutorialHighlight;
+
     measure();
-    const id = window.requestAnimationFrame(measure);
-    return () => window.cancelAnimationFrame(id);
-  }, [open, measure, sectionIndex, taskIndex]);
+    let rafId = 0;
+    let attempts = 0;
+    const retryMeasure = () => {
+      const found = !highlightTarget || readTargetRect(highlightTarget);
+      measure();
+      attempts += 1;
+      if (!found && attempts < 12) {
+        rafId = window.requestAnimationFrame(retryMeasure);
+      }
+    };
+    rafId = window.requestAnimationFrame(retryMeasure);
+    return () => window.cancelAnimationFrame(rafId);
+  }, [open, measure, sectionIndex, taskIndex, highlightTarget]);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -373,14 +419,11 @@ function InteractiveTutorial({ open, onClose, platform }) {
   useEffect(() => {
     if (!open) {
       delete document.body.dataset.tutorialHighlight;
-      return undefined;
     }
-    if (highlightTarget) document.body.dataset.tutorialHighlight = highlightTarget;
-    else delete document.body.dataset.tutorialHighlight;
     return () => {
       delete document.body.dataset.tutorialHighlight;
     };
-  }, [open, highlightTarget]);
+  }, [open]);
 
   if (!open || !section) return null;
 
@@ -415,6 +458,7 @@ function InteractiveTutorial({ open, onClose, platform }) {
   const card = (
     <div
       ref={cardRef}
+      data-onboarding-tour
       className="pointer-events-auto fixed z-[230] w-[min(360px,calc(100vw-1.5rem))] rounded-2xl border border-nm-border bg-nm-panel p-4 shadow-2xl transition-[top,left,opacity,transform] duration-300 ease-out"
       role="dialog"
       aria-modal="false"

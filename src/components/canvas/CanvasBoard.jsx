@@ -15,6 +15,7 @@ import {
   socketWorld,
 } from '@/lib/canvasConstants';
 import { emitTutorial } from '@/lib/tutorialEvents';
+import useSpacePan from '@/hooks/useSpacePan';
 
 function clampZoom(z) {
   return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z));
@@ -117,6 +118,17 @@ export default function CanvasBoard({
     return { w, h };
   };
   const [vp, setVp] = useState(() => readViewportSize());
+  const [tutorialBinVisible, setTutorialBinVisible] = useState(false);
+
+  useEffect(() => {
+    const sync = () => {
+      setTutorialBinVisible(document.body.dataset.tutorialHighlight === 'delete-bin');
+    };
+    sync();
+    const mo = new MutationObserver(sync);
+    mo.observe(document.body, { attributes: true, attributeFilter: ['data-tutorial-highlight'] });
+    return () => mo.disconnect();
+  }, []);
 
   useEffect(() => {
     const mq = window.matchMedia?.('(hover: hover) and (pointer: fine)');
@@ -134,10 +146,18 @@ export default function CanvasBoard({
     return e.button === 0 || e.button === -1;
   };
 
+  // Pan gestures: touch / primary (when not marquee), middle-mouse, or Space-to-pan (hook).
+  // Right-click is reserved for context menus — it must not pan.
   const isCanvasPanPointerStart = (e) => {
     if (e.pointerType !== 'mouse') return e.button === 0 || e.button === -1;
-    return e.button === 0 || e.button === 1 || e.button === 2;
+    return e.button === 0 || e.button === 1;
   };
+
+  const { spacePanCursor, isSpacePanArmed } = useSpacePan({
+    boardRef,
+    setPan,
+    onPanGesture: () => emitTutorial('canvas.pan.space'),
+  });
 
   /** Desktop always marquees on primary mouse; mobile only when Selection Mode is armed. */
   const shouldUseMarquee = (e) => {
@@ -492,6 +512,11 @@ export default function CanvasBoard({
 
   // --- Background pan / click-to-add / pinch ---
   const onPointerDown = (e) => {
+    // Space-to-pan owns primary-button interaction while armed (see useSpacePan).
+    if (isSpacePanArmed()) {
+      cancelCanvasInteraction();
+      return;
+    }
     if (!isCanvasPanPointerStart(e) || (e.button === 0 && shouldSuppressPrimaryPointer(e, 'down'))) {
       cancelCanvasInteraction();
       return;
@@ -506,7 +531,7 @@ export default function CanvasBoard({
 
     if (pointers.current.size === 1) {
       const useMarquee = shouldUseMarquee(e);
-      const delayedMousePan = e.pointerType === 'mouse' && (e.button === 1 || e.button === 2);
+      const delayedMousePan = e.pointerType === 'mouse' && e.button === 1;
       panState.current = {
         panning: !delayedMousePan && !useMarquee,
         candidate: delayedMousePan || useMarquee,
@@ -574,7 +599,6 @@ export default function CanvasBoard({
           panState.current.candidate = false;
           panState.current.panning = true;
           panState.current.moved = true;
-          panState.current.suppressContextMenu = panState.current.button === 2;
         }
       }
 
@@ -582,12 +606,11 @@ export default function CanvasBoard({
         updateMarqueeRect(panState.current.startX, panState.current.startY, e.clientX, e.clientY);
       } else if (panState.current.panning) {
         if (Math.abs(dx) + Math.abs(dy) > PAN_DRAG_THRESHOLD) panState.current.moved = true;
-        if (panState.current.button === 1 || panState.current.button === 2) e.preventDefault();
+        if (panState.current.button === 1) e.preventDefault();
         setPan((p) => ({ x: p.x + dx, y: p.y + dy }));
         if (!panState.current.tutorialPanEmitted && (Math.abs(dx) > 0 || Math.abs(dy) > 0)) {
           panState.current.tutorialPanEmitted = true;
           if (panState.current.button === 1) emitTutorial('canvas.pan.middle');
-          else if (panState.current.button === 2) emitTutorial('canvas.pan.right');
           else emitTutorial('canvas.pan.touch');
         }
       }
@@ -646,12 +669,17 @@ export default function CanvasBoard({
         const hits = nodesRef.current
           .filter((node) => rectsIntersect(nodeLayoutRect(node), worldRect))
           .map((node) => node.id);
-        if (e.shiftKey) {
-          onSelectionChange([...new Set([...selectedNodeIdsRef.current, ...hits])]);
+        const prior = selectedNodeIdsRef.current;
+        const additive = e.shiftKey || selectionArmedRef.current;
+        if (additive) {
+          onSelectionChange([...new Set([...prior, ...hits])]);
         } else {
           onSelectionChange(hits);
         }
         if (selectionArmedRef.current) onSelectionArmConsumed?.();
+        if (additive && prior.length > 0 && hits.some((id) => !prior.includes(id))) {
+          emitTutorial('canvas.select.marquee-add');
+        }
         emitTutorial('canvas.select.marquee');
       } else if (panState.current.button === 0 && !moved && !pinch.current.active) {
         const hasSelection = selectedNodeIdsRef.current.length > 0;
@@ -686,11 +714,8 @@ export default function CanvasBoard({
     if (pointers.current.size === 0) cancelCanvasInteraction();
   };
 
-  const onContextMenu = (e) => {
-    if (panState.current.suppressContextMenu) {
-      e.preventDefault();
-      panState.current.suppressContextMenu = false;
-    }
+  const onContextMenu = () => {
+    // Right-click no longer pans — allow context menus / future features.
     armPostContextMenuSuppression();
     cancelCanvasInteraction();
   };
@@ -748,6 +773,8 @@ export default function CanvasBoard({
   const startNodeDrag = useCallback(
     (nodeId, e, { armed = false, onRelease = null } = {}) => {
       if (!isPrimaryPointerStart(e) || shouldSuppressPrimaryPointer(e, 'down')) return;
+      // Space-to-pan temporarily owns the primary pointer.
+      if (isSpacePanArmed()) return;
       const node = nodes.find((n) => n.id === nodeId);
       if (!node) return;
 
@@ -755,6 +782,9 @@ export default function CanvasBoard({
       const currentSelection = selectedNodeIdsRef.current;
       let dragIds;
       let shiftToggleOff = false;
+      // Title taps use an armed drag + click release. If Shift-add already
+      // applied selection on pointerdown, skip the release toggle or it undoes the add.
+      let releaseHandler = armed ? onRelease : null;
 
       const toggle = shiftKey || selectionArmedRef.current;
       if (toggle) {
@@ -766,6 +796,7 @@ export default function CanvasBoard({
           onSelectionChange?.(dragIds);
           emitTutorial('canvas.select.shift-add');
           emitTutorial('canvas.select.modify');
+          releaseHandler = null;
         }
       } else if (currentSelection.includes(nodeId) && currentSelection.length > 1) {
         dragIds = currentSelection.filter((id) => nodes.some((n) => n.id === id));
@@ -789,7 +820,7 @@ export default function CanvasBoard({
       });
 
       nodeDragMovedRef.current = false;
-      dragReleaseRef.current = armed ? onRelease : null;
+      dragReleaseRef.current = releaseHandler;
       dragVisual.current = {
         raf: 0,
         ids: dragIds,
@@ -810,7 +841,7 @@ export default function CanvasBoard({
       draggingNodeRef.current = nextDrag;
       setDraggingNode(nextDrag);
     },
-    [nodes, onBringToFront, onSelectionChange]
+    [nodes, onBringToFront, onSelectionChange, isSpacePanArmed]
   );
 
   const armNodeDrag = useCallback(
@@ -954,6 +985,7 @@ export default function CanvasBoard({
   const startConnect = useCallback(
     (nodeId, type, e) => {
       if (e && (!isPrimaryPointerStart(e) || shouldSuppressPrimaryPointer(e, 'down'))) return;
+      if (isSpacePanArmed()) return;
       const node = nodes.find((n) => n.id === nodeId);
       if (!node) return;
       const point = socketWorld(node, type, graphOrientation, nodeSizeForLayout(node));
@@ -963,7 +995,7 @@ export default function CanvasBoard({
       pendingRef.current = p;
       setPending(p);
     },
-    [graphOrientation, nodes]
+    [graphOrientation, nodes, isSpacePanArmed]
   );
 
   useEffect(() => {
@@ -1012,7 +1044,9 @@ export default function CanvasBoard({
 
   const selectedSet = new Set(selectedNodeIds);
   const draggingSet = draggingNode ? new Set(draggingNode.ids) : null;
-  const cursor = marqueeRect ? 'crosshair' : panState.current.panning ? 'grabbing' : 'grab';
+  const cursor =
+    spacePanCursor ||
+    (marqueeRect ? 'crosshair' : panState.current.panning ? 'grabbing' : 'grab');
 
   return (
     <div
@@ -1139,9 +1173,10 @@ export default function CanvasBoard({
         />
       )}
 
-      {draggingNode && (
+      {(draggingNode || tutorialBinVisible) && (
         <div
           ref={binRef}
+          data-onboarding="delete-bin"
           className="absolute z-50 rounded-2xl border bg-nm-bin backdrop-blur-md p-2 shadow-xl transition-all"
           style={{
             pointerEvents: 'none',
@@ -1150,7 +1185,7 @@ export default function CanvasBoard({
             borderColor: overBin ? '#ef4444' : 'var(--nm-border)',
             backgroundColor: overBin ? 'rgba(239,68,68,0.2)' : 'var(--nm-bin)',
             color: overBin ? '#ef4444' : 'var(--nm-text-secondary)',
-            transform: overBin ? 'scale(1.08)' : 'none',
+            transform: overBin ? 'scale(1.08)' : tutorialBinVisible ? 'scale(1.04)' : 'none',
           }}
         >
           <span className="flex items-center justify-center" style={{ width: 38, height: 38 }}>

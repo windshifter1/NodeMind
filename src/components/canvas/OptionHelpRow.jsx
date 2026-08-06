@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { HelpCircle } from 'lucide-react';
+import { isDesktopPlatform } from '@/lib/onboarding';
 
 export default function OptionHelpRow({
   icon: Icon,
@@ -13,12 +14,24 @@ export default function OptionHelpRow({
   const [helpOpen, setHelpOpen] = useState(false);
   const [helpHover, setHelpHover] = useState(false);
   const [tooltipHover, setTooltipHover] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(() => isDesktopPlatform());
   const helpRef = useRef(null);
   const tooltipRef = useRef(null);
   const hoverLeaveTimer = useRef(0);
   const [tooltipPos, setTooltipPos] = useState(null);
 
   const showHelp = helpOpen || helpHover || tooltipHover;
+  // Top-align icons only on touch/mobile when the label wraps; PC stays vertically centered.
+  const stackAlign = compactLabel && !isDesktop;
+
+  useEffect(() => {
+    const mq = window.matchMedia?.('(hover: hover) and (pointer: fine)');
+    if (!mq) return undefined;
+    const update = () => setIsDesktop(mq.matches);
+    update();
+    mq.addEventListener?.('change', update);
+    return () => mq.removeEventListener?.('change', update);
+  }, []);
 
   const dismissHelp = () => {
     if (hoverLeaveTimer.current) {
@@ -70,7 +83,7 @@ export default function OptionHelpRow({
     <>
       <div
         className={`flex gap-2 rounded-xl border px-3 py-3 transition hover:bg-nm-hover ${
-          compactLabel ? 'items-start sm:items-center' : 'items-center'
+          stackAlign ? 'items-start' : 'items-center'
         }`}
         style={{
           backgroundColor: selected ? 'rgba(99,102,241,0.18)' : 'var(--nm-option)',
@@ -84,15 +97,15 @@ export default function OptionHelpRow({
           aria-pressed={selected}
           aria-label={ariaLabel || label}
           className={`flex min-w-0 flex-1 gap-3 text-left ${
-            compactLabel ? 'items-start sm:items-center' : 'items-center'
+            stackAlign ? 'items-start' : 'items-center'
           }`}
         >
-          <Icon size={18} className="mt-0.5 shrink-0 sm:mt-0" />
+          <Icon size={18} className={`shrink-0 ${stackAlign ? 'mt-0.5' : ''}`} />
           <span
             className={`font-medium ${
               compactLabel
-                ? 'text-xs leading-snug whitespace-normal sm:whitespace-nowrap sm:leading-normal'
-                : 'text-sm whitespace-nowrap'
+                ? 'text-xs leading-snug whitespace-normal'
+                : 'text-sm leading-none whitespace-nowrap'
             }`}
           >
             {label}
@@ -119,7 +132,7 @@ export default function OptionHelpRow({
             }, 120);
           }}
           className={`shrink-0 rounded-lg p-1.5 text-nm-text-faint transition hover:bg-nm-hover/80 hover:text-nm-text active:scale-95 ${
-            compactLabel ? 'mt-0.5 sm:mt-0' : ''
+            stackAlign ? 'mt-0.5' : ''
           }`}
         >
           <HelpCircle size={16} />

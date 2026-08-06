@@ -448,7 +448,11 @@ export function getTerminalTutorialSteps(platform = isDesktopPlatform() ? 'deskt
 
 export function commandMatchesStep(step, commandLine) {
   if (!step || step.expect?.kind !== 'command') return false;
-  const line = String(commandLine || '').trim();
+  // Accept curly quotes from mobile keyboards as straight quotes.
+  const line = String(commandLine || '')
+    .replace(/[\u201C\u201D\u201E\u201F\u2033\u2036]/g, '"')
+    .replace(/[\u2018\u2019\u201A\u201B\u2032\u2035]/g, "'")
+    .trim();
   if (!line) return false;
   return step.expect.match.test(line);
 }

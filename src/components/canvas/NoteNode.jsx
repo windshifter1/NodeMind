@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { ChevronDown, ChevronUp, Pencil, Pin } from 'lucide-react';
+import { ChevronDown, ChevronUp, Pencil, Pin, X } from 'lucide-react';
 import { nodeWidthForTitle, TOP_BAR_HEIGHT, SOCKET_RADIUS } from '@/lib/canvasConstants';
 import { emitTutorial } from '@/lib/tutorialEvents';
 
@@ -228,25 +228,44 @@ export default function NoteNode({
         </button>
 
         {editingTitle ? (
-          <input
-            ref={titleInputRef}
-            value={titleDraft}
-            onChange={(e) => setTitleDraft(e.target.value)}
-            onBlur={commitTitle}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
+          <>
+            <input
+              ref={titleInputRef}
+              value={titleDraft}
+              onChange={(e) => setTitleDraft(e.target.value)}
+              onBlur={(e) => {
+                if (e.relatedTarget?.closest?.('[data-title-cancel]')) return;
                 commitTitle();
-              } else if (e.key === 'Escape') {
-                e.preventDefault();
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  commitTitle();
+                } else if (e.key === 'Escape') {
+                  e.preventDefault();
+                  cancelTitleEdit();
+                }
+              }}
+              onPointerDown={(e) => e.stopPropagation()}
+              placeholder="Untitled"
+              className={`relative z-[21] flex-1 min-w-0 rounded border bg-white/90 px-1.5 py-0.5 text-sm font-medium outline-none dark:bg-black/20 ${darkNodes ? 'text-zinc-100 placeholder:text-zinc-500' : 'text-slate-800 placeholder:text-slate-400'}`}
+              style={{ fontSize: 14, borderColor: node.color }}
+            />
+            <button
+              type="button"
+              data-title-cancel
+              title="Cancel rename"
+              onPointerDown={(e) => e.stopPropagation()}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={(e) => {
+                e.stopPropagation();
                 cancelTitleEdit();
-              }
-            }}
-            onPointerDown={(e) => e.stopPropagation()}
-            placeholder="Untitled"
-            className={`relative z-[21] flex-1 min-w-0 rounded border bg-white/90 px-1.5 py-0.5 text-sm font-medium outline-none dark:bg-black/20 ${darkNodes ? 'text-zinc-100 placeholder:text-zinc-500' : 'text-slate-800 placeholder:text-slate-400'}`}
-            style={{ fontSize: 14, borderColor: node.color }}
-          />
+              }}
+              className={`relative z-[21] p-1 rounded-md active:scale-95 transition ${darkNodes ? 'text-zinc-300 hover:bg-white/10' : 'text-slate-600 hover:bg-black/10'}`}
+            >
+              <X size={14} />
+            </button>
+          </>
         ) : (
           <span
             className={`flex-1 truncate text-sm font-medium px-1 ${darkNodes ? 'text-zinc-100' : 'text-slate-800'}`}
@@ -271,7 +290,6 @@ export default function NoteNode({
           onPointerDown={(e) => e.stopPropagation()}
           onClick={() => {
             onOpenEdit(node.id);
-            emitTutorial('node.edit.open');
           }}
           className={`relative z-[21] p-1 rounded-md active:scale-95 transition ${darkNodes ? 'text-zinc-300 hover:bg-white/10' : 'text-slate-600 hover:bg-black/10'}`}
           title="Edit colour & pin"

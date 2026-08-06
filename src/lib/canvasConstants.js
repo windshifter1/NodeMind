@@ -45,15 +45,35 @@ function numberOrDefault(value, fallback) {
   return Number.isFinite(n) && n > 0 ? n : fallback;
 }
 
+export function layoutPresetForDensity(density) {
+  if (density === LAYOUT_DENSITIES.COMPACT) {
+    return { horizontalSpacing: 160, verticalSpacing: 80, graphSpacing: 180 };
+  }
+  if (density === LAYOUT_DENSITIES.SPACIOUS) {
+    return { horizontalSpacing: 300, verticalSpacing: 170, graphSpacing: 360 };
+  }
+  return {
+    horizontalSpacing: DEFAULT_LAYOUT_SETTINGS.horizontalSpacing,
+    verticalSpacing: DEFAULT_LAYOUT_SETTINGS.verticalSpacing,
+    graphSpacing: DEFAULT_LAYOUT_SETTINGS.graphSpacing,
+  };
+}
+
+export function layoutSettingsForDensity(density) {
+  const next = Object.values(LAYOUT_DENSITIES).includes(density)
+    ? density
+    : LAYOUT_DENSITIES.DEFAULT;
+  return {
+    ...layoutPresetForDensity(next),
+    density: next,
+  };
+}
+
 export function normalizeLayoutSettings(settings = {}) {
   const density = Object.values(LAYOUT_DENSITIES).includes(settings.density)
     ? settings.density
     : LAYOUT_DENSITIES.DEFAULT;
-  const preset = density === LAYOUT_DENSITIES.COMPACT
-    ? { horizontalSpacing: 160, verticalSpacing: 80, graphSpacing: 180 }
-    : density === LAYOUT_DENSITIES.SPACIOUS
-      ? { horizontalSpacing: 300, verticalSpacing: 170, graphSpacing: 360 }
-      : DEFAULT_LAYOUT_SETTINGS;
+  const preset = layoutPresetForDensity(density);
 
   return {
     horizontalSpacing: numberOrDefault(settings.horizontalSpacing, preset.horizontalSpacing),

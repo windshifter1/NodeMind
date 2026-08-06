@@ -83,8 +83,12 @@ function reducer(state, action) {
         orientation: action.workspace?.orientation,
         layoutOnOrientationChange: action.workspace?.layoutOnOrientationChange,
         layoutSettings: action.workspace?.layoutSettings,
+        nodes: action.workspace?.nodes,
+        edges: action.workspace?.edges,
+        nextZ: action.workspace?.nextZ,
       });
-      return { workspaces: [...state.workspaces, ws], activeId: ws.id };
+      const workspaces = action.prepend ? [ws, ...state.workspaces] : [...state.workspaces, ws];
+      return { workspaces, activeId: action.activate === false ? state.activeId : ws.id };
     }
     case 'IMPORT_AS_WORKSPACE': {
       const meta = (action.data && action.data.workspace) || {};

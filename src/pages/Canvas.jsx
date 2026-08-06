@@ -53,7 +53,7 @@ export default function Canvas() {
     return () => window.clearTimeout(t);
   }, []);
 
-  // Desktop tutorial asks users to switch boards — ensure a second workspace exists.
+  // Tutorial starts on a fresh blank "Tutorial" board at the front of the bar.
   const tutorialWsBootRef = useRef(false);
   useEffect(() => {
     if (!onboardingOpen) {
@@ -62,19 +62,25 @@ export default function Canvas() {
     }
     if (tutorialWsBootRef.current) return;
     tutorialWsBootRef.current = true;
-    if (state.workspaces.length >= 2) return;
-    const prevId = state.activeId;
     dispatch({
       type: 'ADD_WORKSPACE',
+      prepend: true,
       workspace: {
-        name: 'Practice Board',
-        colour: '#22c55e',
+        name: 'Tutorial',
+        colour: '#6366f1',
         icon: 'note',
         orientation: 'horizontal',
+        nodes: [],
+        edges: [],
+        nextZ: 1,
       },
     });
-    if (prevId) dispatch({ type: 'SET_ACTIVE', id: prevId });
-  }, [onboardingOpen, state.workspaces.length, state.activeId, dispatch]);
+    // Keep the Tutorial tab visible at the start of the scroll strip.
+    window.requestAnimationFrame(() => {
+      const scroller = document.querySelector('.nm-workspace-scroll-viewport');
+      if (scroller) scroller.scrollLeft = 0;
+    });
+  }, [onboardingOpen, dispatch]);
 
   const addNode = (x, y) => dispatch({ type: 'ADD_NODE', x, y });
   const updateNode = (id, patch) => dispatch({ type: 'UPDATE_NODE', id, patch });

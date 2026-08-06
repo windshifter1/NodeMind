@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Pin, X } from 'lucide-react';
 import OptionHelpRow from './OptionHelpRow';
+import { emitTutorial } from '@/lib/tutorialEvents';
 
 const COLORS = [
   '#6366f1', '#ef4444', '#f59e0b', '#10b981',
@@ -24,9 +25,14 @@ export default function NodeEditDialog({ node, open, onClose, onSave, onDelete }
 
   if (!open || !node) return null;
 
+  const close = () => {
+    emitTutorial('node.edit.close');
+    onClose();
+  };
+
   const save = () => {
     onSave(node.id, { color, pinned });
-    onClose();
+    close();
   };
 
   return (
@@ -39,7 +45,7 @@ export default function NodeEditDialog({ node, open, onClose, onSave, onDelete }
         paddingLeft: 'calc(1rem + var(--safe-left))',
       }}
     >
-      <div className="absolute inset-0 bg-nm-overlay backdrop-blur-md" onClick={onClose} />
+      <div className="absolute inset-0 bg-nm-overlay backdrop-blur-md" onClick={close} />
       <div
         className="relative w-full max-w-sm rounded-2xl bg-nm-panel border border-nm-border shadow-2xl flex flex-col overflow-hidden"
         onPointerDown={(e) => e.stopPropagation()}
@@ -48,7 +54,7 @@ export default function NodeEditDialog({ node, open, onClose, onSave, onDelete }
           <h2 className="text-sm font-semibold text-nm-text">Edit note</h2>
           <div className="flex-1" />
           <button
-            onClick={onClose}
+            onClick={close}
             className="p-2 rounded-lg text-nm-text-faint hover:text-nm-text hover:bg-nm-hover transition active:scale-95"
           >
             <X size={18} />
@@ -85,7 +91,7 @@ export default function NodeEditDialog({ node, open, onClose, onSave, onDelete }
             <button
               onClick={() => {
                 onDelete(node.id);
-                onClose();
+                close();
               }}
               className="text-sm text-red-500 hover:text-red-400 font-medium transition"
             >
@@ -93,7 +99,7 @@ export default function NodeEditDialog({ node, open, onClose, onSave, onDelete }
             </button>
             <div className="flex gap-2">
               <button
-                onClick={onClose}
+                onClick={close}
                 className="px-4 py-2 rounded-lg text-sm font-medium text-nm-text-faint hover:text-nm-text hover:bg-nm-hover transition"
               >
                 Cancel

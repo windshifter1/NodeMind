@@ -174,6 +174,20 @@ function placeCoachAwayFromTarget(targetBox, cardW, cardH, extraAvoid = []) {
   return { top: pool[0].top, left: pool[0].left };
 }
 
+function placeCoachCentered(cardW, cardH) {
+  const vw = window.innerWidth || 1;
+  const vh = window.innerHeight || 1;
+  const safe = readSafeInsets();
+  const padL = SAFE + safe.left;
+  const padR = SAFE + safe.right;
+  const padT = SAFE + safe.top;
+  const padB = SAFE + safe.bottom;
+  return {
+    top: clamp((vh - cardH) / 2, padT, Math.max(padT, vh - cardH - padB)),
+    left: clamp((vw - cardW) / 2, padL, Math.max(padL, vw - cardW - padR)),
+  };
+}
+
 function TaskCue({ label, done, active, justCompleted }) {
   return (
     <div
@@ -221,6 +235,7 @@ function InteractiveTutorial({ open, onClose, platform }) {
   const tasks = section?.tasks || [];
   const currentTask = tasks[taskIndex] || null;
   const highlightTarget = currentTask?.target ?? section?.target ?? null;
+  const isWelcome = section?.id === 'welcome';
   const isFinish = section?.id === 'finish';
   const showBody = taskIndex === 0 || bodyExpanded;
 
@@ -234,14 +249,19 @@ function InteractiveTutorial({ open, onClose, platform }) {
 
   const measure = useCallback(() => {
     const vw = window.innerWidth || 1;
-    const targetBox = resolvePrimaryAvoidBox(highlightTarget);
     const cardEl = cardRef.current;
-    const cardW = coachWidthForViewport(vw, platform);
+    const baseW = coachWidthForViewport(vw, platform);
+    const cardW = isWelcome ? Math.min(baseW + 24, vw - SAFE * 2) : baseW;
     const cardH = cardEl?.offsetHeight || FALLBACK_HEIGHT;
+    if (isWelcome) {
+      setCardPos(placeCoachCentered(cardW, cardH));
+      return;
+    }
+    const targetBox = resolvePrimaryAvoidBox(highlightTarget);
     setCardPos(
       placeCoachAwayFromTarget(targetBox, cardW, cardH, readChromeAvoidBoxes(highlightTarget))
     );
-  }, [highlightTarget, platform]);
+  }, [highlightTarget, platform, isWelcome]);
 
   const advanceAfterTask = useCallback(
     (sIdx, tIdx) => {
@@ -407,21 +427,32 @@ function InteractiveTutorial({ open, onClose, platform }) {
 
   const currentKey = `${section.id}:${currentTask.id}`;
   const currentDone = !!completed[currentKey];
+  const cardWidth = coachWidthForViewport(window.innerWidth || 1, platform);
+
+  const welcomeBackdrop = (
+    <div
+      aria-hidden
+      className="pointer-events-none fixed inset-0 z-[229] bg-zinc-900/55 backdrop-blur-md transition-opacity duration-300 ease-out"
+      style={{
+        opacity: visible && isWelcome ? 1 : 0,
+      }}
+    />
+  );
 
   const coach = (
     <div
       ref={cardRef}
       data-onboarding-tour
-      className="pointer-events-auto fixed z-[230] rounded-2xl border border-nm-border bg-nm-chrome p-3 shadow-xl backdrop-blur-md transition-[top,left,opacity,transform] duration-250 ease-out"
+      className="pointer-events-auto fixed z-[230] rounded-2xl border border-nm-border bg-nm-chrome p-3 shadow-xl backdrop-blur-md transition-[top,left,opacity,transform,width] duration-300 ease-out"
       role="dialog"
-      aria-modal="false"
+      aria-modal={isWelcome}
       aria-labelledby="nm-onboarding-title"
       style={{
         top: cardPos.top,
         left: cardPos.left,
-        width: coachWidthForViewport(window.innerWidth || 1, platform),
+        width: isWelcome ? Math.min(cardWidth + 24, (window.innerWidth || 1) - SAFE * 2) : cardWidth,
         maxWidth: 'calc(100vw - 1.5rem)',
-        transform: visible ? 'translateY(0)' : 'translateY(6px)',
+        transform: visible ? 'translateY(0) scale(1)' : 'translateY(8px) scale(0.98)',
         opacity: visible ? 1 : 0,
       }}
       onPointerDown={(e) => e.stopPropagation()}
@@ -520,7 +551,13 @@ function InteractiveTutorial({ open, onClose, platform }) {
     </div>
   );
 
-  return createPortal(coach, document.body);
+  return createPortal(
+    <>
+      {welcomeBackdrop}
+      {coach}
+    </>,
+    document.body
+  );
 }
 
 export default function OnboardingTour({ open, onClose }) {

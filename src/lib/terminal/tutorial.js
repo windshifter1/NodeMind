@@ -254,6 +254,14 @@ function mobileSteps() {
       highlight: 'input',
     },
     {
+      id: 'space-complete',
+      title: 'Space completion',
+      body: 'Type the start of a command, then tap Space to autocomplete it. Try “he” then Space for “help”, then run it.',
+      expect: { kind: 'command', match: /^help(\s|$)/i },
+      hint: 'he → Space → Enter',
+      highlight: 'input',
+    },
+    {
       id: 'long-press',
       title: 'Long-press paste',
       body: 'Long-press the input to paste from the clipboard (system paste menu). Useful for long titles.',

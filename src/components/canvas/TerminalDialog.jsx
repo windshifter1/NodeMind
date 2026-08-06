@@ -315,6 +315,27 @@ function completeCommandToken(token) {
   return shared.length > lower.length ? shared : null;
 }
 
+/** Complete the first token when the line has no spaces yet. Returns next value or null. */
+function autocompleteFirstToken(value) {
+  const trimmed = String(value || '');
+  if (!trimmed || /\s/.test(trimmed)) return null;
+  const completed = completeCommandToken(trimmed);
+  if (!completed) return null;
+  if (completed.toLowerCase() === trimmed.toLowerCase()) return null;
+  return completed;
+}
+
+function isMobileKeyboardOpen() {
+  const vv = window.visualViewport;
+  if (!vv) return false;
+  const frameH = parseFloat(
+    getComputedStyle(document.documentElement).getPropertyValue('--app-frame-height')
+  ) || 0;
+  const layoutH = Math.max(frameH, window.innerHeight || 0, document.documentElement?.clientHeight || 0);
+  if (layoutH < 80) return false;
+  return vv.height < layoutH * 0.82 || layoutH - vv.height > 120;
+}
+
 export default function TerminalDialog({ open, onClose, workspace, dispatch, onExport, onImport, onArrange, orientation }) {
   const [cwdId, setCwdId] = useState(null);
   const [input, setInput] = useState('');
@@ -325,6 +346,7 @@ export default function TerminalDialog({ open, onClose, workspace, dispatch, onE
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [tutorialOpen, setTutorialOpen] = useState(false);
   const [tutorialIndex, setTutorialIndex] = useState(0);
+  const [keyboardViewport, setKeyboardViewport] = useState(null);
   const inputRef = useRef(null);
   const formRef = useRef(null);
   const scrollRef = useRef(null);
@@ -349,8 +371,42 @@ export default function TerminalDialog({ open, onClose, workspace, dispatch, onE
       setTutorialOpen(false);
       setTutorialIndex(0);
       setTimeout(() => inputRef.current?.focus(), 0);
+    } else {
+      setKeyboardViewport(null);
     }
   }, [open]);
+
+  // Lift the dialog into the visual viewport when the soft keyboard opens (mobile).
+  useEffect(() => {
+    if (!open || platform !== 'mobile') {
+      setKeyboardViewport(null);
+      return undefined;
+    }
+
+    const sync = () => {
+      const vv = window.visualViewport;
+      if (!vv || !isMobileKeyboardOpen()) {
+        setKeyboardViewport(null);
+        return;
+      }
+      setKeyboardViewport({
+        top: Math.round(vv.offsetTop),
+        left: Math.round(vv.offsetLeft),
+        width: Math.round(vv.width),
+        height: Math.round(vv.height),
+      });
+    };
+
+    sync();
+    window.addEventListener('resize', sync);
+    window.visualViewport?.addEventListener('resize', sync);
+    window.visualViewport?.addEventListener('scroll', sync);
+    return () => {
+      window.removeEventListener('resize', sync);
+      window.visualViewport?.removeEventListener('resize', sync);
+      window.visualViewport?.removeEventListener('scroll', sync);
+    };
+  }, [open, platform]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
@@ -782,11 +838,31 @@ export default function TerminalDialog({ open, onClose, workspace, dispatch, onE
     }
     if (e.key === 'Tab') {
       e.preventDefault();
-      const parts = input.split(/\s+/);
-      if (parts.length !== 1) return;
-      const completed = completeCommandToken(parts[0]);
+      const completed = autocompleteFirstToken(input);
       if (completed) setInput(completed);
+      return;
     }
+    // Mobile keyboards rarely expose Tab — Space accepts the ghost completion instead.
+    if ((e.key === ' ' || e.code === 'Space') && platform === 'mobile') {
+      const completed = autocompleteFirstToken(input);
+      if (completed) {
+        e.preventDefault();
+        setInput(completed);
+      }
+    }
+  };
+
+  const onInputChange = (e) => {
+    const value = e.target.value;
+    // Some mobile browsers insert Space before keydown preventDefault can win.
+    if (platform === 'mobile' && value.endsWith(' ') && !/\s/.test(value.slice(0, -1))) {
+      const completed = autocompleteFirstToken(value.slice(0, -1));
+      if (completed) {
+        setInput(completed);
+        return;
+      }
+    }
+    setInput(value);
   };
 
   const pasteIntoInput = async () => {
@@ -802,18 +878,42 @@ export default function TerminalDialog({ open, onClose, workspace, dispatch, onE
   const inputHighlight = tutorialStep?.highlight === 'input';
   const outputHighlight = tutorialStep?.highlight === 'output';
 
-  return (
-    <div
-      className="fixed inset-0 z-[100] flex items-center justify-center"
-      style={{
+  const keyboardOpen = Boolean(keyboardViewport);
+  const shellStyle = keyboardOpen
+    ? {
+        top: keyboardViewport.top,
+        left: keyboardViewport.left,
+        width: keyboardViewport.width,
+        height: keyboardViewport.height,
+        paddingTop: '0.5rem',
+        paddingRight: 'calc(0.75rem + var(--safe-right))',
+        paddingBottom: '0.5rem',
+        paddingLeft: 'calc(0.75rem + var(--safe-left))',
+      }
+    : {
+        top: 0,
+        right: 0,
+        bottom: 0,
+        left: 0,
         paddingTop: 'calc(1rem + var(--safe-top))',
         paddingRight: 'calc(1rem + var(--safe-right))',
         paddingBottom: 'calc(1rem + var(--safe-bottom))',
         paddingLeft: 'calc(1rem + var(--safe-left))',
-      }}
+      };
+
+  return (
+    <div
+      className={`fixed z-[100] flex justify-center ${keyboardOpen ? 'items-end' : 'items-center'}`}
+      style={shellStyle}
     >
       <div className="absolute inset-0 bg-nm-overlay backdrop-blur-md" onClick={onClose} />
-      <div className="relative flex h-[78vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-nm-border bg-nm-panel font-mono shadow-2xl">
+      <div
+        className="relative flex w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-nm-border bg-nm-panel font-mono shadow-2xl"
+        style={{
+          height: keyboardOpen ? '100%' : '78vh',
+          maxHeight: '100%',
+        }}
+      >
         <div className="flex items-center gap-2 border-b border-nm-border bg-nm-header px-3 py-3 sm:px-4">
           <Terminal size={16} className="text-nm-terminal-prompt" />
           <h2 className="text-sm font-semibold text-nm-text">NodeMind Terminal</h2>
@@ -898,7 +998,7 @@ export default function TerminalDialog({ open, onClose, workspace, dispatch, onE
               <input
                 ref={inputRef}
                 value={input}
-                onChange={(e) => setInput(e.target.value)}
+                onChange={onInputChange}
                 onKeyDown={onInputKeyDown}
                 onContextMenu={(e) => {
                   e.preventDefault();

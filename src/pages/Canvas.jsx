@@ -119,6 +119,12 @@ export default function Canvas() {
         nodes: [],
         edges: [],
         nextZ: 1,
+        terminal: {
+          lines: ['Tutorial started — follow the card below.'],
+          history: [],
+          cwdId: null,
+          welcomeHidden: true,
+        },
       },
     });
     window.requestAnimationFrame(() => {
@@ -245,6 +251,7 @@ export default function Canvas() {
         nodes: active.nodes,
         edges: active.edges,
         nextZ: active.nextZ,
+        terminal: active.terminal,
       },
       null,
       2

@@ -14,7 +14,28 @@ function uid(prefix) {
   return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
 }
 
-function newWorkspace({ name, colour, icon, orientation, layoutOnOrientationChange, layoutSettings, nodes, edges, nextZ } = {}) {
+export function normalizeTerminal(terminal) {
+  const t = terminal && typeof terminal === 'object' ? terminal : {};
+  return {
+    lines: Array.isArray(t.lines) ? t.lines.map((line) => String(line)).slice(-500) : [],
+    history: Array.isArray(t.history) ? t.history.map((line) => String(line)).slice(-80) : [],
+    cwdId: typeof t.cwdId === 'string' && t.cwdId ? t.cwdId : null,
+    welcomeHidden: Boolean(t.welcomeHidden),
+  };
+}
+
+function newWorkspace({
+  name,
+  colour,
+  icon,
+  orientation,
+  layoutOnOrientationChange,
+  layoutSettings,
+  nodes,
+  edges,
+  nextZ,
+  terminal,
+} = {}) {
   return {
     id: uid('w'),
     name: name || 'Untitled',
@@ -26,6 +47,7 @@ function newWorkspace({ name, colour, icon, orientation, layoutOnOrientationChan
     nodes: Array.isArray(nodes) ? nodes : [],
     edges: Array.isArray(edges) ? edges : [],
     nextZ: typeof nextZ === 'number' ? nextZ : 1,
+    terminal: normalizeTerminal(terminal),
   };
 }
 
@@ -37,7 +59,10 @@ function loadInitial() {
       if (parsed && Array.isArray(parsed.workspaces) && parsed.workspaces.length) {
         return {
           ...parsed,
-          workspaces: parsed.workspaces.map(migrateWorkspaceNodeIds),
+          workspaces: parsed.workspaces.map((ws) => ({
+            ...migrateWorkspaceNodeIds(ws),
+            terminal: normalizeTerminal(ws.terminal),
+          })),
         };
       }
     }
@@ -86,6 +111,7 @@ function reducer(state, action) {
         nodes: action.workspace?.nodes,
         edges: action.workspace?.edges,
         nextZ: action.workspace?.nextZ,
+        terminal: action.workspace?.terminal,
       });
       if (action.workspace?.id) ws.id = action.workspace.id;
       const workspaces = action.prepend ? [ws, ...state.workspaces] : [...state.workspaces, ws];
@@ -104,10 +130,16 @@ function reducer(state, action) {
           nodes: action.data && action.data.nodes,
           edges: action.data && action.data.edges,
           nextZ: action.data && action.data.nextZ,
+          terminal: action.data?.terminal ?? meta.terminal,
         })
       );
       return { workspaces: [...state.workspaces, ws], activeId: ws.id };
     }
+    case 'SET_WORKSPACE_TERMINAL':
+      return withActiveGraph(state, (w) => ({
+        ...w,
+        terminal: normalizeTerminal(action.terminal),
+      }));
     case 'DELETE_WORKSPACE': {
       const remaining = state.workspaces.filter((w) => w.id !== action.id);
       if (remaining.length === 0) {

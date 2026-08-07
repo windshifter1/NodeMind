@@ -13,6 +13,7 @@ import {
   getVersionReportLines,
 } from '@/lib/appVersion';
 import { isDesktopPlatform } from '@/lib/onboarding';
+import { normalizeTerminal } from '@/hooks/useWorkspaces';
 import { COMMAND_NAMES, HELP_ALL, helpFor } from '@/lib/terminal/help';
 import { commandMatchesStep, getTerminalTutorialSteps } from '@/lib/terminal/tutorial';
 import TerminalTutorial from './TerminalTutorial';
@@ -348,12 +349,13 @@ export default function TerminalDialog({
   onTutorialStart,
   onTutorialEnd,
 }) {
-  const [cwdId, setCwdId] = useState(null);
+  const initialTerminal = normalizeTerminal(workspace?.terminal);
+  const [cwdId, setCwdId] = useState(initialTerminal.cwdId);
   const [input, setInput] = useState('');
-  const [lines, setLines] = useState([]);
-  const [welcomeHidden, setWelcomeHidden] = useState(false);
+  const [lines, setLines] = useState(initialTerminal.lines);
+  const [welcomeHidden, setWelcomeHidden] = useState(initialTerminal.welcomeHidden);
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
-  const [history, setHistory] = useState([]);
+  const [history, setHistory] = useState(initialTerminal.history);
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [tutorialOpen, setTutorialOpen] = useState(false);
   const [tutorialIndex, setTutorialIndex] = useState(0);
@@ -362,6 +364,8 @@ export default function TerminalDialog({
   const formRef = useRef(null);
   const scrollRef = useRef(null);
   const linesRef = useRef([]);
+  const skipTerminalPersistRef = useRef(true);
+  const activeWorkspaceIdRef = useRef(workspace?.id);
 
   const platform = useMemo(() => (isDesktopPlatform() ? 'desktop' : 'mobile'), []);
   const tutorialSteps = useMemo(() => getTerminalTutorialSteps(platform), [platform]);
@@ -376,9 +380,36 @@ export default function TerminalDialog({
     linesRef.current = lines;
   }, [lines]);
 
+  // Hydrate this workspace's dedicated terminal session when the active board changes.
+  useEffect(() => {
+    const terminal = normalizeTerminal(workspace.terminal);
+    const nodeIds = new Set((workspace.nodes || []).map((node) => node.id));
+    skipTerminalPersistRef.current = true;
+    activeWorkspaceIdRef.current = workspace.id;
+    setLines(terminal.lines);
+    setHistory(terminal.history);
+    setCwdId(terminal.cwdId && nodeIds.has(terminal.cwdId) ? terminal.cwdId : null);
+    setWelcomeHidden(terminal.welcomeHidden);
+    setHistoryIndex(-1);
+    setInput('');
+    setConfirmDeleteId(null);
+  }, [workspace.id]); // eslint-disable-line react-hooks/exhaustive-deps -- hydrate only on workspace switch
+
+  // Persist terminal output / command history onto the active workspace.
+  useEffect(() => {
+    if (skipTerminalPersistRef.current) {
+      skipTerminalPersistRef.current = false;
+      return;
+    }
+    if (activeWorkspaceIdRef.current !== workspace.id) return;
+    dispatch({
+      type: 'SET_WORKSPACE_TERMINAL',
+      terminal: { lines, history, cwdId, welcomeHidden },
+    });
+  }, [lines, history, cwdId, welcomeHidden, dispatch, workspace.id]);
+
   useEffect(() => {
     if (open) {
-      setWelcomeHidden(false);
       setTutorialOpen(false);
       setTutorialIndex(0);
       setTimeout(() => inputRef.current?.focus(), 0);
@@ -388,6 +419,7 @@ export default function TerminalDialog({
   }, [open]);
 
   // If the dialog is closed while a tutorial is active, tear down its workspace.
+  // The restored workspace's terminal is reloaded by the hydrate effect above.
   const tutorialOpenRef = useRef(false);
   useEffect(() => {
     tutorialOpenRef.current = tutorialOpen;
@@ -399,9 +431,6 @@ export default function TerminalDialog({
     tutorialOpenRef.current = false;
     setTutorialOpen(false);
     setTutorialIndex(0);
-    setLines([]);
-    setWelcomeHidden(false);
-    setCwdId(null);
     setConfirmDeleteId(null);
     onTutorialEnd?.();
     return undefined;
@@ -496,32 +525,30 @@ export default function TerminalDialog({
     setHistoryIndex(-1);
   };
 
-  const endTutorialSession = (message) => {
+  const endTutorialSession = () => {
     setTutorialOpen(false);
     setTutorialIndex(0);
-    clearTerminalSession();
+    setConfirmDeleteId(null);
+    // Deletes the Tutorial board; hydrate restores the previous workspace terminal.
     onTutorialEnd?.();
-    if (message) {
-      setLines([message]);
-      setWelcomeHidden(true);
-    }
   };
 
   const advanceTutorial = () => {
     if (tutorialIndex >= tutorialSteps.length - 1) {
-      endTutorialSession('Tutorial complete. Type tutorial to replay.');
+      endTutorialSession();
       return;
     }
     setTutorialIndex((i) => i + 1);
   };
 
   const startTutorial = () => {
+    // Creates a fresh Tutorial workspace that already carries the start message.
     onTutorialStart?.();
-    clearTerminalSession();
     setTutorialOpen(true);
     setTutorialIndex(0);
-    setLines(['Tutorial started — follow the card below.']);
-    setWelcomeHidden(true);
+    setConfirmDeleteId(null);
+    setInput('');
+    setHistoryIndex(-1);
   };
 
   const run = (raw) => {
@@ -997,7 +1024,7 @@ export default function TerminalDialog({
             platform={platform}
             onContinue={advanceTutorial}
             onSkip={() => {
-              endTutorialSession('Tutorial skipped. Type tutorial to restart.');
+              endTutorialSession();
             }}
             inputRef={formRef}
             outputRef={scrollRef}

@@ -14,14 +14,14 @@
   <rect width="512" height="512" rx="112" fill="url(#nm-bg)"/>
 
   <path
-    d="M256 176V296M256 296L168 392M256 296L344 392"
+    d="M256 152V272M256 272L168 368M256 272L344 368"
     stroke="#a5b4fc"
     stroke-width="36"
     stroke-linecap="round"
     stroke-linejoin="round"
   />
-  <circle cx="168" cy="392" r="56" fill="url(#nm-node)"/>
-  <circle cx="344" cy="392" r="56" fill="url(#nm-node)"/>
-  <circle cx="256" cy="176" r="64" fill="#e0e7ff"/>
-  <circle cx="256" cy="176" r="24" fill="#1e1b4b" fill-opacity="0.45"/>
+  <circle cx="168" cy="368" r="56" fill="url(#nm-node)"/>
+  <circle cx="344" cy="368" r="56" fill="url(#nm-node)"/>
+  <circle cx="256" cy="152" r="64" fill="#e0e7ff"/>
+  <circle cx="256" cy="152" r="24" fill="#1e1b4b" fill-opacity="0.45"/>
 </svg>

@@ -548,6 +548,8 @@ export default function CanvasBoard({
       };
       if (useMarquee) setMarqueeRect(null);
     } else if (pointers.current.size === 2) {
+      // Multi-touch zoom: freeze any in-progress node drag so positions stay pinned.
+      cancelNodeDrag();
       const pts = [...pointers.current.values()];
       const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
       pinch.current = {
@@ -567,20 +569,8 @@ export default function CanvasBoard({
       pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
     }
 
-    if (pinch.current.active && pointers.current.size >= 2) {
-      const pts = [...pointers.current.values()];
-      const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
-      const ratio = dist / (pinch.current.startDist || 1);
-      const prevZoom = zoomRef.current;
-      const newZoom = clampZoom(pinch.current.startZoom * ratio);
-      const rect = boardRef.current.getBoundingClientRect();
-      const cx = pinch.current.midX - rect.left;
-      const cy = pinch.current.midY - rect.top;
-      const wx = (cx - panRef.current.x) / prevZoom;
-      const wy = (cy - panRef.current.y) / prevZoom;
-      setPan({ x: cx - wx * newZoom, y: cy - wy * newZoom });
-      setZoom(newZoom);
-      if (newZoom !== prevZoom) emitTutorial('canvas.zoom.pinch');
+    if (pinch.current.active) {
+      // Capture-phase touch handler owns pinch zoom (works with a finger on a node).
       return;
     }
 
@@ -832,6 +822,7 @@ export default function CanvasBoard({
       const nextDrag = {
         ids: dragIds,
         nodeId,
+        pointerId: e.pointerId,
         startX: e.clientX,
         startY: e.clientY,
         origins,
@@ -852,14 +843,95 @@ export default function CanvasBoard({
   );
 
   const cancelNodeDrag = useCallback(() => {
+    const { ids } = dragVisual.current;
     dragReleaseRef.current = null;
     draggingNodeRef.current = null;
     if (dragVisual.current.raf) {
       cancelAnimationFrame(dragVisual.current.raf);
       dragVisual.current.raf = 0;
     }
+    dragVisual.current = { raf: 0, ids: [], dx: 0, dy: 0, positions: {} };
+    ids?.forEach((id) => {
+      const el = boardRef.current?.querySelector(`[data-note-node="${id}"]`);
+      if (el) {
+        el.style.transform = '';
+        el.style.transition = '';
+      }
+    });
+    overBinRef.current = false;
+    binRectRef.current = null;
+    setOverBin(false);
     setDraggingNode(null);
   }, []);
+
+  // Capture-phase multi-touch: pinch must work even when the first finger is on a node
+  // (node handlers stopPropagation, so bubble pan/pinch never sees that pointer).
+  const touchPointers = useRef(new Map());
+  useEffect(() => {
+    const board = boardRef.current;
+    if (!board) return undefined;
+
+    const beginPinch = () => {
+      if (touchPointers.current.size < 2) return;
+      cancelNodeDrag();
+      const pts = [...touchPointers.current.values()];
+      const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+      pinch.current = {
+        active: true,
+        startDist: dist || 1,
+        startZoom: zoomRef.current,
+        midX: (pts[0].x + pts[1].x) / 2,
+        midY: (pts[0].y + pts[1].y) / 2,
+      };
+      panState.current.panning = false;
+      panState.current.candidate = false;
+      panState.current.marqueing = false;
+      setMarqueeRect(null);
+    };
+
+    const onDown = (e) => {
+      if (e.pointerType === 'mouse') return;
+      touchPointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (touchPointers.current.size >= 2) beginPinch();
+    };
+
+    const onMove = (e) => {
+      if (!touchPointers.current.has(e.pointerId)) return;
+      touchPointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (!pinch.current.active || touchPointers.current.size < 2) return;
+      const pts = [...touchPointers.current.values()];
+      const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+      const ratio = dist / (pinch.current.startDist || 1);
+      const prevZoom = zoomRef.current;
+      const newZoom = clampZoom(pinch.current.startZoom * ratio);
+      const rect = board.getBoundingClientRect();
+      const cx = pinch.current.midX - rect.left;
+      const cy = pinch.current.midY - rect.top;
+      const wx = (cx - panRef.current.x) / prevZoom;
+      const wy = (cy - panRef.current.y) / prevZoom;
+      setPan({ x: cx - wx * newZoom, y: cy - wy * newZoom });
+      setZoom(newZoom);
+      if (newZoom !== prevZoom) emitTutorial('canvas.zoom.pinch');
+      if (e.cancelable) e.preventDefault();
+    };
+
+    const onUp = (e) => {
+      touchPointers.current.delete(e.pointerId);
+      if (touchPointers.current.size < 2) pinch.current.active = false;
+    };
+
+    board.addEventListener('pointerdown', onDown, true);
+    board.addEventListener('pointermove', onMove, true);
+    board.addEventListener('pointerup', onUp, true);
+    board.addEventListener('pointercancel', onUp, true);
+    return () => {
+      board.removeEventListener('pointerdown', onDown, true);
+      board.removeEventListener('pointermove', onMove, true);
+      board.removeEventListener('pointerup', onUp, true);
+      board.removeEventListener('pointercancel', onUp, true);
+      touchPointers.current.clear();
+    };
+  }, [cancelNodeDrag, setPan, setZoom]);
 
   useEffect(() => {
     if (!draggingNode) {
@@ -871,9 +943,43 @@ export default function CanvasBoard({
     }
     draggingNodeRef.current = draggingNode;
 
+    const restoreDragOrigins = () => {
+      const drag = draggingNodeRef.current;
+      if (!drag) return;
+      drag.ids.forEach((id) => {
+        const el = boardRef.current?.querySelector(`[data-note-node="${id}"]`);
+        if (el) {
+          el.style.transform = '';
+          el.style.transition = '';
+        }
+      });
+    };
+
+    const pinAndCancelDrag = () => {
+      if (!draggingNodeRef.current) return;
+      restoreDragOrigins();
+      dragReleaseRef.current = null;
+      draggingNodeRef.current = null;
+      if (dragVisual.current.raf) {
+        cancelAnimationFrame(dragVisual.current.raf);
+        dragVisual.current.raf = 0;
+      }
+      dragVisual.current = { raf: 0, ids: [], dx: 0, dy: 0, positions: {} };
+      overBinRef.current = false;
+      binRectRef.current = null;
+      setOverBin(false);
+      setDraggingNode(null);
+    };
+
     const onMove = (e) => {
       let drag = draggingNodeRef.current;
       if (!drag) return;
+
+      // Zoom / multi-touch owns the gesture — keep node world positions pinned.
+      if (pinch.current.active) {
+        pinAndCancelDrag();
+        return;
+      }
 
       const dist =
         Math.abs(e.clientX - drag.startX) + Math.abs(e.clientY - drag.startY);
@@ -973,11 +1079,24 @@ export default function CanvasBoard({
         });
       });
     };
+
+    // Extra finger during a node drag means zoom/pan — cancel without committing.
+    const onExtraPointerDown = (e) => {
+      const drag = draggingNodeRef.current;
+      if (!drag) return;
+      if (e.pointerId === drag.pointerId) return;
+      pinAndCancelDrag();
+    };
+
     window.addEventListener('pointermove', onMove);
     window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', onUp);
+    window.addEventListener('pointerdown', onExtraPointerDown, true);
     return () => {
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('pointercancel', onUp);
+      window.removeEventListener('pointerdown', onExtraPointerDown, true);
     };
   }, [draggingNode, onUpdateNode, onDeleteNode, onDeleteNodes, onSelectionChange, scheduleDragVisual]);
 

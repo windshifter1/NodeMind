@@ -96,6 +96,49 @@ export default function Canvas() {
     }
   }, [dispatch]);
 
+  const terminalTutorialWsIdRef = useRef(null);
+
+  const beginTerminalTutorialWorkspace = useCallback(() => {
+    // Replace any prior terminal-tutorial board so replay stays clean.
+    const prior = terminalTutorialWsIdRef.current;
+    if (prior) {
+      terminalTutorialWsIdRef.current = null;
+      dispatch({ type: 'DELETE_WORKSPACE', id: prior });
+    }
+    const tutorialId = `w_term_tutorial_${Date.now().toString(36)}`;
+    terminalTutorialWsIdRef.current = tutorialId;
+    dispatch({
+      type: 'ADD_WORKSPACE',
+      prepend: true,
+      workspace: {
+        id: tutorialId,
+        name: 'Tutorial',
+        colour: '#6366f1',
+        icon: 'note',
+        orientation: 'horizontal',
+        nodes: [],
+        edges: [],
+        nextZ: 1,
+      },
+    });
+    window.requestAnimationFrame(() => {
+      const scroller = document.querySelector('.nm-workspace-scroll-viewport');
+      if (scroller) scroller.scrollLeft = 0;
+    });
+  }, [dispatch]);
+
+  const endTerminalTutorialWorkspace = useCallback(() => {
+    const tutorialId = terminalTutorialWsIdRef.current;
+    terminalTutorialWsIdRef.current = null;
+    if (tutorialId) {
+      dispatch({ type: 'DELETE_WORKSPACE', id: tutorialId });
+    }
+  }, [dispatch]);
+
+  const closeTerminal = useCallback(() => {
+    setTerminalOpen(false);
+  }, []);
+
   const addNode = (x, y) => dispatch({ type: 'ADD_NODE', x, y });
   const updateNode = (id, patch) => dispatch({ type: 'UPDATE_NODE', id, patch });
   const deleteNode = (id) => dispatch({ type: 'DELETE_NODE', id });
@@ -387,7 +430,7 @@ export default function Canvas() {
 
       <TerminalDialog
         open={terminalOpen}
-        onClose={() => setTerminalOpen(false)}
+        onClose={closeTerminal}
         workspace={active}
         dispatch={dispatch}
         orientation={active.orientation}
@@ -397,6 +440,8 @@ export default function Canvas() {
           const input = document.querySelector('input[type="file"][accept="application/json"]');
           input?.click();
         }}
+        onTutorialStart={beginTerminalTutorialWorkspace}
+        onTutorialEnd={endTerminalTutorialWorkspace}
       />
     </div>
   );

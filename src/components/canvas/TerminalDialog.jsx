@@ -336,7 +336,18 @@ function isMobileKeyboardOpen() {
   return vv.height < layoutH * 0.82 || layoutH - vv.height > 120;
 }
 
-export default function TerminalDialog({ open, onClose, workspace, dispatch, onExport, onImport, onArrange, orientation }) {
+export default function TerminalDialog({
+  open,
+  onClose,
+  workspace,
+  dispatch,
+  onExport,
+  onImport,
+  onArrange,
+  orientation,
+  onTutorialStart,
+  onTutorialEnd,
+}) {
   const [cwdId, setCwdId] = useState(null);
   const [input, setInput] = useState('');
   const [lines, setLines] = useState([]);
@@ -375,6 +386,26 @@ export default function TerminalDialog({ open, onClose, workspace, dispatch, onE
       setKeyboardViewport(null);
     }
   }, [open]);
+
+  // If the dialog is closed while a tutorial is active, tear down its workspace.
+  const tutorialOpenRef = useRef(false);
+  useEffect(() => {
+    tutorialOpenRef.current = tutorialOpen;
+  }, [tutorialOpen]);
+
+  useEffect(() => {
+    if (open) return undefined;
+    if (!tutorialOpenRef.current) return undefined;
+    tutorialOpenRef.current = false;
+    setTutorialOpen(false);
+    setTutorialIndex(0);
+    setLines([]);
+    setWelcomeHidden(false);
+    setCwdId(null);
+    setConfirmDeleteId(null);
+    onTutorialEnd?.();
+    return undefined;
+  }, [open, onTutorialEnd]);
 
   // Lift the dialog into the visual viewport when the soft keyboard opens (mobile).
   useEffect(() => {
@@ -456,20 +487,41 @@ export default function TerminalDialog({ open, onClose, workspace, dispatch, onE
     });
   };
 
+  const clearTerminalSession = () => {
+    setLines([]);
+    setWelcomeHidden(false);
+    setCwdId(null);
+    setConfirmDeleteId(null);
+    setInput('');
+    setHistoryIndex(-1);
+  };
+
+  const endTutorialSession = (message) => {
+    setTutorialOpen(false);
+    setTutorialIndex(0);
+    clearTerminalSession();
+    onTutorialEnd?.();
+    if (message) {
+      setLines([message]);
+      setWelcomeHidden(true);
+    }
+  };
+
   const advanceTutorial = () => {
     if (tutorialIndex >= tutorialSteps.length - 1) {
-      setTutorialOpen(false);
-      setTutorialIndex(0);
-      write('Tutorial complete. Type tutorial to replay.');
+      endTutorialSession('Tutorial complete. Type tutorial to replay.');
       return;
     }
     setTutorialIndex((i) => i + 1);
   };
 
   const startTutorial = () => {
+    onTutorialStart?.();
+    clearTerminalSession();
     setTutorialOpen(true);
     setTutorialIndex(0);
-    write('Tutorial started — follow the card below.');
+    setLines(['Tutorial started — follow the card below.']);
+    setWelcomeHidden(true);
   };
 
   const run = (raw) => {
@@ -945,8 +997,7 @@ export default function TerminalDialog({ open, onClose, workspace, dispatch, onE
             platform={platform}
             onContinue={advanceTutorial}
             onSkip={() => {
-              setTutorialOpen(false);
-              write('Tutorial skipped. Type tutorial to restart.');
+              endTutorialSession('Tutorial skipped. Type tutorial to restart.');
             }}
             inputRef={formRef}
             outputRef={scrollRef}
@@ -974,9 +1025,10 @@ export default function TerminalDialog({ open, onClose, workspace, dispatch, onE
           <form
             ref={formRef}
             data-terminal-input
-            className={`flex shrink-0 items-center gap-2 border-t border-nm-border bg-nm-terminal px-4 py-3 text-[13px] text-nm-terminal-text ${
+            className={`flex shrink-0 items-center gap-2 border-t border-nm-border bg-nm-terminal px-4 py-3 text-nm-terminal-text ${
               inputHighlight ? 'ring-2 ring-inset ring-indigo-400/80' : ''
             }`}
+            style={{ fontSize: platform === 'mobile' ? 16 : 13 }}
             onSubmit={(e) => {
               e.preventDefault();
               const value = input;
@@ -989,7 +1041,8 @@ export default function TerminalDialog({ open, onClose, workspace, dispatch, onE
               {autocompleteGhost ? (
                 <div
                   aria-hidden
-                  className="pointer-events-none absolute inset-0 flex items-center overflow-hidden whitespace-pre font-mono text-[13px] leading-none"
+                  className="pointer-events-none absolute inset-0 flex items-center overflow-hidden whitespace-pre font-mono leading-none"
+                  style={{ fontSize: 'inherit' }}
                 >
                   <span className="invisible">{input}</span>
                   <span style={{ color: 'rgba(148, 163, 158, 0.38)' }}>{autocompleteGhost}</span>
@@ -1005,6 +1058,7 @@ export default function TerminalDialog({ open, onClose, workspace, dispatch, onE
                   pasteIntoInput();
                 }}
                 className="relative w-full min-w-0 bg-transparent text-nm-terminal-text caret-nm-terminal-prompt outline-none"
+                style={{ fontSize: 'inherit' }}
                 autoComplete="off"
                 autoCorrect="off"
                 autoCapitalize="none"

@@ -37,12 +37,17 @@ jobs:
           test -f dist/index.html
           test -f dist/manifest.json
           test -f dist/favicon.svg
+          test -f dist/icon-180.png
+          test -f dist/icon-192.png
+          test -f dist/icon-512.png
           test -f dist/sw.js
           test -f dist/.nojekyll
           grep -q '/NodeMind/assets/' dist/index.html
           grep -q './manifest.json' dist/index.html
           grep -q './favicon.svg' dist/index.html
-          grep -q './favicon.svg' dist/manifest.json
+          grep -q 'icon-192.png' dist/manifest.json
+          grep -q 'icon-512.png' dist/manifest.json
+          grep -q './icon-180.png' dist/index.html
           grep -q 'serviceWorker' dist/assets/*.js
           ! grep -q '%BASE_URL%' dist/index.html
           ! grep -q 'src/main.jsx' dist/index.html

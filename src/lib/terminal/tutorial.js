@@ -153,9 +153,9 @@ function desktopSteps() {
     {
       id: 'link',
       title: 'Create a link',
-      body: 'Link to another node by ID (use dir or find to discover IDs).',
+      body: 'Link to the duplicated node by ID (after duplicate, that is usually 002).',
       expect: { kind: 'command', match: /^link\s+\S+/i },
-      hint: 'link 001',
+      hint: 'link 002',
       highlight: 'input',
     },
     {
@@ -163,7 +163,7 @@ function desktopSteps() {
       title: 'Remove a link',
       body: 'Unlink the same target ID if you linked it.',
       expect: { kind: 'command', match: /^unlink\s+\S+/i },
-      hint: 'unlink 001',
+      hint: 'unlink 002',
       highlight: 'input',
     },
     {
@@ -382,9 +382,9 @@ function mobileSteps() {
     {
       id: 'link',
       title: 'Create a link',
-      body: 'Link to another node ID.',
+      body: 'Link to the duplicated node by ID (after duplicate, that is usually 002).',
       expect: { kind: 'command', match: /^link\s+\S+/i },
-      hint: 'link 001',
+      hint: 'link 002',
       highlight: 'input',
     },
     {
@@ -392,7 +392,7 @@ function mobileSteps() {
       title: 'Unlink',
       body: 'Remove that link.',
       expect: { kind: 'command', match: /^unlink\s+\S+/i },
-      hint: 'unlink 001',
+      hint: 'unlink 002',
       highlight: 'input',
     },
     {

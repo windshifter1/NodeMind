@@ -42,6 +42,7 @@ jobs:
           grep -q '/NodeMind/assets/' dist/index.html
           grep -q './manifest.json' dist/index.html
           grep -q './favicon.svg' dist/index.html
+          grep -q './favicon.svg' dist/manifest.json
           grep -q 'serviceWorker' dist/assets/*.js
           ! grep -q '%BASE_URL%' dist/index.html
           ! grep -q 'src/main.jsx' dist/index.html

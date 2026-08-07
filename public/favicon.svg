@@ -1,27 +1,27 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" role="img" aria-label="NodeMind">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none" role="img" aria-label="NodeMind">
   <defs>
-    <linearGradient id="f-bg" x1="10" y1="4" x2="54" y2="60" gradientUnits="userSpaceOnUse">
+    <linearGradient id="nm-bg" x1="96" y1="48" x2="416" y2="464" gradientUnits="userSpaceOnUse">
       <stop offset="0%" stop-color="#141826"/>
       <stop offset="100%" stop-color="#080a12"/>
     </linearGradient>
-    <linearGradient id="f-node" x1="0" y1="0" x2="1" y2="1">
+    <linearGradient id="nm-node" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0%" stop-color="#c7d2fe"/>
       <stop offset="100%" stop-color="#6366f1"/>
     </linearGradient>
   </defs>
 
-  <rect width="64" height="64" rx="14" fill="url(#f-bg)"/>
+  <!-- Maskable safe zone: mark stays inside central ~80% -->
+  <rect width="512" height="512" rx="112" fill="url(#nm-bg)"/>
 
-  <!-- Simplified mind-map — thick strokes for 16px clarity -->
   <path
-    d="M32 18V30M32 30L20 44M32 30L44 44"
+    d="M256 176V296M256 296L168 392M256 296L344 392"
     stroke="#a5b4fc"
-    stroke-width="4.5"
+    stroke-width="36"
     stroke-linecap="round"
     stroke-linejoin="round"
   />
-  <circle cx="20" cy="44" r="7" fill="url(#f-node)"/>
-  <circle cx="44" cy="44" r="7" fill="url(#f-node)"/>
-  <circle cx="32" cy="18" r="8" fill="#e0e7ff"/>
-  <circle cx="32" cy="18" r="3" fill="#1e1b4b" fill-opacity="0.45"/>
+  <circle cx="168" cy="392" r="56" fill="url(#nm-node)"/>
+  <circle cx="344" cy="392" r="56" fill="url(#nm-node)"/>
+  <circle cx="256" cy="176" r="64" fill="#e0e7ff"/>
+  <circle cx="256" cy="176" r="24" fill="#1e1b4b" fill-opacity="0.45"/>
 </svg>

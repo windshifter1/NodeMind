@@ -55,7 +55,7 @@ In the app terminal: `version`, `version help`.
 1. Run `npm install` locally and commit `package-lock.json` (required for `npm ci` in CI).
 2. Push this repo to GitHub as **`NodeMind`** (must match the Vite `base` path).
 3. **Critical:** In the repo go to **Settings → Pages → Build and deployment** and set **Source** to **GitHub Actions** — not "Deploy from a branch". If branch deploy is enabled, GitHub serves the raw source files instead of Vite's built `dist/` output and the page stays blank.
-4. Push to `main` — the workflow builds `dist/` and publishes that folder only.
+4. Push to `dev` — the workflow builds `dist/` and publishes that folder only. GitHub Pages tracks the `dev` branch.
 
 Live URL: `https://windshifter1.github.io/NodeMind/`
 

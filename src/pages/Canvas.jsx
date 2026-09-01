@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import CanvasBoard from '@/components/canvas/CanvasBoard';
 import Toolbar from '@/components/canvas/Toolbar';
 import NodeEditDialog from '@/components/canvas/NodeEditDialog';
+import NodeTypeMenu from '@/components/canvas/NodeTypeMenu';
 import WorkspaceBar from '@/components/canvas/WorkspaceBar';
 import WorkspaceEditDialog from '@/components/canvas/WorkspaceEditDialog';
 import TextExportDialog from '@/components/canvas/TextExportDialog';
@@ -15,12 +16,15 @@ import {
   MAX_ZOOM,
   autoOrganiseNodes,
   autoOrganiseSelectedNodes,
+  connectedNodePositionAtSocket,
   nodeWidthForTitle,
   TOP_BAR_HEIGHT,
   workspaceNodesBounds,
   zoomToFrameBounds,
 } from '@/lib/canvasConstants';
+import { fieldsForKind } from '@/lib/nodeTypes';
 import { shouldStartOnboarding } from '@/lib/onboarding';
+import { emitTutorial } from '@/lib/tutorialEvents';
 import { applyDocumentTheme, persistTheme, readStoredTheme } from '@/lib/theme';
 
 function clampZoom(z) {
@@ -41,6 +45,7 @@ export default function Canvas() {
   const [selectionArmed, setSelectionArmed] = useState(false);
   const [nodeTheme, setNodeTheme] = useState(() => readStoredTheme());
   const [onboardingOpen, setOnboardingOpen] = useState(false);
+  const [nodePicker, setNodePicker] = useState(null);
   useEffect(() => {
     applyDocumentTheme(nodeTheme);
     persistTheme(nodeTheme);
@@ -145,7 +150,44 @@ export default function Canvas() {
     setTerminalOpen(false);
   }, []);
 
-  const addNode = (x, y) => dispatch({ type: 'ADD_NODE', x, y });
+  const closeNodePicker = useCallback(() => setNodePicker(null), []);
+
+  const openNodePicker = useCallback((request) => {
+    setNodePicker(request);
+  }, []);
+
+  const pickNodeType = useCallback(
+    (kind) => {
+      if (!nodePicker) return;
+      const { source, x, y, fromNode, fromType, worldX, worldY } = nodePicker;
+      if (source === 'connected') {
+        const dropX = Number.isFinite(worldX) ? worldX : x;
+        const dropY = Number.isFinite(worldY) ? worldY : y;
+        const pos = connectedNodePositionAtSocket(
+          { x: dropX, y: dropY },
+          fromType,
+          active.orientation,
+          { ...fieldsForKind(kind), title: '' }
+        );
+        dispatch({ type: 'ADD_CONNECTED_NODE', x: pos.x, y: pos.y, fromNode, fromType, kind });
+        emitTutorial('canvas.node.create-connected');
+      } else {
+        dispatch({ type: 'ADD_NODE', x, y, kind });
+        emitTutorial(source === 'toolbar' ? 'toolbar.node.create' : 'canvas.node.create-click');
+      }
+      setNodePicker(null);
+    },
+    [active.orientation, dispatch, nodePicker]
+  );
+
+  const addNode = (x, y, anchor) =>
+    openNodePicker({
+      source: 'canvas',
+      x,
+      y,
+      clientX: anchor?.clientX ?? window.innerWidth / 2,
+      clientY: anchor?.clientY ?? window.innerHeight / 2,
+    });
   const updateNode = (id, patch) => dispatch({ type: 'UPDATE_NODE', id, patch });
   const deleteNode = (id) => dispatch({ type: 'DELETE_NODE', id });
   const deleteNodes = (ids) => {
@@ -157,8 +199,18 @@ export default function Canvas() {
     dispatch({ type: 'ADD_EDGE', fromNode, fromType, toNode, toType });
   const deleteEdge = (id) => dispatch({ type: 'DELETE_EDGE', id });
   const bringToFront = (id) => dispatch({ type: 'BRING_TO_FRONT', id });
-  const addConnectedNode = (x, y, fromNode, fromType) =>
-    dispatch({ type: 'ADD_CONNECTED_NODE', x, y, fromNode, fromType });
+  const addConnectedNode = (x, y, fromNode, fromType, anchor) =>
+    openNodePicker({
+      source: 'connected',
+      x,
+      y,
+      fromNode,
+      fromType,
+      worldX: anchor?.worldX,
+      worldY: anchor?.worldY,
+      clientX: anchor?.clientX ?? window.innerWidth / 2,
+      clientY: anchor?.clientY ?? window.innerHeight / 2,
+    });
 
   const createWorkspace = (workspace) => dispatch({ type: 'ADD_WORKSPACE', workspace });
   const selectWorkspace = (id) => dispatch({ type: 'SET_ACTIVE', id });
@@ -217,6 +269,7 @@ export default function Canvas() {
   useEffect(() => {
     setSelectedNodeIds([]);
     setSelectionArmed(false);
+    setNodePicker(null);
   }, [state.activeId]);
 
   useEffect(() => {
@@ -281,7 +334,7 @@ export default function Canvas() {
   };
 
   const handleClear = () => {
-    if (window.confirm('Clear all notes and connections in this workspace? The workspace itself is kept.')) {
+    if (window.confirm('Clear all nodes and connections in this workspace? The workspace itself is kept.')) {
       dispatch({ type: 'CLEAR_CONTENT' });
     }
   };
@@ -375,7 +428,15 @@ export default function Canvas() {
         zoom={zoom}
         onRecenter={recenterView}
         onOpenSettings={() => setSettingsOpen(true)}
-        onAddNodeCenter={() => addNode(-nodeWidthForTitle('') / 2, -TOP_BAR_HEIGHT / 2)}
+        onAddNodeCenter={(anchor) =>
+          openNodePicker({
+            source: 'toolbar',
+            x: -nodeWidthForTitle('') / 2,
+            y: -TOP_BAR_HEIGHT / 2,
+            clientX: anchor?.clientX ?? window.innerWidth / 2,
+            clientY: anchor?.clientY ?? 72,
+          })
+        }
       />
 
       <WorkspaceBar
@@ -434,6 +495,15 @@ export default function Canvas() {
       />
 
       <OnboardingTour open={onboardingOpen} onClose={finishOnboarding} />
+
+      <NodeTypeMenu
+        key={nodePicker ? `${nodePicker.source}-${nodePicker.clientX}-${nodePicker.clientY}` : 'closed'}
+        open={!!nodePicker}
+        x={nodePicker?.clientX ?? 0}
+        y={nodePicker?.clientY ?? 0}
+        onClose={closeNodePicker}
+        onSelect={pickNodeType}
+      />
 
       <TerminalDialog
         open={terminalOpen}

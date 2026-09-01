@@ -2,6 +2,7 @@ import React, { useRef, useEffect, useState } from 'react';
 import { ChevronDown, ChevronUp, Pencil, Pin, X } from 'lucide-react';
 import { nodeWidthForTitle, TOP_BAR_HEIGHT, SOCKET_RADIUS } from '@/lib/canvasConstants';
 import { emitTutorial } from '@/lib/tutorialEvents';
+import { isNumberNode } from '@/lib/nodeTypes';
 
 const DOUBLE_TAP_MS = 450;
 
@@ -299,7 +300,28 @@ export default function NoteNode({
 
       </div>
 
-      {!node.collapsed && (
+      {!node.collapsed && isNumberNode(node) && (
+        <div className="px-3 pt-2 pb-3" onPointerDown={(e) => e.stopPropagation()}>
+          <input
+            type="number"
+            step="any"
+            value={node.value ?? ''}
+            onChange={(e) => onUpdate({ value: e.target.value })}
+            placeholder="0"
+            className={`w-full rounded-md border px-2 py-1.5 text-sm outline-none ${
+              darkNodes
+                ? 'border-white/10 bg-black/20 text-zinc-100 placeholder:text-zinc-500'
+                : 'border-slate-200 bg-white/80 text-slate-800 placeholder:text-slate-400'
+            }`}
+            style={{ borderColor: `${node.color}55` }}
+          />
+          <div className="mt-2 min-h-[2.25rem] break-all text-center text-3xl font-semibold tabular-nums tracking-tight text-gray-500">
+            {node.value === '' || node.value == null ? '\u00a0' : node.value}
+          </div>
+        </div>
+      )}
+
+      {!node.collapsed && !isNumberNode(node) && (
         <textarea
           ref={textareaRef}
           value={node.content}

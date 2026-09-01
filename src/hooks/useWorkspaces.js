@@ -6,6 +6,7 @@ import {
   normalizeLayoutSettings,
   normalizeOrientation,
 } from '@/lib/canvasConstants';
+import { fieldsForKind } from '@/lib/nodeTypes';
 
 const STORAGE_KEY = 'thoughts-canvas-workspaces-v2';
 const LEGACY_KEY = 'thoughts-canvas-graph-v1';
@@ -177,8 +178,7 @@ function reducer(state, action) {
               id: nextNumericNodeId(w.nodes),
               x: action.x,
               y: action.y,
-              title: '',
-              content: '',
+              ...fieldsForKind(action.kind),
               color: '#6366f1',
               collapsed: false,
               pinned: false,
@@ -199,8 +199,7 @@ function reducer(state, action) {
           id,
           x: action.x,
           y: action.y,
-          title: '',
-          content: '',
+          ...fieldsForKind(action.kind),
           color: '#6366f1',
           collapsed: false,
           pinned: false,

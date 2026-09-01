@@ -83,18 +83,18 @@ export const DESKTOP_TUTORIAL_SECTIONS = [
   {
     id: 'create-nodes',
     title: 'Create nodes',
-    body: 'Add ideas your way! Create notes with the + button or place them directly on the canvas.',
+    body: 'Add ideas your way! Create nodes with the + button or place them directly on the canvas, then choose a node type.',
     target: 'toolbar-add',
     tasks: [
       {
         id: 'toolbar-add',
-        label: 'Click + to create a note.',
+        label: 'Click + and pick a node type.',
         event: 'toolbar.node.create',
         target: 'toolbar-add',
       },
       {
         id: 'canvas-add',
-        label: 'Click an empty area of the canvas to create a note there.',
+        label: 'Click an empty area of the canvas and pick a node type.',
         event: 'canvas.node.create-click',
         target: 'canvas',
       },
@@ -143,7 +143,7 @@ export const DESKTOP_TUTORIAL_SECTIONS = [
   {
     id: 'connect',
     title: 'Connect & disconnect',
-    body: 'Link your thoughts! Drag from a coloured socket to another socket to connect notes. Create new connected notes by dragging from a socket onto empty canvas space.',
+    body: 'Link your thoughts! Drag from a coloured socket to another socket to connect nodes. Create new connected nodes by dragging from a socket onto empty canvas space, then choosing a type.',
     target: 'canvas',
     tasks: [
       {
@@ -154,7 +154,7 @@ export const DESKTOP_TUTORIAL_SECTIONS = [
       },
       {
         id: 'connected-node',
-        label: 'Create a new connected note.',
+        label: 'Create a new connected node.',
         event: 'canvas.node.create-connected',
         target: 'canvas',
       },
@@ -335,18 +335,18 @@ export const MOBILE_TUTORIAL_SECTIONS = [
   {
     id: 'create-nodes',
     title: 'Create nodes',
-    body: 'Add ideas your way! Create notes with the + button or place them directly on the canvas.',
+    body: 'Add ideas your way! Create nodes with the + button or place them directly on the canvas, then choose a node type.',
     target: 'toolbar-add',
     tasks: [
       {
         id: 'toolbar-add',
-        label: 'Tap + to create a note.',
+        label: 'Tap + and pick a node type.',
         event: 'toolbar.node.create',
         target: 'toolbar-add',
       },
       {
         id: 'canvas-add',
-        label: 'Tap an empty area of the canvas to create a note there.',
+        label: 'Tap an empty area of the canvas and pick a node type.',
         event: 'canvas.node.create-click',
         target: 'canvas',
       },
@@ -389,7 +389,7 @@ export const MOBILE_TUTORIAL_SECTIONS = [
   {
     id: 'connect',
     title: 'Connect & disconnect',
-    body: 'Link your thoughts! Drag from a coloured socket to another socket to connect notes. Create new connected notes by dragging from a socket onto empty canvas space.',
+    body: 'Link your thoughts! Drag from a coloured socket to another socket to connect nodes. Create new connected nodes by dragging from a socket onto empty canvas space, then choosing a type.',
     target: 'canvas',
     tasks: [
       {
@@ -400,7 +400,7 @@ export const MOBILE_TUTORIAL_SECTIONS = [
       },
       {
         id: 'connected-node',
-        label: 'Create a new connected note.',
+        label: 'Create a new connected node.',
         event: 'canvas.node.create-connected',
         target: 'canvas',
       },

@@ -1,12 +1,13 @@
 # GitHub Pages must use "GitHub Actions" as the source (Settings → Pages).
 # If Pages is set to "Deploy from a branch", visitors get the raw source
 # index.html instead of Vite's built dist/index.html and the app stays blank.
+# This workflow deploys from the `dev` branch.
 
 name: Deploy Vite to GitHub Pages
 
 on:
   push:
-    branches: [main]
+    branches: [dev]
   workflow_dispatch:
 
 permissions:

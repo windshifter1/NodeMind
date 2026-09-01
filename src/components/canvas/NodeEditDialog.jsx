@@ -51,7 +51,7 @@ export default function NodeEditDialog({ node, open, onClose, onSave, onDelete }
         onPointerDown={(e) => e.stopPropagation()}
       >
         <div className="flex items-center gap-2 px-3 sm:px-4 py-3 border-b border-nm-border bg-nm-header">
-          <h2 className="text-sm font-semibold text-nm-text">Edit note</h2>
+          <h2 className="text-sm font-semibold text-nm-text">Edit node</h2>
           <div className="flex-1" />
           <button
             onClick={close}
@@ -95,7 +95,7 @@ export default function NodeEditDialog({ node, open, onClose, onSave, onDelete }
               }}
               className="text-sm text-red-500 hover:text-red-400 font-medium transition"
             >
-              Delete note
+              Delete node
             </button>
             <div className="flex gap-2">
               <button

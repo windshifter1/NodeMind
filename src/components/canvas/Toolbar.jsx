@@ -226,11 +226,14 @@ export default function Toolbar({
       >
         <span data-onboarding="toolbar-add" className="inline-flex">
           <ToolbarButton
-            onClick={() => {
-              onAddNodeCenter();
-              emitTutorial('toolbar.node.create');
+            onClick={(e) => {
+              const rect = e.currentTarget.getBoundingClientRect();
+              onAddNodeCenter({
+                clientX: rect.left + rect.width / 2 - 140,
+                clientY: rect.bottom + 10,
+              });
             }}
-            title="Add note"
+            title="Add node"
           >
             <Plus size={16} />
           </ToolbarButton>

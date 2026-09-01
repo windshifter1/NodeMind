@@ -14,6 +14,7 @@ import {
 } from '@/lib/appVersion';
 import { isDesktopPlatform } from '@/lib/onboarding';
 import { normalizeTerminal } from '@/hooks/useWorkspaces';
+import { fieldsForKind, isNumberNode, nodeTypeLabel } from '@/lib/nodeTypes';
 import { COMMAND_NAMES, HELP_ALL, helpFor } from '@/lib/terminal/help';
 import { commandMatchesStep, getTerminalTutorialSteps } from '@/lib/terminal/tutorial';
 import TerminalTutorial from './TerminalTutorial';
@@ -173,13 +174,19 @@ function commandKey(token) {
 
 function formatNode(nodes, node) {
   const id = displayId(nodes, node.id);
-  return [
+  const lines = [
     `Title: ${normaliseTitle(node.title)}`,
     `ID: ${id}`,
+    `Type: ${nodeTypeLabel(node.kind)}`,
     `Path: \\${nodePath(nodes, node.id).join('\\')}`,
     `Colour: ${node.color || '#6366f1'}`,
-    node.content ? `Description: ${node.content}` : 'Description: (empty)',
   ];
+  if (isNumberNode(node)) {
+    lines.push(node.value === '' || node.value == null ? 'Value: (empty)' : `Value: ${node.value}`);
+  } else {
+    lines.push(node.content ? `Description: ${node.content}` : 'Description: (empty)');
+  }
+  return lines;
 }
 
 function unquote(value) {
@@ -728,8 +735,8 @@ export default function TerminalDialog({
           id: nextNumericNodeId(nodes),
           x: pos.x,
           y: pos.y,
+          ...fieldsForKind('note'),
           title,
-          content: '',
           color: '#6366f1',
           collapsed: false,
           pinned: false,

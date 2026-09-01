@@ -1,4 +1,5 @@
 import { autoOrganiseGraph } from './layout/index.js';
+import { NUMBER_NODE_BODY_HEIGHT, isNumberNode, normalizeNodeKind } from './nodeTypes.js';
 
 export const NODE_WIDTH = 180; // default (empty title) width
 export const TOP_BAR_HEIGHT = 44;
@@ -91,6 +92,9 @@ export function nodeWidthForTitle(title) {
 export function nodeHeightForLayout(nodeOrTitle = '') {
   const collapsed = typeof nodeOrTitle === 'object' && nodeOrTitle?.collapsed;
   if (collapsed) return TOP_BAR_HEIGHT;
+  if (typeof nodeOrTitle === 'object' && isNumberNode(nodeOrTitle)) {
+    return TOP_BAR_HEIGHT + NUMBER_NODE_BODY_HEIGHT;
+  }
   const content = typeof nodeOrTitle === 'object' ? nodeOrTitle.content || '' : '';
   const lineCount = Math.max(1, content.split('\n').length);
   const textHeight = Math.max(64, lineCount * 20) + 24;
@@ -341,8 +345,21 @@ export function migrateWorkspaceNodeIds(workspace) {
   const orientation = normalizeOrientation(workspace.orientation);
   const layoutOnOrientationChange = normalizeLayoutOnOrientationChange(workspace.layoutOnOrientationChange);
   const layoutSettings = normalizeLayoutSettings(workspace.layoutSettings);
+  const withKinds = (list) =>
+    list.map((node) => ({
+      ...node,
+      kind: normalizeNodeKind(node.kind),
+      ...(normalizeNodeKind(node.kind) === 'number' && node.value == null ? { value: '' } : {}),
+    }));
+
   if (!nodes.length || nodes.every((node) => /^0*\d+$/.test(node.id))) {
-    return { ...workspace, orientation, layoutOnOrientationChange, layoutSettings };
+    return {
+      ...workspace,
+      orientation,
+      layoutOnOrientationChange,
+      layoutSettings,
+      nodes: withKinds(nodes),
+    };
   }
   const idMap = new Map();
   const migratedNodes = nodes.map((node, index) => {
@@ -355,5 +372,12 @@ export function migrateWorkspaceNodeIds(workspace) {
     fromNode: idMap.get(edge.fromNode) ?? edge.fromNode,
     toNode: idMap.get(edge.toNode) ?? edge.toNode,
   }));
-  return { ...workspace, orientation, layoutOnOrientationChange, layoutSettings, nodes: migratedNodes, edges: migratedEdges };
+  return {
+    ...workspace,
+    orientation,
+    layoutOnOrientationChange,
+    layoutSettings,
+    nodes: withKinds(migratedNodes),
+    edges: migratedEdges,
+  };
 }

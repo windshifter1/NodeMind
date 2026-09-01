@@ -678,8 +678,10 @@ export default function CanvasBoard({
         } else {
           onSelectionChange?.([]);
           const w = screenToWorld(e.clientX, e.clientY);
-          onAddNode(w.x - nodeWidthForTitle('') / 2, w.y - TOP_BAR_HEIGHT / 2);
-          emitTutorial('canvas.node.create-click');
+          onAddNode(w.x - nodeWidthForTitle('') / 2, w.y - TOP_BAR_HEIGHT / 2, {
+            clientX: e.clientX,
+            clientY: e.clientY,
+          });
         }
       }
       panState.current.panning = false;
@@ -1145,8 +1147,12 @@ export default function CanvasBoard({
         } else if (!overNode) {
           const w = screenToWorld(e.clientX, e.clientY);
           const pos = connectedNodePositionAtSocket(w, cur.fromType, graphOrientation);
-          onAddConnectedNode(pos.x, pos.y, cur.fromNode, cur.fromType);
-          emitTutorial('canvas.node.create-connected');
+          onAddConnectedNode(pos.x, pos.y, cur.fromNode, cur.fromType, {
+            clientX: e.clientX,
+            clientY: e.clientY,
+            worldX: w.x,
+            worldY: w.y,
+          });
         }
       }
       pendingRef.current = null;
@@ -1194,7 +1200,7 @@ export default function CanvasBoard({
       {nodes.length === 0 && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none px-6">
           <p className="text-nm-text-subtle text-center text-sm sm:text-base max-w-md leading-relaxed select-none">
-            Tap empty canvas to add a note · drag sockets to connect · tap a line to delete
+            Tap empty canvas to add a node · drag sockets to connect · tap a line to delete
           </p>
         </div>
       )}

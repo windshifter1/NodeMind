@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Copy, X, ListTree, AlignLeft } from 'lucide-react';
+import { isNumberNode } from '@/lib/nodeTypes';
 
 export default function TextExportDialog({ open, onClose, workspaceName, nodes, edges }) {
   const [expanded, setExpanded] = useState(false);
@@ -31,9 +32,17 @@ export default function TextExportDialog({ open, onClose, workspaceName, nodes, 
       if (out.length) lines.push(`   \u2192  ${out.join('   \u00b7   ')}`);
       if (inc.length) lines.push(`   \u2190  ${inc.join('   \u00b7   ')}`);
       if (!out.length && !inc.length) lines.push('   (no connections)');
-      if (expanded && n.content && n.content.trim()) {
-        lines.push('');
-        n.content.trim().split('\n').forEach((l) => lines.push(`      ${l}`));
+      if (expanded) {
+        if (isNumberNode(n)) {
+          const value = n.value === '' || n.value == null ? '' : String(n.value);
+          if (value) {
+            lines.push('');
+            lines.push(`      ${value}`);
+          }
+        } else if (n.content && n.content.trim()) {
+          lines.push('');
+          n.content.trim().split('\n').forEach((l) => lines.push(`      ${l}`));
+        }
       }
       lines.push('');
     });

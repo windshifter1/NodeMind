@@ -1,5 +1,6 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import NoteNode from './NoteNode';
+import NodeTypeMenu from './NodeTypeMenu';
 import BinIcon from './BinIcon';
 import {
   TOP_BAR_HEIGHT,
@@ -52,6 +53,9 @@ export default function CanvasBoard({
   setPan,
   orientation,
   heldConnection = null,
+  nodePicker = null,
+  onPickerClose,
+  onPickerSelect,
 }) {
   const graphOrientation = normalizeOrientation(orientation);
   const boardRef = useRef(null);
@@ -80,6 +84,8 @@ export default function CanvasBoard({
   selectionArmedRef.current = selectionArmed;
   const selectedNodeIdsRef = useRef(selectedNodeIds);
   selectedNodeIdsRef.current = selectedNodeIds;
+  const pickerOpenRef = useRef(false);
+  pickerOpenRef.current = !!nodePicker;
   const nodeDragMovedRef = useRef(false);
   const dragReleaseRef = useRef(null);
   const draggingNodeRef = useRef(null);
@@ -678,11 +684,15 @@ export default function CanvasBoard({
           onSelectionChange?.([]);
         } else {
           onSelectionChange?.([]);
-          const w = screenToWorld(e.clientX, e.clientY);
-          onAddNode(w.x - nodeWidthForTitle('') / 2, w.y - TOP_BAR_HEIGHT / 2, {
-            clientX: e.clientX,
-            clientY: e.clientY,
-          });
+          if (!pickerOpenRef.current) {
+            const w = screenToWorld(e.clientX, e.clientY);
+            onAddNode(w.x - nodeWidthForTitle('') / 2, w.y - TOP_BAR_HEIGHT / 2, {
+              clientX: e.clientX,
+              clientY: e.clientY,
+              worldX: w.x,
+              worldY: w.y,
+            });
+          }
         }
       }
       panState.current.panning = false;
@@ -1145,7 +1155,7 @@ export default function CanvasBoard({
             onAddEdge(cur.fromNode, cur.fromType, toNode, toType);
             emitTutorial('canvas.edge.create');
           }
-        } else if (!overNode) {
+        } else if (!overNode && !pickerOpenRef.current) {
           const w = screenToWorld(e.clientX, e.clientY);
           const pos = connectedNodePositionAtSocket(w, cur.fromType, graphOrientation);
           onAddConnectedNode(pos.x, pos.y, cur.fromNode, cur.fromType, {
@@ -1291,6 +1301,14 @@ export default function CanvasBoard({
             onOpenEdit={onOpenEdit}
           />
         ))}
+        <NodeTypeMenu
+          key={nodePicker ? `${nodePicker.source}-${nodePicker.worldX}-${nodePicker.worldY}` : 'closed'}
+          open={!!nodePicker}
+          x={nodePicker?.worldX ?? 0}
+          y={nodePicker?.worldY ?? 0}
+          onClose={onPickerClose}
+          onSelect={onPickerSelect}
+        />
       </div>
 
       {marqueeRect && (

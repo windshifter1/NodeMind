@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import CanvasBoard from '@/components/canvas/CanvasBoard';
 import Toolbar from '@/components/canvas/Toolbar';
 import NodeEditDialog from '@/components/canvas/NodeEditDialog';
-import NodeTypeMenu from '@/components/canvas/NodeTypeMenu';
 import WorkspaceBar from '@/components/canvas/WorkspaceBar';
 import WorkspaceEditDialog from '@/components/canvas/WorkspaceEditDialog';
 import TextExportDialog from '@/components/canvas/TextExportDialog';
@@ -185,6 +184,8 @@ export default function Canvas() {
       source: 'canvas',
       x,
       y,
+      worldX: Number.isFinite(anchor?.worldX) ? anchor.worldX : x,
+      worldY: Number.isFinite(anchor?.worldY) ? anchor.worldY : y,
       clientX: anchor?.clientX ?? window.innerWidth / 2,
       clientY: anchor?.clientY ?? window.innerHeight / 2,
     });
@@ -422,6 +423,9 @@ export default function Canvas() {
               }
             : null
         }
+        nodePicker={nodePicker}
+        onPickerClose={closeNodePicker}
+        onPickerSelect={pickNodeType}
       />
 
       <Toolbar
@@ -438,15 +442,22 @@ export default function Canvas() {
         zoom={zoom}
         onRecenter={recenterView}
         onOpenSettings={() => setSettingsOpen(true)}
-        onAddNodeCenter={(anchor) =>
+        onAddNodeCenter={(anchor) => {
+          const clientX = anchor?.clientX ?? window.innerWidth / 2;
+          const clientY = anchor?.clientY ?? 72;
+          const rect = document.querySelector('[data-canvas-board]')?.getBoundingClientRect();
+          const left = rect?.left ?? 0;
+          const top = rect?.top ?? 0;
           openNodePicker({
             source: 'toolbar',
             x: -nodeWidthForTitle('') / 2,
             y: -TOP_BAR_HEIGHT / 2,
-            clientX: anchor?.clientX ?? window.innerWidth / 2,
-            clientY: anchor?.clientY ?? 72,
-          })
-        }
+            worldX: (clientX - left - pan.x) / zoom,
+            worldY: (clientY - top - pan.y) / zoom,
+            clientX,
+            clientY,
+          });
+        }}
       />
 
       <WorkspaceBar
@@ -505,15 +516,6 @@ export default function Canvas() {
       />
 
       <OnboardingTour open={onboardingOpen} onClose={finishOnboarding} />
-
-      <NodeTypeMenu
-        key={nodePicker ? `${nodePicker.source}-${nodePicker.clientX}-${nodePicker.clientY}` : 'closed'}
-        open={!!nodePicker}
-        x={nodePicker?.clientX ?? 0}
-        y={nodePicker?.clientY ?? 0}
-        onClose={closeNodePicker}
-        onSelect={pickNodeType}
-      />
 
       <TerminalDialog
         open={terminalOpen}

@@ -51,6 +51,7 @@ export default function CanvasBoard({
   pan,
   setPan,
   orientation,
+  heldConnection = null,
 }) {
   const graphOrientation = normalizeOrientation(orientation);
   const boardRef = useRef(null);
@@ -1240,22 +1241,28 @@ export default function CanvasBoard({
             </g>
           );
         })}
-        {pending &&
-          (() => {
-            const fn = nodes.find((n) => n.id === pending.fromNode);
-            if (!fn) return null;
-            const from = socketScreen(fn, pending.fromType);
-            return (
-              <path
-                d={bezierPath(from.x, from.y, pending.toX, pending.toY, pending.fromType === 'input', graphOrientation)}
-                fill="none"
-                stroke="#818cf8"
-                strokeWidth={2.5}
-                strokeDasharray="6 6"
-                strokeLinecap="round"
-              />
-            );
-          })()}
+        {(() => {
+          const live = pending;
+          const held = !live ? heldConnection : null;
+          const source = live || held;
+          if (!source) return null;
+          const fn = nodes.find((n) => n.id === source.fromNode);
+          if (!fn) return null;
+          const from = socketScreen(fn, source.fromType);
+          const toX = live ? live.toX : held.toWorldX * zoom + pan.x;
+          const toY = live ? live.toY : held.toWorldY * zoom + pan.y;
+          if (!Number.isFinite(toX) || !Number.isFinite(toY)) return null;
+          return (
+            <path
+              d={bezierPath(from.x, from.y, toX, toY, source.fromType === 'input', graphOrientation)}
+              fill="none"
+              stroke="#818cf8"
+              strokeWidth={2.5}
+              strokeDasharray="6 6"
+              strokeLinecap="round"
+            />
+          );
+        })()}
       </svg>
 
       {/* Nodes layer (world-space, transformed) */}
@@ -1270,7 +1277,7 @@ export default function CanvasBoard({
           <NoteNode
             key={node.id}
             node={node}
-            pending={pending}
+            pending={pending || heldConnection}
             orientation={graphOrientation}
             darkNodes={darkNodes}
             selected={selectedSet.has(node.id)}

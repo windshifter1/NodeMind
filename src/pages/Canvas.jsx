@@ -412,6 +412,16 @@ export default function Canvas() {
         pan={pan}
         setPan={setPan}
         orientation={active.orientation}
+        heldConnection={
+          nodePicker?.source === 'connected'
+            ? {
+                fromNode: nodePicker.fromNode,
+                fromType: nodePicker.fromType,
+                toWorldX: nodePicker.worldX,
+                toWorldY: nodePicker.worldY,
+              }
+            : null
+        }
       />
 
       <Toolbar

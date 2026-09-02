@@ -1,4 +1,5 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo } from 'react';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 import {
   defForKind,
   fieldVisibleForNode,
@@ -22,16 +23,28 @@ import {
   selectionOpDisplayLabel,
   selectionOpKey,
 } from '@/lib/cas/selectionOps';
-import { classifyExprEqText } from '@/lib/cas/engine';
+import { classifyExprEqText, parseExpressionOrEquation } from '@/lib/cas/engine';
+import {
+  isPlainNumberParam,
+  listPlotModes,
+  paramNamesForMode,
+  pickDefaultMode,
+} from '@/lib/cas/graphModes';
 import {
   SUB_SLOT_GAP,
   SUB_SLOT_PAD_TOP,
   SUB_SLOT_ROW_H,
   patchSubstituteSlotText,
 } from '@/lib/substituteSlots';
-import { patchGraphSlotText } from '@/lib/graphSlots';
+import {
+  getGraphSlotOpt,
+  patchGraphSlotOpt,
+  patchGraphSlotParam,
+  patchGraphSlotText,
+} from '@/lib/graphSlots';
 import MathPreview from './MathPreview';
 import GraphPlot from './GraphPlot';
+import GraphParamScrub from './GraphParamScrub';
 
 const FIELD_METHODS = new Set([
   'collect',
@@ -53,6 +66,318 @@ function inputClass(darkNodes, color) {
 
 function methodNeedsField(method) {
   return FIELD_METHODS.has(method);
+}
+
+function modeSelectValue(mode) {
+  if (!mode) return '';
+  return `${mode.kind}|${mode.dependent || ''}|${mode.independent || ''}`;
+}
+
+function parseModeSelectValue(value) {
+  const [kind, dependent, independent] = String(value || '').split('|');
+  return {
+    kind: kind || null,
+    dependent: dependent || null,
+    independent: independent || null,
+  };
+}
+
+function GraphNodeBody({
+  node,
+  darkNodes,
+  result,
+  onUpdate,
+  bodySlots,
+  basicView,
+  zoom,
+  fieldLooks,
+}) {
+  const plotH = basicView
+    ? Math.max(160, GRAPH_NODE_BASIC_BODY_HEIGHT - 16)
+    : Math.max(200, GRAPH_NODE_BODY_HEIGHT - 48);
+  const softErrors = (result?.plot?.series || []).filter((s) => s.kind === 'error');
+  const domainLabel = result?.plot?.xLabel || 'x';
+
+  const slotMeta = useMemo(() => {
+    const map = new Map();
+    (result?.plot?.series || []).forEach((s) => {
+      if (s?.slotId) map.set(s.slotId, s);
+    });
+    return map;
+  }, [result]);
+
+  // Keep stored param keys in sync so socket layout matches visible param rows.
+  useEffect(() => {
+    if (basicView) return;
+    let mergedOpts = null;
+    bodySlots.forEach((slot) => {
+      if (slot.greyed) return;
+      const series = slotMeta.get(slot.id);
+      let paramNames = series?.paramNames;
+      if (!paramNames) {
+        if (slot.connected) return;
+        const text = String(slot.text || '');
+        if (!text.replace(/\s+/g, '')) return;
+        const parsed = parseExpressionOrEquation(text);
+        if (parsed.error) return;
+        const opt = getGraphSlotOpt(node, slot.id);
+        const modes = listPlotModes(parsed.ast);
+        const mode = pickDefaultMode(modes, {
+          independent: opt.independent,
+          dependent: opt.dependent,
+          kind: opt.kind,
+        });
+        paramNames = paramNamesForMode(parsed.ast, mode);
+      }
+      if (!paramNames?.length) return;
+      const opt = getGraphSlotOpt(mergedOpts ? { ...node, graphSlotOpts: mergedOpts } : node, slot.id);
+      const nextParams = { ...opt.params };
+      let changed = false;
+      paramNames.forEach((name) => {
+        if (!Object.prototype.hasOwnProperty.call(nextParams, name)) {
+          nextParams[name] = '';
+          changed = true;
+        }
+      });
+      if (!changed) return;
+      const patch = patchGraphSlotOpt(
+        mergedOpts ? { ...node, graphSlotOpts: mergedOpts } : node,
+        slot.id,
+        { params: nextParams }
+      );
+      if (patch?.graphSlotOpts) mergedOpts = patch.graphSlotOpts;
+    });
+    if (mergedOpts) onUpdate({ graphSlotOpts: mergedOpts });
+  }, [basicView, bodySlots, slotMeta, node, onUpdate]);
+
+  return (
+    <div
+      className={`px-3 pb-3 ${basicView ? 'pt-2' : ''}`}
+      onPointerDown={(e) => e.stopPropagation()}
+      style={!basicView ? { paddingTop: SUB_SLOT_PAD_TOP } : undefined}
+    >
+      {!basicView && (
+        <div className="mb-2 flex flex-col" style={{ gap: SUB_SLOT_GAP }}>
+          {bodySlots.map((slot) => {
+            const opt = getGraphSlotOpt(node, slot.id);
+            const expanded = opt.expanded !== false;
+            const series = slotMeta.get(slot.id);
+            let modes = series?.modes || [];
+            let paramNames = series?.paramNames || [];
+            if (!modes.length && !slot.connected && String(slot.text || '').replace(/\s+/g, '')) {
+              const parsed = parseExpressionOrEquation(slot.text);
+              if (!parsed.error) {
+                modes = listPlotModes(parsed.ast);
+                const mode = pickDefaultMode(modes, {
+                  independent: opt.independent,
+                  dependent: opt.dependent,
+                  kind: opt.kind,
+                });
+                paramNames = paramNamesForMode(parsed.ast, mode);
+              }
+            }
+            const activeMode =
+              pickDefaultMode(modes, {
+                independent: opt.independent,
+                dependent: opt.dependent,
+                kind: opt.kind,
+              }) || null;
+
+            return (
+              <div
+                key={slot.id}
+                className={`transition-opacity ${slot.greyed ? 'opacity-45' : 'opacity-100'}`}
+              >
+                <div className="flex items-center gap-1.5" style={{ minHeight: SUB_SLOT_ROW_H }}>
+                  {!slot.greyed ? (
+                    <button
+                      type="button"
+                      className={`shrink-0 rounded p-0.5 ${
+                        darkNodes ? 'text-zinc-400 hover:bg-white/10' : 'text-slate-500 hover:bg-black/5'
+                      }`}
+                      title={expanded ? 'Collapse plot options' : 'Expand plot options'}
+                      onClick={() => {
+                        const patch = patchGraphSlotOpt(node, slot.id, { expanded: !expanded });
+                        if (patch) onUpdate(patch);
+                      }}
+                    >
+                      {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                    </button>
+                  ) : (
+                    <span className="w-[18px] shrink-0" />
+                  )}
+                  <span
+                    className={`w-4 shrink-0 text-center text-xs font-semibold ${
+                      darkNodes ? 'text-zinc-300' : 'text-slate-600'
+                    }`}
+                    title={`Series ${slot.label}`}
+                  >
+                    {slot.label}
+                  </span>
+                  {slot.connected ? (
+                    <div
+                      className={`min-w-0 flex-1 truncate rounded-md border border-dashed px-2 py-1.5 text-xs ${
+                        darkNodes
+                          ? 'border-white/15 text-zinc-400'
+                          : 'border-slate-300 text-slate-500'
+                      }`}
+                      title="Socket connected — typed value is remembered until disconnect"
+                    >
+                      Connected
+                    </div>
+                  ) : (
+                    <input
+                      type="text"
+                      value={slot.text}
+                      onChange={(e) => {
+                        const patch = patchGraphSlotText(node, slot.id, e.target.value);
+                        if (patch) onUpdate(patch);
+                      }}
+                      placeholder="equation or expression"
+                      className={`${fieldLooks.className} min-w-0 flex-1`}
+                      style={fieldLooks.style}
+                    />
+                  )}
+                </div>
+
+                {!slot.greyed && expanded && (
+                  <div
+                    className={`ml-6 mt-1 space-y-1.5 rounded-md border px-2 py-1.5 ${
+                      darkNodes ? 'border-white/10 bg-black/15' : 'border-slate-200 bg-white/50'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2" style={{ minHeight: 28 }}>
+                      <label
+                        className={`shrink-0 text-[11px] font-medium ${
+                          darkNodes ? 'text-zinc-400' : 'text-slate-500'
+                        }`}
+                      >
+                        Graph
+                      </label>
+                      <select
+                        value={modeSelectValue(activeMode)}
+                        disabled={!modes.length}
+                        onChange={(e) => {
+                          const next = parseModeSelectValue(e.target.value);
+                          const patch = patchGraphSlotOpt(node, slot.id, next);
+                          if (patch) onUpdate(patch);
+                        }}
+                        className={`min-w-0 flex-1 rounded-md border px-1.5 py-1 text-xs outline-none ${
+                          darkNodes
+                            ? 'border-white/10 bg-black/20 text-zinc-100'
+                            : 'border-slate-200 bg-white text-slate-800'
+                        }`}
+                        style={{ borderColor: `${node.color}55` }}
+                        title="Choose which variable to plot in terms of which"
+                      >
+                        {!modes.length && <option value="">No plottable form yet</option>}
+                        {modes.map((m) => (
+                          <option key={modeSelectValue(m)} value={modeSelectValue(m)}>
+                            {m.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {paramNames.map((name) => {
+                      const text = opt.params?.[name] ?? '';
+                      const showScrub = isPlainNumberParam(text);
+                      return (
+                        <div key={name} className="flex items-center gap-1" style={{ minHeight: 30 }}>
+                          <label
+                            className={`w-8 shrink-0 text-right text-[11px] font-medium tabular-nums ${
+                              darkNodes ? 'text-zinc-400' : 'text-slate-500'
+                            }`}
+                            title={`Parameter ${name} (empty = 1)`}
+                          >
+                            {name}
+                          </label>
+                          {showScrub && (
+                            <GraphParamScrub
+                              side="left"
+                              valueText={text}
+                              darkNodes={darkNodes}
+                              onCommit={(v) => {
+                                const patch = patchGraphSlotParam(node, slot.id, name, v);
+                                if (patch) onUpdate(patch);
+                              }}
+                            />
+                          )}
+                          <input
+                            type="text"
+                            value={text}
+                            onChange={(e) => {
+                              const patch = patchGraphSlotParam(node, slot.id, name, e.target.value);
+                              if (patch) onUpdate(patch);
+                            }}
+                            placeholder="1"
+                            className={`${fieldLooks.className} min-w-0 flex-1 py-1 text-xs`}
+                            style={fieldLooks.style}
+                            title="Empty defaults to 1. Numbers show drag bars; expressions hide them."
+                          />
+                          {showScrub && (
+                            <GraphParamScrub
+                              side="right"
+                              valueText={text}
+                              darkNodes={darkNodes}
+                              onCommit={(v) => {
+                                const patch = patchGraphSlotParam(node, slot.id, name, v);
+                                if (patch) onUpdate(patch);
+                              }}
+                            />
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
+          <div className="mt-1 flex items-center gap-2">
+            <label
+              className={`shrink-0 text-xs font-medium ${
+                darkNodes ? 'text-zinc-400' : 'text-slate-500'
+              }`}
+            >
+              {domainLabel} ∈
+            </label>
+            <input
+              type="text"
+              value={node.xMin ?? '-10'}
+              onChange={(e) => onUpdate({ xMin: e.target.value })}
+              className={`${fieldLooks.className} w-20`}
+              style={fieldLooks.style}
+              title={`${domainLabel} minimum`}
+            />
+            <span className={darkNodes ? 'text-zinc-500' : 'text-slate-400'}>…</span>
+            <input
+              type="text"
+              value={node.xMax ?? '10'}
+              onChange={(e) => onUpdate({ xMax: e.target.value })}
+              className={`${fieldLooks.className} w-20`}
+              style={fieldLooks.style}
+              title={`${domainLabel} maximum`}
+            />
+          </div>
+        </div>
+      )}
+      <GraphPlot plot={result?.plot} darkNodes={darkNodes} height={plotH} zoom={zoom} />
+      {!basicView && softErrors.length > 0 && (
+        <div
+          className={`mt-2 rounded-md border px-2.5 py-2 text-left text-xs leading-relaxed ${
+            darkNodes
+              ? 'border-amber-400/35 bg-amber-400/10 text-amber-100/90'
+              : 'border-amber-500/40 bg-amber-50 text-amber-900/90'
+          }`}
+          role="status"
+        >
+          {softErrors.map((s) => s.error).filter(Boolean).join(' · ')}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function MathNodeBody({
@@ -183,102 +508,17 @@ export default function MathNodeBody({
   };
 
   if (isGraphNode(node)) {
-    const plotH = basicView
-      ? Math.max(160, GRAPH_NODE_BASIC_BODY_HEIGHT - 16)
-      : Math.max(200, GRAPH_NODE_BODY_HEIGHT - 48);
-    const softErrors = (result?.plot?.series || []).filter((s) => s.kind === 'error');
     return (
-      <div
-        className={`px-3 pb-3 ${basicView ? 'pt-2' : ''}`}
-        onPointerDown={(e) => e.stopPropagation()}
-        style={!basicView ? { paddingTop: SUB_SLOT_PAD_TOP } : undefined}
-      >
-        {!basicView && (
-          <div className="mb-2 flex flex-col" style={{ gap: SUB_SLOT_GAP }}>
-            {bodySlots.map((slot) => (
-              <div
-                key={slot.id}
-                className={`flex items-center gap-2 transition-opacity ${
-                  slot.greyed ? 'opacity-45' : 'opacity-100'
-                }`}
-                style={{ minHeight: SUB_SLOT_ROW_H }}
-              >
-                <span
-                  className={`w-4 shrink-0 text-center text-xs font-semibold ${
-                    darkNodes ? 'text-zinc-300' : 'text-slate-600'
-                  }`}
-                  title={`Series ${slot.label}`}
-                >
-                  {slot.label}
-                </span>
-                {slot.connected ? (
-                  <div
-                    className={`min-w-0 flex-1 truncate rounded-md border border-dashed px-2 py-1.5 text-xs ${
-                      darkNodes
-                        ? 'border-white/15 text-zinc-400'
-                        : 'border-slate-300 text-slate-500'
-                    }`}
-                    title="Socket connected — typed value is remembered until disconnect"
-                  >
-                    Connected
-                  </div>
-                ) : (
-                  <input
-                    type="text"
-                    value={slot.text}
-                    onChange={(e) => {
-                      const patch = patchGraphSlotText(node, slot.id, e.target.value);
-                      if (patch) onUpdate(patch);
-                    }}
-                    placeholder="y=f(x) or expression in x"
-                    className={`${fieldLooks.className} min-w-0 flex-1`}
-                    style={fieldLooks.style}
-                  />
-                )}
-              </div>
-            ))}
-            <div className="mt-1 flex items-center gap-2">
-              <label
-                className={`shrink-0 text-xs font-medium ${
-                  darkNodes ? 'text-zinc-400' : 'text-slate-500'
-                }`}
-              >
-                x ∈
-              </label>
-              <input
-                type="text"
-                value={node.xMin ?? '-10'}
-                onChange={(e) => onUpdate({ xMin: e.target.value })}
-                className={`${fieldLooks.className} w-20`}
-                style={fieldLooks.style}
-                title="x minimum"
-              />
-              <span className={darkNodes ? 'text-zinc-500' : 'text-slate-400'}>…</span>
-              <input
-                type="text"
-                value={node.xMax ?? '10'}
-                onChange={(e) => onUpdate({ xMax: e.target.value })}
-                className={`${fieldLooks.className} w-20`}
-                style={fieldLooks.style}
-                title="x maximum"
-              />
-            </div>
-          </div>
-        )}
-        <GraphPlot plot={result?.plot} darkNodes={darkNodes} height={plotH} zoom={zoom} />
-        {!basicView && softErrors.length > 0 && (
-          <div
-            className={`mt-2 rounded-md border px-2.5 py-2 text-left text-xs leading-relaxed ${
-              darkNodes
-                ? 'border-amber-400/35 bg-amber-400/10 text-amber-100/90'
-                : 'border-amber-500/40 bg-amber-50 text-amber-900/90'
-            }`}
-            role="status"
-          >
-            {softErrors.map((s) => s.error).filter(Boolean).join(' · ')}
-          </div>
-        )}
-      </div>
+      <GraphNodeBody
+        node={node}
+        darkNodes={darkNodes}
+        result={result}
+        onUpdate={onUpdate}
+        bodySlots={bodySlots}
+        basicView={basicView}
+        zoom={zoom}
+        fieldLooks={fieldLooks}
+      />
     );
   }
 

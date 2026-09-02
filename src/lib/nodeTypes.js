@@ -31,7 +31,7 @@ export const NODE_KIND = {
   EVALUATE: 'evaluate',
   CONVERT: 'convert',
   SUBSTITUTE: 'substitute',
-  /** 2D Cartesian graph of upstream y = f(x) / expressions. */
+  /** 2D Cartesian graph of explicit equations / expressions (any named axes). */
   GRAPH: 'graph',
   /** @deprecated Rewrite-style solve; hidden from picker in favour of EQUATION_OP. */
   SOLVE: 'solve',
@@ -486,6 +486,7 @@ export function fieldsForKind(kind) {
     fields.xMin = '-10';
     fields.xMax = '10';
     fields.graphExprs = ['', ''];
+    fields.graphSlotOpts = {};
   }
   if (
     normalised === NODE_KIND.CAS_OP ||

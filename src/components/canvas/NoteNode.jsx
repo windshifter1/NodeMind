@@ -24,7 +24,7 @@ import {
   listSubstituteSlots,
   substituteSlotOffsetY,
 } from '@/lib/substituteSlots';
-import { listGraphSlots, graphSlotOffsetY } from '@/lib/graphSlots';
+import { listGraphSlots, graphSocketOffsetY } from '@/lib/graphSlots';
 import MathNodeBody from './MathNodeBody';
 
 const DOUBLE_TAP_MS = 450;
@@ -162,7 +162,8 @@ export default function NoteNode({
     if (isGraphNode(node)) return listGraphSlots(node, edges);
     return [];
   }, [node, edges, mathView]);
-  const slotOffsetY = isGraphNode(node) ? graphSlotOffsetY : substituteSlotOffsetY;
+  const slotOffsetY = (index) =>
+    isGraphNode(node) ? graphSocketOffsetY(node, index) : substituteSlotOffsetY(index);
   const textareaRef = useRef(null);
   const titleInputRef = useRef(null);
   const lastTitleTapRef = useRef(0);
@@ -191,7 +192,15 @@ export default function NoteNode({
     if (!isMathNode(node)) return undefined;
     onLayoutChange?.();
     return undefined;
-  }, [nodeWidth, node.kind, mathView, bodySlots.length, onLayoutChange]);
+  }, [
+    nodeWidth,
+    node.kind,
+    mathView,
+    bodySlots.length,
+    node.graphSlotOpts,
+    node.graphExprs,
+    onLayoutChange,
+  ]);
 
   const autoResize = () => {
     const ta = textareaRef.current;

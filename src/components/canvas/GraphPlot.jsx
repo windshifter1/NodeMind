@@ -417,6 +417,18 @@ export default function GraphPlot({
       ctx.fillText(formatTick(y, step), PAD.l - 6, py);
     }
 
+    // Axis variable names (when series agree on independent / dependent)
+    const xName = plot?.xLabel || 'x';
+    const yName = plot?.yLabel || 'y';
+    ctx.fillStyle = muted;
+    ctx.font = '10px ui-sans-serif, system-ui, sans-serif';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText(xName, PAD.l + plotW - 2, PAD.t + plotH - 2);
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillText(yName, PAD.l + 3, PAD.t + 3);
+
     if (plot?.error && !(plot.series || []).some((s) => s.kind !== 'error')) {
       ctx.fillStyle = muted;
       ctx.font = '12px ui-sans-serif, system-ui, sans-serif';

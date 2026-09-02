@@ -23,12 +23,20 @@ import {
   substituteSlotOffsetY,
 } from './substituteSlots.js';
 import {
-  graphSlotOffsetY,
+  graphSlotsBlockHeight,
+  graphSocketOffsetY,
   isGraphSlotId,
   migrateGraphEdges,
   normalizeGraphExprs,
   parseGraphSlotId,
 } from './graphSlots.js';
+
+/** Graph full-view body: dynamic slots block + fixed plot panel. */
+function estimateGraphFullBodyHeight(node) {
+  const slotsH = graphSlotsBlockHeight(node, []);
+  const plotH = Math.max(200, GRAPH_NODE_BODY_HEIGHT - 48);
+  return Math.max(GRAPH_NODE_BODY_HEIGHT, slotsH + plotH + 24);
+}
 
 export const NODE_WIDTH = 180; // default (empty title) width
 /** Typical Math node width; nodes grow with the equation up to 2× this. */
@@ -131,12 +139,12 @@ export function nodeHeightForLayout(nodeOrTitle = '') {
   }
   if (typeof nodeOrTitle === 'object' && isMathNode(nodeOrTitle)) {
     if (isGraphNode(nodeOrTitle)) {
-      return (
-        TOP_BAR_HEIGHT +
-        (getMathView(nodeOrTitle) === MATH_VIEW.BASIC
-          ? GRAPH_NODE_BASIC_BODY_HEIGHT
-          : GRAPH_NODE_BODY_HEIGHT)
-      );
+      if (getMathView(nodeOrTitle) === MATH_VIEW.BASIC) {
+        return TOP_BAR_HEIGHT + GRAPH_NODE_BASIC_BODY_HEIGHT;
+      }
+      // Full view: slots (with optional expanded chrome) + plot panel.
+      // Exact height prefers DOM measurement via nodeSizeForLayout when mounted.
+      return TOP_BAR_HEIGHT + estimateGraphFullBodyHeight(nodeOrTitle);
     }
     if (getMathView(nodeOrTitle) === MATH_VIEW.BASIC) {
       return TOP_BAR_HEIGHT + MATH_NODE_BASIC_BODY_HEIGHT;
@@ -238,7 +246,8 @@ export function socketWorld(
     return null;
   })();
 
-  const slotOffsetY = isGraphNode(node) ? graphSlotOffsetY : substituteSlotOffsetY;
+  const slotTop = (index) =>
+    isGraphNode(node) ? graphSocketOffsetY(node, index) : substituteSlotOffsetY(index);
 
   if (o === GRAPH_ORIENTATIONS.VERTICAL) {
     if (type === 'output') {
@@ -248,7 +257,7 @@ export function socketWorld(
       // Body-left slotted inputs even in vertical orientation.
       return {
         x: node.x,
-        y: node.y + TOP_BAR_HEIGHT + slotOffsetY(slotIndex),
+        y: node.y + TOP_BAR_HEIGHT + slotTop(slotIndex),
       };
     }
     return { x: node.x + size.width / 2, y: node.y };
@@ -260,7 +269,7 @@ export function socketWorld(
   if (slotIndex != null) {
     return {
       x: node.x,
-      y: node.y + TOP_BAR_HEIGHT + slotOffsetY(slotIndex),
+      y: node.y + TOP_BAR_HEIGHT + slotTop(slotIndex),
     };
   }
   return { x: node.x, y: node.y + TOP_BAR_HEIGHT / 2 };

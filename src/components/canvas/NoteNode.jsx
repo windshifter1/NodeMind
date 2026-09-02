@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
-import { ChevronDown, ChevronUp, Pencil, Pin, X } from 'lucide-react';
+import { ChevronDown, ChevronUp, Minus, Pencil, Pin, X } from 'lucide-react';
 import {
   MATH_NODE_MAX_WIDTH,
   MATH_NODE_MIN_WIDTH,
@@ -9,7 +9,16 @@ import {
   SOCKET_RADIUS,
 } from '@/lib/canvasConstants';
 import { emitTutorial } from '@/lib/tutorialEvents';
-import { displayNodeTitle, isMathNode, isSubstituteNode } from '@/lib/nodeTypes';
+import {
+  displayNodeTitle,
+  getMathView,
+  isMathNode,
+  isNodeBodyCollapsed,
+  isSubstituteNode,
+  MATH_VIEW,
+  mathViewLabel,
+  nextMathViewPatch,
+} from '@/lib/nodeTypes';
 import {
   listSubstituteSlots,
   substituteSlotOffsetY,
@@ -143,9 +152,14 @@ export default function NoteNode({
   zoom = 1,
   edges = [],
 }) {
+  const mathView = isMathNode(node) ? getMathView(node) : null;
+  const bodyCollapsed = isNodeBodyCollapsed(node);
   const substituteSlots = useMemo(
-    () => (isSubstituteNode(node) && !node.collapsed ? listSubstituteSlots(node, edges) : []),
-    [node, edges]
+    () =>
+      isSubstituteNode(node) && mathView === MATH_VIEW.FULL
+        ? listSubstituteSlots(node, edges)
+        : [],
+    [node, edges, mathView]
   );
   const textareaRef = useRef(null);
   const titleInputRef = useRef(null);
@@ -161,37 +175,37 @@ export default function NoteNode({
 
   const nodeWidth = useMemo(() => {
     const titleWidth = nodeWidthForTitle(editingTitle ? titleDraft : displayNodeTitle(node));
-    if (!isMathNode(node) || node.collapsed) return titleWidth;
+    if (!isMathNode(node) || bodyCollapsed) return titleWidth;
     const needed = mathPreviewWidth > 0 ? mathPreviewWidth + MATH_NODE_PREVIEW_PAD_X : 0;
     return Math.min(
       MATH_NODE_MAX_WIDTH,
       Math.max(MATH_NODE_MIN_WIDTH, titleWidth, needed)
     );
-  }, [editingTitle, titleDraft, node, mathPreviewWidth]);
+  }, [editingTitle, titleDraft, node, mathPreviewWidth, bodyCollapsed]);
 
   useEffect(() => {
     if (!isMathNode(node)) return undefined;
     onLayoutChange?.();
     return undefined;
-  }, [nodeWidth, node.kind, substituteSlots.length, onLayoutChange]);
+  }, [nodeWidth, node.kind, mathView, substituteSlots.length, onLayoutChange]);
 
   const autoResize = () => {
     const ta = textareaRef.current;
-    if (ta && !node.collapsed) {
+    if (ta && !bodyCollapsed) {
       ta.style.height = 'auto';
       ta.style.height = Math.max(64, ta.scrollHeight) + 'px';
     }
   };
 
-  useEffect(autoResize, [node.content, node.collapsed]);
+  useEffect(autoResize, [node.content, bodyCollapsed]);
 
   useEffect(() => {
     if (!editingTitle) setTitleDraft(displayNodeTitle(node));
   }, [node.title, node.kind, editingTitle]);
 
   useEffect(() => {
-    if (!isMathNode(node) || node.collapsed) setMathPreviewWidth(0);
-  }, [node.kind, node.collapsed]);
+    if (!isMathNode(node) || bodyCollapsed) setMathPreviewWidth(0);
+  }, [node.kind, bodyCollapsed]);
 
   useEffect(() => {
     if (!editingTitle) return undefined;
@@ -339,11 +353,37 @@ export default function NoteNode({
         <button
           type="button"
           onPointerDown={(e) => e.stopPropagation()}
-          onClick={() => onUpdate({ collapsed: !node.collapsed })}
+          onClick={() => {
+            if (isMathNode(node)) {
+              onUpdate(nextMathViewPatch(node));
+              return;
+            }
+            onUpdate({ collapsed: !node.collapsed });
+          }}
           className={`relative z-[21] p-1 rounded-md active:scale-95 transition ${darkNodes ? 'text-zinc-300 hover:bg-white/10' : 'text-slate-600 hover:bg-black/10'}`}
-          title={node.collapsed ? 'Expand' : 'Collapse'}
+          title={
+            isMathNode(node)
+              ? `View: ${mathViewLabel(mathView)} — click for ${mathViewLabel(
+                  nextMathViewPatch(node).mathView
+                )}`
+              : node.collapsed
+                ? 'Expand'
+                : 'Collapse'
+          }
         >
-          {node.collapsed ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+          {isMathNode(node) ? (
+            mathView === MATH_VIEW.COLLAPSED ? (
+              <ChevronUp size={16} />
+            ) : mathView === MATH_VIEW.BASIC ? (
+              <Minus size={16} />
+            ) : (
+              <ChevronDown size={16} />
+            )
+          ) : node.collapsed ? (
+            <ChevronUp size={16} />
+          ) : (
+            <ChevronDown size={16} />
+          )}
         </button>
 
         {editingTitle ? (
@@ -418,7 +458,7 @@ export default function NoteNode({
 
       </div>
 
-      {!node.collapsed && isMathNode(node) && (
+      {!bodyCollapsed && isMathNode(node) && (
         <MathNodeBody
           node={node}
           darkNodes={darkNodes}
@@ -432,10 +472,11 @@ export default function NoteNode({
           onSelectNode={onSelectNode}
           zoom={zoom}
           substituteSlots={substituteSlots}
+          basicView={mathView === MATH_VIEW.BASIC}
         />
       )}
 
-      {!node.collapsed && !isMathNode(node) && (
+      {!bodyCollapsed && !isMathNode(node) && (
         <textarea
           ref={textareaRef}
           value={node.content}

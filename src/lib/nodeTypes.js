@@ -355,6 +355,57 @@ export const EXPRESSION_NODE_BODY_HEIGHT = 120;
 /** @deprecated Use EXPRESSION_NODE_BODY_HEIGHT */
 export const NUMBER_NODE_BODY_HEIGHT = EXPRESSION_NODE_BODY_HEIGHT;
 export const MATH_NODE_BODY_HEIGHT = 168;
+/** Compact Math body: equation preview only (no inputs / selectors). */
+export const MATH_NODE_BASIC_BODY_HEIGHT = 72;
+
+/** Math node body presentation: full controls, preview-only, or title bar only. */
+export const MATH_VIEW = {
+  FULL: 'full',
+  BASIC: 'basic',
+  COLLAPSED: 'collapsed',
+};
+
+const MATH_VIEW_SET = new Set(Object.values(MATH_VIEW));
+
+/** Resolve stored Math view, migrating legacy `collapsed` boolean. */
+export function getMathView(node) {
+  if (!isMathNode(node)) return MATH_VIEW.FULL;
+  const stored = node?.mathView;
+  if (MATH_VIEW_SET.has(stored)) return stored;
+  return node?.collapsed ? MATH_VIEW.COLLAPSED : MATH_VIEW.FULL;
+}
+
+export function isMathCollapsed(node) {
+  return getMathView(node) === MATH_VIEW.COLLAPSED;
+}
+
+export function isMathBasicView(node) {
+  return getMathView(node) === MATH_VIEW.BASIC;
+}
+
+/** True when the node body (below the title bar) is hidden. */
+export function isNodeBodyCollapsed(node) {
+  if (isMathNode(node)) return isMathCollapsed(node);
+  return Boolean(node?.collapsed);
+}
+
+/** Cycle Full → Basic → Collapsed → Full. Also keeps `collapsed` in sync. */
+export function nextMathViewPatch(node) {
+  const current = getMathView(node);
+  const mathView =
+    current === MATH_VIEW.FULL
+      ? MATH_VIEW.BASIC
+      : current === MATH_VIEW.BASIC
+        ? MATH_VIEW.COLLAPSED
+        : MATH_VIEW.FULL;
+  return { mathView, collapsed: mathView === MATH_VIEW.COLLAPSED };
+}
+
+export function mathViewLabel(view) {
+  if (view === MATH_VIEW.BASIC) return 'Basic';
+  if (view === MATH_VIEW.COLLAPSED) return 'Collapsed';
+  return 'Full';
+}
 
 export function defForKind(kind) {
   return NODE_TYPE_DEFS.find((item) => item.id === kind) || null;
@@ -409,6 +460,9 @@ export function fieldsForKind(kind) {
   const normalised = normalizeNodeKind(kind);
   const def = defForKind(normalised);
   const fields = { kind: normalised, title: def?.label || 'Text', content: '' };
+  if (def?.category === 'math') {
+    fields.mathView = MATH_VIEW.FULL;
+  }
   if (normalised === NODE_KIND.EXPRESSION) {
     fields.expr = '';
   }

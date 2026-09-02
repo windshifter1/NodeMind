@@ -63,6 +63,7 @@ export default function MathNodeBody({
   onSelectNode,
   zoom = 1,
   substituteSlots = [],
+  basicView = false,
 }) {
   const def = defForKind(node.kind);
   const fieldLooks = inputClass(darkNodes, node.color);
@@ -178,196 +179,204 @@ export default function MathNodeBody({
 
   return (
     <div
-      className={`px-3 pb-3 ${isSubstituteNode(node) ? '' : 'pt-2'}`}
+      className={`px-3 pb-3 ${basicView || !isSubstituteNode(node) ? 'pt-2' : ''}`}
       onPointerDown={(e) => e.stopPropagation()}
-      style={isSubstituteNode(node) ? { paddingTop: SUB_SLOT_PAD_TOP } : undefined}
+      style={
+        !basicView && isSubstituteNode(node) ? { paddingTop: SUB_SLOT_PAD_TOP } : undefined
+      }
     >
-      {isSubstituteNode(node) && (
-        <div className="flex flex-col" style={{ gap: SUB_SLOT_GAP }}>
-          {substituteSlots.map((slot) => {
-            const placeholder =
-              slot.label === 'A' ? 'Equation, e.g. x=2*y' : 'Substitute, e.g. y=3';
-            return (
-              <div
-                key={slot.id}
-                className={`flex items-center gap-2 transition-opacity ${
-                  slot.greyed ? 'opacity-45' : 'opacity-100'
-                }`}
-                style={{ minHeight: SUB_SLOT_ROW_H }}
-              >
-                <span
-                  className={`w-4 shrink-0 text-center text-xs font-semibold ${
-                    darkNodes ? 'text-zinc-300' : 'text-slate-600'
-                  }`}
-                  title={slot.label === 'A' ? 'Base equation' : 'Substitution equation'}
-                >
-                  {slot.label}
-                </span>
-                {slot.connected ? (
+      {!basicView && (
+        <>
+          {isSubstituteNode(node) && (
+            <div className="flex flex-col" style={{ gap: SUB_SLOT_GAP }}>
+              {substituteSlots.map((slot) => {
+                const placeholder =
+                  slot.label === 'A' ? 'Equation, e.g. x=2*y' : 'Substitute, e.g. y=3';
+                return (
                   <div
-                    className={`min-w-0 flex-1 truncate rounded-md border border-dashed px-2 py-1.5 text-xs ${
-                      darkNodes
-                        ? 'border-white/15 text-zinc-400'
-                        : 'border-slate-300 text-slate-500'
+                    key={slot.id}
+                    className={`flex items-center gap-2 transition-opacity ${
+                      slot.greyed ? 'opacity-45' : 'opacity-100'
                     }`}
-                    title="Socket connected — typed value is remembered until disconnect"
+                    style={{ minHeight: SUB_SLOT_ROW_H }}
                   >
-                    Connected
+                    <span
+                      className={`w-4 shrink-0 text-center text-xs font-semibold ${
+                        darkNodes ? 'text-zinc-300' : 'text-slate-600'
+                      }`}
+                      title={slot.label === 'A' ? 'Base equation' : 'Substitution equation'}
+                    >
+                      {slot.label}
+                    </span>
+                    {slot.connected ? (
+                      <div
+                        className={`min-w-0 flex-1 truncate rounded-md border border-dashed px-2 py-1.5 text-xs ${
+                          darkNodes
+                            ? 'border-white/15 text-zinc-400'
+                            : 'border-slate-300 text-slate-500'
+                        }`}
+                        title="Socket connected — typed value is remembered until disconnect"
+                      >
+                        Connected
+                      </div>
+                    ) : (
+                      <input
+                        type="text"
+                        value={slot.text}
+                        onChange={(e) => {
+                          const patch = patchSubstituteSlotText(node, slot.id, e.target.value);
+                          if (patch) onUpdate(patch);
+                        }}
+                        placeholder={placeholder}
+                        className={`${fieldLooks.className} min-w-0 flex-1`}
+                        style={fieldLooks.style}
+                      />
+                    )}
                   </div>
-                ) : (
-                  <input
-                    type="text"
-                    value={slot.text}
-                    onChange={(e) => {
-                      const patch = patchSubstituteSlotText(node, slot.id, e.target.value);
-                      if (patch) onUpdate(patch);
-                    }}
-                    placeholder={placeholder}
-                    className={`${fieldLooks.className} min-w-0 flex-1`}
-                    style={fieldLooks.style}
-                  />
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {isExpressionNode(node) && (
-        <textarea
-          value={node.expr ?? ''}
-          onChange={(e) => {
-            const expr = e.target.value;
-            const patch = { expr };
-            if (isDefaultExprEqTitle(node.title)) {
-              patch.title = titleForExprEqRole(classifyExprEqText(expr).role);
-            }
-            onUpdate(patch);
-          }}
-          placeholder={def?.field?.placeholder || 'x^2+2*x+1 or x^2-1=0'}
-          rows={2}
-          className={`${fieldLooks.className} resize-none leading-relaxed`}
-          style={fieldLooks.style}
-        />
-      )}
-
-      {isSolveNode(node) && (
-        <select
-          value={solveSelectValue}
-          disabled={!hasInput && result?.error !== 'Connect an equation'}
-          onFocus={() => onSelectNode?.(node.id)}
-          onPointerDown={() => onSelectNode?.(node.id)}
-          onChange={(e) => pickSolveVariable(e.target.value)}
-          className={`${fieldLooks.className} ${
-            !hasInput && result?.error !== 'Select a variable' ? 'opacity-60 cursor-not-allowed' : ''
-          }`}
-          style={fieldLooks.style}
-          title={hasInput ? 'Choose variable' : 'Connect an equation to choose a variable'}
-        >
-          <option value="">
-            {hasInput
-              ? selectionOps.length || isIgnored
-                ? 'Select variable…'
-                : 'No variables found'
-              : 'Connect an equation…'}
-          </option>
-          {isIgnored && solveVariable && (
-            <option value={ignoredSelectValue}>Ignored</option>
+                );
+              })}
+            </div>
           )}
-          {selectionOps.map((op) => {
-            const key = String(op.extra?.arg ?? op.label ?? op.id);
-            return (
-              <option key={key} value={key}>
-                {op.label || key}
-              </option>
-            );
-          })}
-        </select>
-      )}
 
-      {isSelectionOpNode(node) && (
-        <select
-          value={selectValue}
-          disabled={!hasInput}
-          onFocus={() => onSelectNode?.(node.id)}
-          onPointerDown={() => onSelectNode?.(node.id)}
-          onChange={(e) => pickSelectionOp(e.target.value)}
-          className={`${fieldLooks.className} ${!hasInput ? 'opacity-60 cursor-not-allowed' : ''}`}
-          style={fieldLooks.style}
-          title={hasInput ? 'Choose operation' : 'Connect an input to choose an operation'}
-        >
-          <option value="">
-            {hasInput
-              ? selectionOps.length || isIgnored
-                ? 'Select operation…'
-                : 'No applicable operations'
-              : 'Connect input to select…'}
-          </option>
-          {isIgnored && node.method && (
-            <option value={ignoredSelectValue}>Ignored</option>
+          {isExpressionNode(node) && (
+            <textarea
+              value={node.expr ?? ''}
+              onChange={(e) => {
+                const expr = e.target.value;
+                const patch = { expr };
+                if (isDefaultExprEqTitle(node.title)) {
+                  patch.title = titleForExprEqRole(classifyExprEqText(expr).role);
+                }
+                onUpdate(patch);
+              }}
+              placeholder={def?.field?.placeholder || 'x^2+2*x+1 or x^2-1=0'}
+              rows={2}
+              className={`${fieldLooks.className} resize-none leading-relaxed`}
+              style={fieldLooks.style}
+            />
           )}
-          {selectionOps.map((op) => {
-            const key = op.id || selectionOpKey(op);
-            return (
-              <option key={key} value={key}>
-                {op.label}
+
+          {isSolveNode(node) && (
+            <select
+              value={solveSelectValue}
+              disabled={!hasInput && result?.error !== 'Connect an equation'}
+              onFocus={() => onSelectNode?.(node.id)}
+              onPointerDown={() => onSelectNode?.(node.id)}
+              onChange={(e) => pickSolveVariable(e.target.value)}
+              className={`${fieldLooks.className} ${
+                !hasInput && result?.error !== 'Select a variable'
+                  ? 'opacity-60 cursor-not-allowed'
+                  : ''
+              }`}
+              style={fieldLooks.style}
+              title={hasInput ? 'Choose variable' : 'Connect an equation to choose a variable'}
+            >
+              <option value="">
+                {hasInput
+                  ? selectionOps.length || isIgnored
+                    ? 'Select variable…'
+                    : 'No variables found'
+                  : 'Connect an equation…'}
               </option>
-            );
-          })}
-        </select>
-      )}
+              {isIgnored && solveVariable && (
+                <option value={ignoredSelectValue}>Ignored</option>
+              )}
+              {selectionOps.map((op) => {
+                const key = String(op.extra?.arg ?? op.label ?? op.id);
+                return (
+                  <option key={key} value={key}>
+                    {op.label || key}
+                  </option>
+                );
+              })}
+            </select>
+          )}
 
-      {modes.length > 0 && !isSelectionOpNode(node) && !isSolveNode(node) && (
-        <select
-          value={modes.some((mode) => mode.id === node.mode) ? node.mode : modes[0].id}
-          onChange={(e) => onUpdate({ mode: e.target.value })}
-          className={`${fieldLooks.className} ${isExpressionNode(node) ? 'mt-2' : ''}`}
-          style={fieldLooks.style}
-        >
-          {modes.map((mode) => (
-            <option key={mode.id} value={mode.id}>
-              {mode.label}
-            </option>
-          ))}
-        </select>
-      )}
+          {isSelectionOpNode(node) && (
+            <select
+              value={selectValue}
+              disabled={!hasInput}
+              onFocus={() => onSelectNode?.(node.id)}
+              onPointerDown={() => onSelectNode?.(node.id)}
+              onChange={(e) => pickSelectionOp(e.target.value)}
+              className={`${fieldLooks.className} ${!hasInput ? 'opacity-60 cursor-not-allowed' : ''}`}
+              style={fieldLooks.style}
+              title={hasInput ? 'Choose operation' : 'Connect an input to choose an operation'}
+            >
+              <option value="">
+                {hasInput
+                  ? selectionOps.length || isIgnored
+                    ? 'Select operation…'
+                    : 'No applicable operations'
+                  : 'Connect input to select…'}
+              </option>
+              {isIgnored && node.method && (
+                <option value={ignoredSelectValue}>Ignored</option>
+              )}
+              {selectionOps.map((op) => {
+                const key = op.id || selectionOpKey(op);
+                return (
+                  <option key={key} value={key}>
+                    {op.label}
+                  </option>
+                );
+              })}
+            </select>
+          )}
 
-      {showSelectionField && (
-        <input
-          type="text"
-          value={node.field ?? ''}
-          onChange={(e) => onUpdate({ field: e.target.value })}
-          placeholder={node.method === 'intsplitlimits' ? '0' : 'x'}
-          className={`${fieldLooks.className} mt-2`}
-          style={fieldLooks.style}
-        />
-      )}
+          {modes.length > 0 && !isSelectionOpNode(node) && !isSolveNode(node) && (
+            <select
+              value={modes.some((mode) => mode.id === node.mode) ? node.mode : modes[0].id}
+              onChange={(e) => onUpdate({ mode: e.target.value })}
+              className={`${fieldLooks.className} ${isExpressionNode(node) ? 'mt-2' : ''}`}
+              style={fieldLooks.style}
+            >
+              {modes.map((mode) => (
+                <option key={mode.id} value={mode.id}>
+                  {mode.label}
+                </option>
+              ))}
+            </select>
+          )}
 
-      {showField &&
-        def.field.key !== 'expr' &&
-        !isSelectionOpNode(node) &&
-        !isSolveNode(node) && (
-          <input
-            type="text"
-            value={node.field ?? ''}
-            onChange={(e) => onUpdate({ field: e.target.value })}
-            placeholder={def.field.placeholder || def.field.label}
-            className={`${fieldLooks.className} mt-2`}
-            style={fieldLooks.style}
-          />
-        )}
+          {showSelectionField && (
+            <input
+              type="text"
+              value={node.field ?? ''}
+              onChange={(e) => onUpdate({ field: e.target.value })}
+              placeholder={node.method === 'intsplitlimits' ? '0' : 'x'}
+              className={`${fieldLooks.className} mt-2`}
+              style={fieldLooks.style}
+            />
+          )}
 
-      {isIgnored && (
-        <div
-          className={`mt-2 rounded-md border px-2.5 py-2 text-left text-xs leading-relaxed ${
-            darkNodes
-              ? 'border-amber-400/35 bg-amber-400/10 text-amber-100/90'
-              : 'border-amber-500/40 bg-amber-50 text-amber-900/90'
-          }`}
-          role="status"
-        >
-          {ignoredMessage}
-        </div>
+          {showField &&
+            def.field.key !== 'expr' &&
+            !isSelectionOpNode(node) &&
+            !isSolveNode(node) && (
+              <input
+                type="text"
+                value={node.field ?? ''}
+                onChange={(e) => onUpdate({ field: e.target.value })}
+                placeholder={def.field.placeholder || def.field.label}
+                className={`${fieldLooks.className} mt-2`}
+                style={fieldLooks.style}
+              />
+            )}
+
+          {isIgnored && (
+            <div
+              className={`mt-2 rounded-md border px-2.5 py-2 text-left text-xs leading-relaxed ${
+                darkNodes
+                  ? 'border-amber-400/35 bg-amber-400/10 text-amber-100/90'
+                  : 'border-amber-500/40 bg-amber-50 text-amber-900/90'
+              }`}
+              role="status"
+            >
+              {ignoredMessage}
+            </div>
+          )}
+        </>
       )}
 
       <MathPreview

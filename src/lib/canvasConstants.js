@@ -1,11 +1,15 @@
 import { autoOrganiseGraph } from './layout/index.js';
 import {
   EXPRESSION_NODE_BODY_HEIGHT,
+  MATH_NODE_BASIC_BODY_HEIGHT,
   MATH_NODE_BODY_HEIGHT,
+  MATH_VIEW,
   displayNodeTitle,
+  getMathView,
   isDefaultExprEqTitle,
   isExpressionNode,
   isMathNode,
+  isNodeBodyCollapsed,
   isSubstituteNode,
   normalizeNodeKind,
 } from './nodeTypes.js';
@@ -112,12 +116,16 @@ export function nodeWidthForTitle(title) {
 }
 
 export function nodeHeightForLayout(nodeOrTitle = '') {
-  const collapsed = typeof nodeOrTitle === 'object' && nodeOrTitle?.collapsed;
-  if (collapsed) return TOP_BAR_HEIGHT;
-  if (typeof nodeOrTitle === 'object' && isExpressionNode(nodeOrTitle)) {
-    return TOP_BAR_HEIGHT + EXPRESSION_NODE_BODY_HEIGHT;
+  if (typeof nodeOrTitle === 'object' && isNodeBodyCollapsed(nodeOrTitle)) {
+    return TOP_BAR_HEIGHT;
   }
   if (typeof nodeOrTitle === 'object' && isMathNode(nodeOrTitle)) {
+    if (getMathView(nodeOrTitle) === MATH_VIEW.BASIC) {
+      return TOP_BAR_HEIGHT + MATH_NODE_BASIC_BODY_HEIGHT;
+    }
+    if (isExpressionNode(nodeOrTitle)) {
+      return TOP_BAR_HEIGHT + EXPRESSION_NODE_BODY_HEIGHT;
+    }
     return TOP_BAR_HEIGHT + MATH_NODE_BODY_HEIGHT;
   }
   const content = typeof nodeOrTitle === 'object' ? nodeOrTitle.content || '' : '';
@@ -195,7 +203,14 @@ export function socketWorld(
 ) {
   const o = normalizeOrientation(orientation);
   const slotIndex = (() => {
-    if (type !== 'input' || !isSubstituteNode(node) || node?.collapsed) return null;
+    // Body slot sockets only while the Substitute node is in Full view.
+    if (
+      type !== 'input' ||
+      !isSubstituteNode(node) ||
+      getMathView(node) !== MATH_VIEW.FULL
+    ) {
+      return null;
+    }
     if (Number.isFinite(opts?.slotIndex)) return opts.slotIndex;
     const parsed = parseSlotId(opts?.inputSlot);
     if (!parsed) return null;
@@ -554,6 +569,11 @@ export function migrateWorkspaceNodeIds(workspace) {
         const texts = normalizeSubstituteTexts(next);
         if (next.subA == null) next.subA = texts.subA;
         if (!Array.isArray(next.subB)) next.subB = texts.subB;
+      }
+      if (isMathNode(next)) {
+        const view = getMathView(next);
+        next.mathView = view;
+        next.collapsed = view === MATH_VIEW.COLLAPSED;
       }
       if (node.mode == null && node.field == null) return next;
       return next;

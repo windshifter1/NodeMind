@@ -377,26 +377,59 @@ export function listSelectionOps(eq, helpers = {}) {
   if (can('pospow')) push(ops, 'Make powers positive', 'pospow');
   push(ops, 'Make power negative', 'negpow');
 
-  // Multiply by one — flatten original submenu
+  // Multiply by one — original nested submenu
+  const mult1Children = [];
   if (Array.isArray(node) && node[0] === '/' && typeof THIS.countcond === 'function' && THIS.countcond(node, (p, i) => p[i] === 'i') > 0) {
-    push(ops, 'Multiply by one, in the form of the denominator complex conjugate', 'mult1conj');
+    mult1Children.push({
+      id: 'mult1conj:conjugate',
+      label: 'Multiply by one, in the form of the denominator complex conjugate',
+      method: 'mult1conj',
+    });
   }
   const fracForm = methodResult(THIS, 'mult1fracoverfrac', path, issel);
-  if (fracForm !== false && fracForm != null && printflat) {
-    push(ops, `Multiply by one, in the form of (${printflat(fracForm)})/(${printflat(fracForm)})`, 'mult1fracoverfrac');
-  } else if (fracForm !== false && fracForm != null) {
-    push(ops, 'Multiply by one, in the form of (form)/(form)', 'mult1fracoverfrac');
+  if (fracForm !== false && fracForm != null) {
+    const formLabel = printflat ? printflat(fracForm) : 'form';
+    mult1Children.push({
+      id: `mult1fracoverfrac:${formLabel}`,
+      label: `Multiply by one, in the form of (${formLabel})/(${formLabel})`,
+      method: 'mult1fracoverfrac',
+    });
   }
-  push(ops, 'Multiply by one, in the form of e^(2πik)', 'mult1e2piik');
-  push(ops, 'Multiply by one, in the form of -i^2', 'mult1negi2');
+  mult1Children.push({
+    id: 'mult1e2piik:e2piik',
+    label: 'Multiply by one, in the form of e^(2πik)',
+    method: 'mult1e2piik',
+  });
+  mult1Children.push({
+    id: 'mult1negi2:negi2',
+    label: 'Multiply by one, in the form of -i^2',
+    method: 'mult1negi2',
+  });
   const powers = methodResult(THIS, 'mult1powpow', path, issel);
   if (Array.isArray(powers)) {
     for (const pow of powers) {
-      push(ops, `Multiply by one, in the form of x=(x^(1/${printflat ? printflat(pow) : pow}))^…`, 'mult1powpow', {
-        arg: pow,
+      let formLabel = printflat ? `x=(x^(1/${printflat(pow)}))^…` : 'x=(x^(1/a))^a';
+      if (typeof THIS.solvesimplifygraph === 'function' && printflat) {
+        try {
+          const formAst = THIS.solvesimplifygraph(['^', ['^', 'x', ['/', '1', pow]], pow]);
+          formLabel = `x=${printflat(formAst)}`;
+        } catch {
+          /* keep fallback */
+        }
+      }
+      mult1Children.push({
+        id: `mult1powpow:${formLabel}`,
+        label: `Multiply by one, in the form of ${formLabel}`,
+        method: 'mult1powpow',
+        extra: { arg: pow },
       });
     }
   }
+  ops.push({
+    id: 'submenu:multByOne',
+    label: 'Multiply by one',
+    submenu: mult1Children,
+  });
 
   // Solve for selected variable
   if (issel.filter(Boolean).length === 1) {

@@ -706,6 +706,22 @@ export function selectAllPreview(eq) {
   if (eq.equation !== '' && eq.equation != null) eq.draw(eq.equation);
 }
 
+/** Clear red/blue selection highlight after an op is applied or the menu is cancelled. */
+export function clearPreviewSelection(eq) {
+  if (!eq?.nodeproperties) return;
+  eq.nodeproperties.forEach((value) => {
+    const selected = ensureSelectedFlags(value);
+    selected.fill(false);
+  });
+  if (eq.equation !== '' && eq.equation != null && eq.canvasid) {
+    try {
+      eq.draw(eq.equation);
+    } catch {
+      /* ignore */
+    }
+  }
+}
+
 /**
  * Apply a selection-scoped CAS method (from the original op menu) to an AST.
  * `selection` is { path: number[], issel: boolean[] } from resolveSelection.

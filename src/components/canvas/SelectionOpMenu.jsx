@@ -1,21 +1,34 @@
-import React, { useEffect, useState } from 'react';
-import { X } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 
 const MENU_WIDTH = 320;
 
 export default function SelectionOpMenu({ open, x = 0, y = 0, ops = [], onClose, onPick }) {
   const [fieldOp, setFieldOp] = useState(null);
   const [fieldValue, setFieldValue] = useState('');
+  /** null = root list; otherwise the submenu item currently shown. */
+  const [submenu, setSubmenu] = useState(null);
+  const submenuRef = useRef(null);
+  submenuRef.current = submenu;
 
   useEffect(() => {
     if (!open) {
       setFieldOp(null);
       setFieldValue('');
+      setSubmenu(null);
       return undefined;
     }
+    setSubmenu(null);
+    setFieldOp(null);
+    setFieldValue('');
     const onKey = (e) => {
       if (e.key !== 'Escape') return;
       e.preventDefault();
+      if (submenuRef.current) {
+        setSubmenu(null);
+        setFieldOp(null);
+        return;
+      }
       onClose();
     };
     const onPointer = (e) => {
@@ -34,8 +47,16 @@ export default function SelectionOpMenu({ open, x = 0, y = 0, ops = [], onClose,
 
   const left = Math.max(8, Math.min(x, window.innerWidth - MENU_WIDTH - 8));
   const top = Math.max(8, Math.min(y, window.innerHeight - 80));
+  const visibleOps = submenu?.submenu || ops;
+  const title = submenu ? submenu.label : 'Apply to selection';
 
   const choose = (op) => {
+    if (op.submenu?.length) {
+      setSubmenu(op);
+      setFieldOp(null);
+      setFieldValue('');
+      return;
+    }
     if (op.extra?.needsField) {
       setFieldOp(op);
       setFieldValue('');
@@ -53,9 +74,20 @@ export default function SelectionOpMenu({ open, x = 0, y = 0, ops = [], onClose,
       onPointerUp={(e) => e.stopPropagation()}
     >
       <div className="flex items-center gap-1 border-b border-nm-divider px-3 py-2">
-        <p className="min-w-0 flex-1 text-xs font-medium tracking-wide text-nm-text-muted">
-          Apply to selection
-        </p>
+        {submenu && (
+          <button
+            type="button"
+            title="Back"
+            onClick={() => {
+              setSubmenu(null);
+              setFieldOp(null);
+            }}
+            className="rounded-lg p-1 text-nm-text-faint transition hover:bg-nm-hover hover:text-nm-text active:scale-95"
+          >
+            <ChevronLeft size={14} />
+          </button>
+        )}
+        <p className="min-w-0 flex-1 text-xs font-medium tracking-wide text-nm-text-muted">{title}</p>
         <button
           type="button"
           title="Close"
@@ -66,17 +98,18 @@ export default function SelectionOpMenu({ open, x = 0, y = 0, ops = [], onClose,
         </button>
       </div>
       <div className="flex max-h-[380px] min-h-[80px] flex-col gap-1 overflow-y-auto p-2">
-        {ops.length === 0 && (
+        {visibleOps.length === 0 && (
           <p className="px-3 py-2 text-sm text-nm-text-faint">No operations apply to this selection.</p>
         )}
-        {ops.map((op) => (
+        {visibleOps.map((op) => (
           <div key={op.id}>
             <button
               type="button"
               onClick={() => choose(op)}
-              className="w-full rounded-xl px-3 py-2 text-left text-sm font-medium text-nm-text-secondary transition hover:bg-nm-hover hover:text-nm-text active:scale-[0.98]"
+              className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-medium text-nm-text-secondary transition hover:bg-nm-hover hover:text-nm-text active:scale-[0.98]"
             >
-              {op.label}
+              <span className="min-w-0 flex-1">{op.label}</span>
+              {op.submenu?.length ? <ChevronRight size={14} className="shrink-0 opacity-60" /> : null}
             </button>
             {fieldOp?.id === op.id && (
               <form
@@ -103,6 +136,18 @@ export default function SelectionOpMenu({ open, x = 0, y = 0, ops = [], onClose,
             )}
           </div>
         ))}
+        {submenu && (
+          <button
+            type="button"
+            onClick={() => {
+              setSubmenu(null);
+              setFieldOp(null);
+            }}
+            className="w-full rounded-xl px-3 py-2 text-left text-sm font-medium text-nm-text-faint transition hover:bg-nm-hover hover:text-nm-text"
+          >
+            Back
+          </button>
+        )}
       </div>
     </div>
   );

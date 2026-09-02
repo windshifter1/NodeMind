@@ -1,5 +1,6 @@
 import React, { useCallback, useLayoutEffect, useMemo, useRef } from 'react';
 import {
+  clearPreviewSelection,
   createPreviewEquation,
   layoutSelectablePreview,
   printflat,
@@ -87,6 +88,7 @@ export default function MathPreview({ nodeId, ast, flat, error, empty, onMetrics
       } catch {
         ops = [];
       }
+      const eqForClear = eq;
       onSelectionMenu({
         ops,
         selection: {
@@ -95,6 +97,7 @@ export default function MathPreview({ nodeId, ast, flat, error, empty, onMetrics
         },
         clientX,
         clientY,
+        clearSelection: () => clearPreviewSelection(eqForClear),
       });
     },
     [onSelectionMenu]

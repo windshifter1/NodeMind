@@ -248,10 +248,20 @@ export default function Canvas() {
     });
   };
 
-  const closeSelectionMenu = useCallback(() => setSelectionMenu(null), []);
+  const closeSelectionMenu = useCallback(() => {
+    setSelectionMenu((prev) => {
+      try {
+        prev?.clearSelection?.();
+      } catch {
+        /* ignore */
+      }
+      return null;
+    });
+  }, []);
 
   const handleSelectionMenu = useCallback((nodeId, payload) => {
     if (!payload || !payload.ops) {
+      // Closing because a new selection is starting — leave highlight to the new drag.
       setSelectionMenu(null);
       return;
     }
@@ -262,19 +272,33 @@ export default function Canvas() {
     (op, field) => {
       if (!selectionMenu || !op?.method) return;
       const sourceNode = active.nodes.find((node) => node.id === selectionMenu.nodeId);
+      const clearSelection = selectionMenu.clearSelection;
       if (!sourceNode) {
+        try {
+          clearSelection?.();
+        } catch {
+          /* ignore */
+        }
         setSelectionMenu(null);
         return;
       }
       const extra = { ...(op.extra || {}) };
       delete extra.needsField;
       delete extra.fieldPlaceholder;
+      const multByOne = new Set([
+        'mult1conj',
+        'mult1negi2',
+        'mult1e2piik',
+        'mult1fracoverfrac',
+        'mult1powpow',
+      ]);
+      const title = multByOne.has(op.method) ? 'Multiply by one' : op.label;
       const pos = connectedNodePositionAvoidingOverlap(
         active.nodes,
         sourceNode,
         'output',
         active.orientation,
-        { kind: NODE_KIND.CAS_OP, title: op.label }
+        { kind: NODE_KIND.CAS_OP, title }
       );
       dispatch({
         type: 'ADD_CONNECTED_NODE',
@@ -284,7 +308,7 @@ export default function Canvas() {
         fromType: 'output',
         kind: NODE_KIND.CAS_OP,
         fields: {
-          title: op.label,
+          title,
           method: op.method,
           selection: {
             path: selectionMenu.selection?.path || [],
@@ -294,6 +318,11 @@ export default function Canvas() {
           field: field || '',
         },
       });
+      try {
+        clearSelection?.();
+      } catch {
+        /* ignore */
+      }
       setSelectionMenu(null);
     },
     [active.nodes, active.orientation, dispatch, selectionMenu]
@@ -357,8 +386,8 @@ export default function Canvas() {
     setSelectedNodeIds([]);
     setSelectionArmed(false);
     setNodePicker(null);
-    setSelectionMenu(null);
-  }, [state.activeId]);
+    closeSelectionMenu();
+  }, [state.activeId, closeSelectionMenu]);
 
   useEffect(() => {
     setSelectedNodeIds((ids) => ids.filter((id) => active.nodes.some((n) => n.id === id)));

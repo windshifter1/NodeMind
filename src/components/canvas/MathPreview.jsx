@@ -45,6 +45,7 @@ export default function MathPreview({
   flat,
   error,
   empty,
+  zoom = 1,
   onMetrics,
   onSelectionMenu,
   ghostSelection = null,
@@ -56,6 +57,8 @@ export default function MathPreview({
   const serializedAst = useMemo(() => astKey(ast), [ast]);
   const ghostKey = useMemo(() => selectionKey(ghostSelection), [ghostSelection]);
   const readOnlyGhost = Boolean(ghostSelection);
+  // Stable enough for deps; still tracks live zoom for sharp redraws.
+  const previewZoom = Number.isFinite(zoom) && zoom > 0 ? zoom : 1;
 
   const paint = useCallback(() => {
     const canvas = canvasRef.current;
@@ -89,7 +92,7 @@ export default function MathPreview({
       onMetrics?.({ width: 0, height: 0 });
       return undefined;
     }
-    const eq = createPreviewEquation(nextAst, canvasId);
+    const eq = createPreviewEquation(nextAst, canvasId, previewZoom);
     eqRef.current = eq;
     paint();
     if (ghostSelection) {
@@ -98,7 +101,7 @@ export default function MathPreview({
     return () => {
       eqRef.current = null;
     };
-  }, [serializedAst, canvasId, empty, error, onMetrics, paint, ghostKey, ghostSelection]);
+  }, [serializedAst, canvasId, empty, error, onMetrics, paint, ghostKey, ghostSelection, previewZoom]);
 
   const finishSelection = useCallback(
     (clientX, clientY) => {

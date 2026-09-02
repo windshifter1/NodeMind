@@ -1,8 +1,8 @@
 export const NODE_KIND = {
   NOTE: 'note',
-  /** Algebraic expression without `=` (formerly Number). */
+  /** Merged Expression/Equation value node (role derived from text). */
   EXPRESSION: 'expression',
-  /** Equation text that must include `=` (formerly Expression). */
+  /** @deprecated Normalised to EXPRESSION; role comes from expr text. */
   EQUATION: 'equation',
   BASIC_OPERATION: 'basicOperation',
   MANIPULATION: 'manipulation',
@@ -59,15 +59,12 @@ export const NODE_TYPE_DEFS = [
     id: NODE_KIND.EXPRESSION,
     category: 'math',
     group: 'values',
-    label: 'Expression',
-    field: { key: 'expr', label: 'Expression', placeholder: 'x^2+2*x+1' },
-  },
-  {
-    id: NODE_KIND.EQUATION,
-    category: 'math',
-    group: 'values',
-    label: 'Equation',
-    field: { key: 'expr', label: 'Equation', placeholder: 'x^2+2*x+1=0' },
+    label: 'Expression/Equation',
+    field: {
+      key: 'expr',
+      label: 'Expression/Equation',
+      placeholder: 'x^2+2*x+1 or x^2-1=0',
+    },
   },
   {
     id: NODE_KIND.BASIC_OPERATION,
@@ -80,6 +77,12 @@ export const NODE_TYPE_DEFS = [
       { id: '*', label: 'Times' },
       { id: '/', label: 'Divide' },
     ],
+  },
+  {
+    id: NODE_KIND.SUBSTITUTE,
+    category: 'math',
+    group: 'values',
+    label: 'Substitute',
   },
   {
     id: NODE_KIND.MANIPULATION,
@@ -339,13 +342,6 @@ export const NODE_TYPE_DEFS = [
     ],
   },
   {
-    id: NODE_KIND.SUBSTITUTE,
-    category: 'math',
-    group: 'solve',
-    label: 'Substitute',
-    field: { key: 'field', label: 'Substitution', placeholder: 'u=x^2' },
-  },
-  {
     id: NODE_KIND.SOLVE,
     category: 'math',
     group: 'solve',
@@ -365,7 +361,29 @@ export function defForKind(kind) {
 }
 
 export function normalizeNodeKind(kind) {
+  // Legacy standalone Equation nodes collapse into the merged Expression kind.
+  if (kind === NODE_KIND.EQUATION) return NODE_KIND.EXPRESSION;
   return NODE_TYPE_DEFS.some((def) => def.id === kind) ? kind : DEFAULT_NODE_KIND;
+}
+
+const DEFAULT_EXPR_EQ_TITLES = new Set([
+  '',
+  'expression/equation',
+  'expression',
+  'equation',
+  'untitled',
+]);
+
+/** True when the title is still a default Expression/Equation label. */
+export function isDefaultExprEqTitle(title) {
+  return DEFAULT_EXPR_EQ_TITLES.has(String(title || '').trim().toLowerCase());
+}
+
+/** Auto title for the merged Expression/Equation node from classified role. */
+export function titleForExprEqRole(role) {
+  if (role === 'equation') return 'Equation';
+  if (role === 'expression') return 'Expression';
+  return 'Expression/Equation';
 }
 
 function isPickerDef(def) {
@@ -391,7 +409,7 @@ export function fieldsForKind(kind) {
   const normalised = normalizeNodeKind(kind);
   const def = defForKind(normalised);
   const fields = { kind: normalised, title: def?.label || 'Text', content: '' };
-  if (normalised === NODE_KIND.EXPRESSION || normalised === NODE_KIND.EQUATION) {
+  if (normalised === NODE_KIND.EXPRESSION) {
     fields.expr = '';
   }
   if (
@@ -424,6 +442,7 @@ export function displayNodeTitle(nodeOrKind, title) {
   return nodeTypeLabel(kind);
 }
 
+/** Merged Expression/Equation value node (stored kind `expression`). */
 export function isExpressionNode(nodeOrKind) {
   const kind = typeof nodeOrKind === 'object' ? nodeOrKind?.kind : nodeOrKind;
   return normalizeNodeKind(kind) === NODE_KIND.EXPRESSION;
@@ -434,16 +453,24 @@ export function isNumberNode(nodeOrKind) {
   return isExpressionNode(nodeOrKind);
 }
 
+/**
+ * True when a value node currently behaves as an equation
+ * (`=` with something on both sides).
+ */
 export function isEquationNode(nodeOrKind) {
-  const kind = typeof nodeOrKind === 'object' ? nodeOrKind?.kind : nodeOrKind;
-  return normalizeNodeKind(kind) === NODE_KIND.EQUATION;
+  if (typeof nodeOrKind !== 'object' || !nodeOrKind) return false;
+  if (!isExpressionNode(nodeOrKind)) return false;
+  // Lazy classify from text — avoid importing engine at module top in cycles.
+  const raw = String(nodeOrKind.expr ?? '');
+  if (!raw.includes('=')) return false;
+  const segments = raw.split('=');
+  return segments.length >= 2 && segments.every((part) => String(part).replace(/\s+/g, ''));
 }
 
-/** Expression / Equation — valid sources when filling a Math input socket. */
+/** Expression/Equation — valid sources when filling a Math input socket. */
 export function isValueSourceKind(nodeOrKind) {
   const kind = typeof nodeOrKind === 'object' ? nodeOrKind?.kind : nodeOrKind;
-  const normalised = normalizeNodeKind(kind);
-  return normalised === NODE_KIND.EXPRESSION || normalised === NODE_KIND.EQUATION;
+  return normalizeNodeKind(kind) === NODE_KIND.EXPRESSION;
 }
 
 export function isBasicOperationNode(nodeOrKind) {
@@ -451,9 +478,14 @@ export function isBasicOperationNode(nodeOrKind) {
   return normalizeNodeKind(kind) === NODE_KIND.BASIC_OPERATION;
 }
 
+export function isSubstituteNode(nodeOrKind) {
+  const kind = typeof nodeOrKind === 'object' ? nodeOrKind?.kind : nodeOrKind;
+  return normalizeNodeKind(kind) === NODE_KIND.SUBSTITUTE;
+}
+
 /** Math nodes that may accept more than one inbound edge. */
 export function allowsMultipleInputs(nodeOrKind) {
-  return isBasicOperationNode(nodeOrKind);
+  return isBasicOperationNode(nodeOrKind) || isSubstituteNode(nodeOrKind);
 }
 
 /** Selection-menu driven Math nodes with a method/op picker (Manipulation). */

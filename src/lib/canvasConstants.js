@@ -3,6 +3,7 @@ import {
   EXPRESSION_NODE_BODY_HEIGHT,
   MATH_NODE_BODY_HEIGHT,
   displayNodeTitle,
+  isDefaultExprEqTitle,
   isExpressionNode,
   isMathNode,
   normalizeNodeKind,
@@ -495,7 +496,17 @@ export function migrateWorkspaceNodeIds(workspace) {
     list.map((node) => {
       const kind = normalizeNodeKind(node.kind);
       const next = { ...node, kind };
-      if ((kind === 'expression' || kind === 'equation') && node.expr == null) next.expr = '';
+      if (kind === 'expression' && node.expr == null) next.expr = '';
+      // Collapse legacy Equation kind; keep text so role can be re-derived.
+      if (node.kind === 'equation') {
+        next.kind = 'expression';
+        if (next.expr == null) next.expr = '';
+        if (isDefaultExprEqTitle(next.title) || next.title === 'Equation') {
+          // Title will refresh on edit; keep Equation if content looks like one.
+          const raw = String(next.expr || '');
+          next.title = raw.includes('=') ? 'Equation' : 'Expression/Equation';
+        }
+      }
       if (node.mode == null && node.field == null) return next;
       return next;
     });

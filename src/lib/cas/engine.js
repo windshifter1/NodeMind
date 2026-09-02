@@ -92,47 +92,117 @@ export function parseExpression(text) {
   }
 }
 
-/** Expression node: any parseable math text except an equals sign. */
-export function parseExpressionNode(text) {
-  const raw = String(text ?? '');
-  if (!raw.replace(/\s+/g, '')) {
-    return { ast: '', errors: '', applyOp: '', flat: '', latex: '', error: 'Empty expression' };
-  }
-  if (raw.includes('=')) {
-    return {
-      ast: '',
-      errors: '',
-      applyOp: '',
-      flat: '',
-      latex: '',
-      error: 'Expression cannot contain =',
-    };
-  }
-  return parseExpression(raw);
+/** True when AST is an equation with both sides (`['=', lhs, rhs, …]`). */
+export function isEquationAst(ast) {
+  return Array.isArray(ast) && ast[0] === '=' && ast.length >= 3;
 }
 
-/** Equation node: parseable math text that must include `=`. */
-export function parseEquationNode(text) {
+function isEmptyAstSide(side) {
+  if (side === '' || side == null) return true;
+  if (Array.isArray(side) && side.length === 0) return true;
+  return false;
+}
+
+function equationAstSidesFilled(ast) {
+  if (!isEquationAst(ast)) return false;
+  for (let i = 1; i < ast.length; i++) {
+    if (isEmptyAstSide(ast[i])) return false;
+  }
+  return true;
+}
+
+/**
+ * Classify free-text for the merged Expression/Equation node.
+ * @returns {{ role: 'empty'|'expression'|'equation'|'error', error?: string }}
+ */
+export function classifyExprEqText(text) {
   const raw = String(text ?? '');
   if (!raw.replace(/\s+/g, '')) {
-    return { ast: '', errors: '', applyOp: '', flat: '', latex: '', error: 'Empty equation' };
+    return { role: 'empty', error: 'Empty expression' };
   }
   if (!raw.includes('=')) {
+    return { role: 'expression' };
+  }
+  // Something must appear on every side of every `=`.
+  const segments = raw.split('=');
+  if (segments.some((part) => !String(part).replace(/\s+/g, ''))) {
+    return {
+      role: 'error',
+      error: 'Equation needs something on both sides of =',
+    };
+  }
+  return { role: 'equation' };
+}
+
+/**
+ * Parse the merged Expression/Equation node.
+ * No `=` → expression; `=` with both sides → equation; incomplete `=` → syntax error.
+ */
+export function parseExpressionOrEquation(text) {
+  const classification = classifyExprEqText(text);
+  if (classification.role === 'empty' || classification.role === 'error') {
     return {
       ast: '',
-      errors: '',
+      errors: classification.error || '',
       applyOp: '',
       flat: '',
       latex: '',
-      error: 'Equation must contain =',
+      error: classification.error || 'Invalid expression',
+      role: classification.role,
     };
   }
-  return parseExpression(raw);
+  const parsed = parseExpression(text);
+  if (parsed.error) {
+    return { ...parsed, role: 'error' };
+  }
+  if (classification.role === 'equation') {
+    if (!equationAstSidesFilled(parsed.ast)) {
+      return {
+        ast: '',
+        errors: '',
+        applyOp: '',
+        flat: '',
+        latex: '',
+        error: 'Equation needs something on both sides of =',
+        role: 'error',
+      };
+    }
+    return { ...parsed, role: 'equation' };
+  }
+  // Guard: parser must not invent an equation when the text had no `=`.
+  if (isEquationAst(parsed.ast)) {
+    return { ...parsed, role: 'equation' };
+  }
+  return { ...parsed, role: 'expression' };
+}
+
+/** @deprecated Use parseExpressionOrEquation */
+export function parseExpressionNode(text) {
+  return parseExpressionOrEquation(text);
+}
+
+/** @deprecated Use parseExpressionOrEquation */
+export function parseEquationNode(text) {
+  return parseExpressionOrEquation(text);
 }
 
 const BASIC_OP_SYMBOLS = new Set(['+', '-', '*', '/']);
 
-/** Left-fold ASTs with + − × ÷: ((a⊕b)⊕c)… */
+function combineBasicPair(left, right, op) {
+  const leftEq = isEquationAst(left);
+  const rightEq = isEquationAst(right);
+  if (leftEq && rightEq) return cloneAst(left);
+  // One equation: apply ⊕ to both sides (order-independent for the equation).
+  if (leftEq) return applyBothSides(left, op, right);
+  if (rightEq) return applyBothSides(right, op, left);
+  return [op, cloneAst(left), cloneAst(right)];
+}
+
+/**
+ * Left-fold ASTs with + − × ÷.
+ * Exactly one equation ⇒ apply the operator on both sides.
+ * Multiple equations ⇒ caller should treat as ignored (only one equation allowed).
+ */
 export function combineBasicOperation(asts, mode = '+') {
   const op = BASIC_OP_SYMBOLS.has(mode) ? mode : '+';
   const parts = (asts || []).filter((ast) => ast !== '' && ast != null);
@@ -142,10 +212,49 @@ export function combineBasicOperation(asts, mode = '+') {
   if (parts.length === 1) {
     return { ...formatResult(cloneAst(parts[0])), error: 'Not enough inputs' };
   }
+  const equationCount = parts.filter(isEquationAst).length;
+  if (equationCount > 1) {
+    return {
+      ...formatResult(cloneAst(parts[0])),
+      error: 'Only one equation allowed',
+    };
+  }
   try {
     let acc = cloneAst(parts[0]);
     for (let i = 1; i < parts.length; i++) {
-      acc = [op, acc, cloneAst(parts[i])];
+      acc = combineBasicPair(acc, parts[i], op);
+    }
+    return formatResult(simplifyAst(acc));
+  } catch (err) {
+    return { ast: '', flat: '', latex: '', error: err?.message || String(err) };
+  }
+}
+
+/**
+ * Substitute later equation ASTs into the first.
+ * Every input must be an equation (`=` with both sides).
+ */
+export function substituteEquations(asts) {
+  const parts = (asts || []).filter((ast) => ast !== '' && ast != null);
+  if (parts.length < 2) {
+    const first = parts[0];
+    return first
+      ? { ...formatResult(cloneAst(first)), error: 'Not enough inputs' }
+      : { ast: '', flat: '', latex: '', error: 'Not enough inputs' };
+  }
+  if (!parts.every(isEquationAst)) {
+    return {
+      ...formatResult(cloneAst(parts[0])),
+      error: 'All inputs must be equations',
+    };
+  }
+  try {
+    let acc = cloneAst(parts[0]);
+    for (let i = 1; i < parts.length; i++) {
+      const eq = createHeadlessEquation(acc);
+      eq.subsitute(cloneAst(parts[i]));
+      eq.sortanddraw();
+      acc = eq.equation;
     }
     return formatResult(simplifyAst(acc));
   } catch (err) {
@@ -545,6 +654,7 @@ export function isOpApplicable(ast, kind, mode) {
     kind === 'expression' ||
     kind === 'equation' ||
     kind === 'basicOperation' ||
+    kind === 'substitute' ||
     kind === 'number'
   ) {
     return false;
@@ -705,16 +815,44 @@ function installPreviewInk(canvas, ink = PREVIEW_INK) {
   };
 }
 
+function previewDeviceScale() {
+  return (typeof window !== 'undefined' && window.devicePixelRatio) || 1;
+}
+
+function normalizePreviewZoom(zoom) {
+  const z = Number(zoom);
+  if (!Number.isFinite(z) || z <= 0) return 1;
+  return z;
+}
+
+/** Keep CSS layout size in world px while backing store is zoom×DPR dense. */
+function syncPreviewCanvasCssSize(eq) {
+  const canvas = typeof document !== 'undefined' ? document.getElementById(eq.canvasid) : null;
+  if (!canvas || canvas.width <= 1) return;
+  const scale = previewDeviceScale() * normalizePreviewZoom(eq.previewZoom);
+  canvas.style.width = `${canvas.width / scale}px`;
+  canvas.style.height = `${canvas.height / scale}px`;
+}
+
 /** Live equation bound to a canvas for selectable grey previews. */
-export function createPreviewEquation(ast, canvasId) {
+export function createPreviewEquation(ast, canvasId, zoom = 1) {
+  const dpr = previewDeviceScale();
+  const previewZoom = normalizePreviewZoom(zoom);
   const eq = new equation();
   eq.history = undefined;
   eq.headless = false;
   eq.canvasid = canvasId;
   eq.inputid = '';
-  eq.fontsize = 22 * ((typeof window !== 'undefined' && window.devicePixelRatio) || 1);
+  // Render denser than CSS size so parent canvas zoom (CSS scale) stays sharp.
+  eq.previewZoom = previewZoom;
+  eq.fontsize = 22 * dpr * previewZoom;
   equation.fontname = 'Georgia, "Times New Roman", serif';
   eq.equation = ast === undefined || ast === '' ? '' : cloneAst(ast);
+  const originalDraw = eq.draw.bind(eq);
+  eq.draw = function drawSharpPreview(content) {
+    originalDraw(content);
+    syncPreviewCanvasCssSize(this);
+  };
   return eq;
 }
 
@@ -767,9 +905,9 @@ export function selectPreviewAt(eq, canvas, clientX, clientY, additive, localX, 
     cssX = ((clientX - rect.left) / rect.width) * (canvas.offsetWidth || rect.width);
     cssY = ((clientY - rect.top) / rect.height) * (canvas.offsetHeight || rect.height);
   }
-  const dpr = (typeof window !== 'undefined' && window.devicePixelRatio) || 1;
-  const x = cssX * dpr - eq.borderwidth;
-  const y = cssY * dpr - eq.borderwidth;
+  const scale = previewDeviceScale() * normalizePreviewZoom(eq.previewZoom);
+  const x = cssX * scale - eq.borderwidth;
+  const y = cssY * scale - eq.borderwidth;
   eq.nodeproperties.forEach((value) => {
     const selected = ensureSelectedFlags(value);
     for (let i = 0; i < value.x.length; i++) {

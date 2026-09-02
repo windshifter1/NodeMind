@@ -1,29 +1,45 @@
 import {
   isBasicOperationNode,
-  isEquationNode,
   isExpressionNode,
   isMathNode,
   isSelectionOpNode,
   isSolveNode,
+  isSubstituteNode,
 } from '@/lib/nodeTypes';
 import {
   applyRewrite,
   applySelectionOp,
   combineBasicOperation,
+  isEquationAst,
   listApplicableOps,
-  parseEquationNode,
-  parseExpressionNode,
+  parseExpressionOrEquation,
+  substituteEquations,
 } from './engine.js';
 import {
+  ALL_EQUATIONS_REQUIRED_ERROR,
   collectVariables,
   isSelectionOpApplicable,
   listApplicableOpsForAst,
   listEquationOpsForAst,
   NOT_ENOUGH_INPUTS_ERROR,
+  ONLY_ONE_EQUATION_ERROR,
   OPERATION_IGNORED_ERROR,
   selectionOpDisplayLabel,
   selectionOpKey,
 } from './selectionOps.js';
+
+function ignoredPassThrough(first, error) {
+  return {
+    ast: first?.ast ?? '',
+    flat: first?.flat ?? '',
+    latex: first?.latex ?? '',
+    error,
+    ignored: true,
+    inputAst: first?.ast ?? null,
+    applicableModes: null,
+    applicableSelectionOps: null,
+  };
+}
 
 function edgeDirection(edge) {
   return edge.fromType === 'output'
@@ -122,21 +138,10 @@ export function evaluateMathGraph(nodes = [], edges = []) {
       .map((src) => ({ sourceId: src, result: results.get(src) }))
       .filter((item) => isUsableResult(item.result));
     const inbound = inboundList[0]?.result || null;
-    const inboundSourceId = inboundList[0]?.sourceId || null;
 
     if (isExpressionNode(node)) {
       results.set(id, {
-        ...parseExpressionNode(node.expr),
-        inputAst: null,
-        applicableModes: null,
-        applicableSelectionOps: null,
-      });
-      return;
-    }
-
-    if (isEquationNode(node)) {
-      results.set(id, {
-        ...parseEquationNode(node.expr),
+        ...parseExpressionOrEquation(node.expr),
         inputAst: null,
         applicableModes: null,
         applicableSelectionOps: null,
@@ -146,25 +151,50 @@ export function evaluateMathGraph(nodes = [], edges = []) {
 
     if (isBasicOperationNode(node)) {
       if (inboundList.length < 2) {
-        const first = inboundList[0]?.result;
-        results.set(id, {
-          ast: first?.ast ?? '',
-          flat: first?.flat ?? '',
-          latex: first?.latex ?? '',
-          error: NOT_ENOUGH_INPUTS_ERROR,
-          ignored: true,
-          inputAst: first?.ast ?? null,
-          applicableModes: null,
-          applicableSelectionOps: null,
-        });
+        results.set(id, ignoredPassThrough(inboundList[0]?.result, NOT_ENOUGH_INPUTS_ERROR));
         return;
       }
       const combined = combineBasicOperation(
         inboundList.map((item) => item.result.ast),
         node.mode || '+'
       );
+      if (combined.error === ONLY_ONE_EQUATION_ERROR) {
+        results.set(id, ignoredPassThrough(inboundList[0]?.result, ONLY_ONE_EQUATION_ERROR));
+        return;
+      }
       results.set(id, {
         ...combined,
+        ignored: false,
+        inputAst: inboundList[0].result.ast,
+        applicableModes: null,
+        applicableSelectionOps: null,
+      });
+      return;
+    }
+
+    if (isSubstituteNode(node)) {
+      if (inboundList.length < 2) {
+        results.set(id, ignoredPassThrough(inboundList[0]?.result, NOT_ENOUGH_INPUTS_ERROR));
+        return;
+      }
+      const substituted = substituteEquations(inboundList.map((item) => item.result.ast));
+      if (
+        substituted.error === ALL_EQUATIONS_REQUIRED_ERROR ||
+        substituted.error === NOT_ENOUGH_INPUTS_ERROR
+      ) {
+        results.set(
+          id,
+          ignoredPassThrough(
+            inboundList[0]?.result,
+            substituted.error === ALL_EQUATIONS_REQUIRED_ERROR
+              ? ALL_EQUATIONS_REQUIRED_ERROR
+              : NOT_ENOUGH_INPUTS_ERROR
+          )
+        );
+        return;
+      }
+      results.set(id, {
+        ...substituted,
         ignored: false,
         inputAst: inboundList[0].result.ast,
         applicableModes: null,
@@ -179,10 +209,9 @@ export function evaluateMathGraph(nodes = [], edges = []) {
     }
 
     if (isSolveNode(node)) {
-      const sourceNode = inboundSourceId ? byId.get(inboundSourceId) : null;
-      if (!sourceNode || !isEquationNode(sourceNode)) {
+      if (!isEquationAst(inbound.ast)) {
         results.set(id, {
-          ...emptyResult('Connect an Equation node'),
+          ...emptyResult('Connect an equation'),
           inputAst: null,
           applicableSelectionOps: [],
         });

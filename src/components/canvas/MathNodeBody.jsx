@@ -3,18 +3,23 @@ import {
   defForKind,
   fieldVisibleForNode,
   isBasicOperationNode,
-  isEquationNode,
+  isDefaultExprEqTitle,
   isExpressionNode,
   isSelectionOpNode,
   isSolveNode,
+  isSubstituteNode,
+  titleForExprEqRole,
 } from '@/lib/nodeTypes';
 import {
+  ALL_EQUATIONS_REQUIRED_ERROR,
   NOT_ENOUGH_INPUTS_ERROR,
+  ONLY_ONE_EQUATION_ERROR,
   OPERATION_IGNORED_ERROR,
   operationIgnoredMessage,
   selectionOpDisplayLabel,
   selectionOpKey,
 } from '@/lib/cas/selectionOps';
+import { classifyExprEqText } from '@/lib/cas/engine';
 import MathPreview from './MathPreview';
 
 const FIELD_METHODS = new Set([
@@ -50,6 +55,7 @@ export default function MathNodeBody({
   onSelectionMenu,
   ghostSelection = null,
   onSelectNode,
+  zoom = 1,
 }) {
   const def = defForKind(node.kind);
   const fieldLooks = inputClass(darkNodes, node.color);
@@ -57,10 +63,20 @@ export default function MathNodeBody({
   const isIgnored =
     Boolean(result?.ignored) ||
     result?.error === OPERATION_IGNORED_ERROR ||
-    result?.error === NOT_ENOUGH_INPUTS_ERROR;
+    result?.error === NOT_ENOUGH_INPUTS_ERROR ||
+    result?.error === ONLY_ONE_EQUATION_ERROR ||
+    result?.error === ALL_EQUATIONS_REQUIRED_ERROR;
   const ignoredMessage = useMemo(() => {
-    if (result?.error === NOT_ENOUGH_INPUTS_ERROR) return NOT_ENOUGH_INPUTS_ERROR;
-    if (isBasicOperationNode(node)) return NOT_ENOUGH_INPUTS_ERROR;
+    if (
+      result?.error === NOT_ENOUGH_INPUTS_ERROR ||
+      result?.error === ONLY_ONE_EQUATION_ERROR ||
+      result?.error === ALL_EQUATIONS_REQUIRED_ERROR
+    ) {
+      return result.error;
+    }
+    if (isBasicOperationNode(node) || isSubstituteNode(node)) {
+      return NOT_ENOUGH_INPUTS_ERROR;
+    }
     return operationIgnoredMessage(selectionOpDisplayLabel(node));
   }, [node, result?.error]);
   const emptyHint =
@@ -155,14 +171,18 @@ export default function MathNodeBody({
 
   return (
     <div className="px-3 pt-2 pb-3" onPointerDown={(e) => e.stopPropagation()}>
-      {(isExpressionNode(node) || isEquationNode(node)) && (
+      {isExpressionNode(node) && (
         <textarea
           value={node.expr ?? ''}
-          onChange={(e) => onUpdate({ expr: e.target.value })}
-          placeholder={
-            def?.field?.placeholder ||
-            (isEquationNode(node) ? 'x^2+2*x+1=0' : 'x^2+2*x+1')
-          }
+          onChange={(e) => {
+            const expr = e.target.value;
+            const patch = { expr };
+            if (isDefaultExprEqTitle(node.title)) {
+              patch.title = titleForExprEqRole(classifyExprEqText(expr).role);
+            }
+            onUpdate(patch);
+          }}
+          placeholder={def?.field?.placeholder || 'x^2+2*x+1 or x^2-1=0'}
           rows={2}
           className={`${fieldLooks.className} resize-none leading-relaxed`}
           style={fieldLooks.style}
@@ -172,7 +192,7 @@ export default function MathNodeBody({
       {isSolveNode(node) && (
         <select
           value={solveSelectValue}
-          disabled={!hasInput && result?.error !== 'Connect an Equation node'}
+          disabled={!hasInput && result?.error !== 'Connect an equation'}
           onFocus={() => onSelectNode?.(node.id)}
           onPointerDown={() => onSelectNode?.(node.id)}
           onChange={(e) => pickSolveVariable(e.target.value)}
@@ -180,16 +200,14 @@ export default function MathNodeBody({
             !hasInput && result?.error !== 'Select a variable' ? 'opacity-60 cursor-not-allowed' : ''
           }`}
           style={fieldLooks.style}
-          title={hasInput ? 'Choose variable' : 'Connect an Equation to choose a variable'}
+          title={hasInput ? 'Choose variable' : 'Connect an equation to choose a variable'}
         >
           <option value="">
             {hasInput
               ? selectionOps.length || isIgnored
                 ? 'Select variable…'
                 : 'No variables found'
-              : result?.error === 'Connect an Equation node'
-                ? 'Connect an Equation…'
-                : 'Connect an Equation…'}
+              : 'Connect an equation…'}
           </option>
           {isIgnored && solveVariable && (
             <option value={ignoredSelectValue}>Ignored</option>
@@ -241,9 +259,7 @@ export default function MathNodeBody({
         <select
           value={modes.some((mode) => mode.id === node.mode) ? node.mode : modes[0].id}
           onChange={(e) => onUpdate({ mode: e.target.value })}
-          className={`${fieldLooks.className} ${
-            isExpressionNode(node) || isEquationNode(node) ? 'mt-2' : ''
-          }`}
+          className={`${fieldLooks.className} ${isExpressionNode(node) ? 'mt-2' : ''}`}
           style={fieldLooks.style}
         >
           {modes.map((mode) => (
@@ -298,6 +314,7 @@ export default function MathNodeBody({
         flat={result?.flat}
         error={isError ? result.error : null}
         empty={emptyHint || (!result?.flat && !result?.latex && result?.ast == null)}
+        zoom={zoom}
         onMetrics={onPreviewMetrics}
         onSelectionMenu={onSelectionMenu}
         ghostSelection={isIgnored ? null : ghostSelection}

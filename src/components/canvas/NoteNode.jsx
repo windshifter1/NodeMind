@@ -112,6 +112,7 @@ export default function NoteNode({
   ghostSelection = null,
   inputBlocked = false,
   socketHint = null,
+  zoom = 1,
 }) {
   const textareaRef = useRef(null);
   const titleInputRef = useRef(null);
@@ -378,6 +379,7 @@ export default function NoteNode({
           onSelectionMenu={onSelectionMenu}
           ghostSelection={ghostSelection}
           onSelectNode={onSelectNode}
+          zoom={zoom}
         />
       )}
 

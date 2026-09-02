@@ -190,6 +190,12 @@ export const OPERATION_IGNORED_ERROR = 'Operation not applicable';
 /** Soft status when a Basic operation does not have at least two inputs. */
 export const NOT_ENOUGH_INPUTS_ERROR = 'Not enough inputs';
 
+/** Soft status when Basic operation receives more than one equation. */
+export const ONLY_ONE_EQUATION_ERROR = 'Only one equation allowed';
+
+/** Soft status when Substitute receives a non-equation input. */
+export const ALL_EQUATIONS_REQUIRED_ERROR = 'All inputs must be equations';
+
 /** Human label for a stored selection op (`opId` is usually `method:Label`). */
 export function selectionOpDisplayLabel(nodeOrOp) {
   if (!nodeOrOp) return '';

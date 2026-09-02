@@ -1331,6 +1331,7 @@ export default function CanvasBoard({
             ghostSelection={ghostSelections?.get?.(node.id) || null}
             inputBlocked={Boolean(mathInputBlockedIds?.has?.(node.id))}
             socketHint={socketHint?.nodeId === node.id ? socketHint : null}
+            zoom={zoom}
           />
         ))}
         <NodeTypeMenu

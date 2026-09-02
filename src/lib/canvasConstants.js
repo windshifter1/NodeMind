@@ -2,6 +2,11 @@ import { autoOrganiseGraph } from './layout/index.js';
 import { MATH_NODE_BODY_HEIGHT, NUMBER_NODE_BODY_HEIGHT, displayNodeTitle, isMathNode, isNumberNode, normalizeNodeKind } from './nodeTypes.js';
 
 export const NODE_WIDTH = 180; // default (empty title) width
+/** Typical Math node width; nodes grow with the equation up to 2× this. */
+export const MATH_NODE_MIN_WIDTH = 260;
+export const MATH_NODE_MAX_WIDTH = MATH_NODE_MIN_WIDTH * 2;
+/** Horizontal chrome around the Math preview (body px-3 + preview padding). */
+export const MATH_NODE_PREVIEW_PAD_X = 32;
 export const TOP_BAR_HEIGHT = 44;
 export const SOCKET_RADIUS = 8;
 
@@ -105,9 +110,22 @@ export function nodeHeightForLayout(nodeOrTitle = '') {
 }
 
 export function nodeSizeForLayout(nodeOrTitle = '') {
-  const title = typeof nodeOrTitle === 'object' ? nodeOrTitle.title : nodeOrTitle;
+  if (typeof nodeOrTitle === 'object' && nodeOrTitle?.id && typeof document !== 'undefined') {
+    const el = document.querySelector(`[data-note-node="${nodeOrTitle.id}"]`);
+    if (el) {
+      const width = el.offsetWidth;
+      const height = el.offsetHeight;
+      if (width > 0 && height > 0) return { width, height };
+    }
+  }
+  const title =
+    typeof nodeOrTitle === 'object' ? displayNodeTitle(nodeOrTitle) : nodeOrTitle;
+  let width = nodeWidthForTitle(title);
+  if (typeof nodeOrTitle === 'object' && isMathNode(nodeOrTitle)) {
+    width = Math.max(width, MATH_NODE_MIN_WIDTH);
+  }
   return {
-    width: nodeWidthForTitle(title),
+    width,
     height: nodeHeightForLayout(nodeOrTitle),
   };
 }

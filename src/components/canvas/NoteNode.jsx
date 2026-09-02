@@ -1,6 +1,13 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import { ChevronDown, ChevronUp, Pencil, Pin, X } from 'lucide-react';
-import { nodeWidthForTitle, TOP_BAR_HEIGHT, SOCKET_RADIUS } from '@/lib/canvasConstants';
+import {
+  MATH_NODE_MAX_WIDTH,
+  MATH_NODE_MIN_WIDTH,
+  MATH_NODE_PREVIEW_PAD_X,
+  nodeWidthForTitle,
+  TOP_BAR_HEIGHT,
+  SOCKET_RADIUS,
+} from '@/lib/canvasConstants';
 import { emitTutorial } from '@/lib/tutorialEvents';
 import { displayNodeTitle, isMathNode } from '@/lib/nodeTypes';
 import MathNodeBody from './MathNodeBody';
@@ -96,12 +103,35 @@ export default function NoteNode({
   onStartNodeDrag,
   onStartConnect,
   onOpenEdit,
+  onLayoutChange,
 }) {
   const textareaRef = useRef(null);
   const titleInputRef = useRef(null);
   const lastTitleTapRef = useRef(0);
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState(() => displayNodeTitle(node));
+  const [mathPreviewWidth, setMathPreviewWidth] = useState(0);
+
+  const handleMathPreviewMetrics = useCallback(({ width }) => {
+    const next = Math.max(0, Number(width) || 0);
+    setMathPreviewWidth((prev) => (prev === next ? prev : next));
+  }, []);
+
+  const nodeWidth = useMemo(() => {
+    const titleWidth = nodeWidthForTitle(editingTitle ? titleDraft : displayNodeTitle(node));
+    if (!isMathNode(node) || node.collapsed) return titleWidth;
+    const needed = mathPreviewWidth > 0 ? mathPreviewWidth + MATH_NODE_PREVIEW_PAD_X : 0;
+    return Math.min(
+      MATH_NODE_MAX_WIDTH,
+      Math.max(MATH_NODE_MIN_WIDTH, titleWidth, needed)
+    );
+  }, [editingTitle, titleDraft, node, mathPreviewWidth]);
+
+  useEffect(() => {
+    if (!isMathNode(node)) return undefined;
+    onLayoutChange?.();
+    return undefined;
+  }, [nodeWidth, node.kind, onLayoutChange]);
 
   const autoResize = () => {
     const ta = textareaRef.current;
@@ -116,6 +146,10 @@ export default function NoteNode({
   useEffect(() => {
     if (!editingTitle) setTitleDraft(displayNodeTitle(node));
   }, [node.title, node.kind, editingTitle]);
+
+  useEffect(() => {
+    if (!isMathNode(node) || node.collapsed) setMathPreviewWidth(0);
+  }, [node.kind, node.collapsed]);
 
   useEffect(() => {
     if (!editingTitle) return undefined;
@@ -180,10 +214,7 @@ export default function NoteNode({
       style={{
         left: node.x,
         top: node.y,
-        width: Math.max(
-          nodeWidthForTitle(editingTitle ? titleDraft : displayNodeTitle(node)),
-          isMathNode(node) ? 260 : 0
-        ),
+        width: nodeWidth,
         zIndex: node.z,
         borderWidth: selected ? 3 : 2,
         borderStyle: 'solid',
@@ -312,6 +343,7 @@ export default function NoteNode({
           result={mathResult}
           onUpdate={onUpdate}
           applicableModes={mathResult?.applicableModes}
+          onPreviewMetrics={handleMathPreviewMetrics}
         />
       )}
 

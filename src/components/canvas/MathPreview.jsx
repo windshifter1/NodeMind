@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useLayoutEffect, useMemo, useRef } from 'react';
 import katex from 'katex';
 import 'katex/dist/katex.min.css';
 
@@ -11,8 +11,11 @@ function latexForKatex(latex) {
 
 /**
  * Grey CAS preview: KaTeX when latex is available, otherwise plain flat text.
+ * Reports intrinsic content size so the parent Math node can grow (up to max width).
  */
-export default function MathPreview({ latex, flat, error, empty }) {
+export default function MathPreview({ latex, flat, error, empty, onMetrics }) {
+  const contentRef = useRef(null);
+
   const html = useMemo(() => {
     if (error || empty || !latex) return null;
     try {
@@ -29,9 +32,33 @@ export default function MathPreview({ latex, flat, error, empty }) {
     }
   }, [latex, error, empty]);
 
+  useLayoutEffect(() => {
+    const report = () => {
+      const el = contentRef.current;
+      if (!el || !onMetrics) {
+        onMetrics?.({ width: 0, height: 0 });
+        return;
+      }
+      onMetrics({
+        width: Math.ceil(el.scrollWidth),
+        height: Math.ceil(el.scrollHeight),
+      });
+    };
+
+    report();
+    const el = contentRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return undefined;
+    const ro = new ResizeObserver(report);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [html, flat, error, empty, onMetrics]);
+
   if (error) {
     return (
-      <div className="mt-2 min-h-[2.25rem] break-words text-center text-sm font-medium text-rose-400">
+      <div
+        ref={contentRef}
+        className="mt-2 min-h-[2.25rem] break-words text-center text-sm font-medium text-rose-400"
+      >
         {error}
       </div>
     );
@@ -39,7 +66,7 @@ export default function MathPreview({ latex, flat, error, empty }) {
 
   if (empty || (!html && !flat)) {
     return (
-      <div className="mt-2 min-h-[2.25rem]" aria-hidden="true">
+      <div ref={contentRef} className="mt-2 min-h-[2.25rem]" aria-hidden="true">
         {'\u00a0'}
       </div>
     );
@@ -47,16 +74,28 @@ export default function MathPreview({ latex, flat, error, empty }) {
 
   if (html) {
     return (
-      <div
-        className="math-preview mt-2 flex min-h-[2.5rem] items-center justify-center overflow-x-auto px-1 text-gray-500"
-        dangerouslySetInnerHTML={{ __html: html }}
-      />
+      <div className="math-preview-scroll mt-2">
+        <div className="flex w-max min-w-full justify-center px-1">
+          <div
+            ref={contentRef}
+            className="math-preview inline-block text-gray-500"
+            dangerouslySetInnerHTML={{ __html: html }}
+          />
+        </div>
+      </div>
     );
   }
 
   return (
-    <div className="math-preview mt-2 min-h-[2.25rem] break-all text-center text-2xl font-semibold tabular-nums tracking-tight text-gray-500">
-      {flat}
+    <div className="math-preview-scroll mt-2">
+      <div className="flex w-max min-w-full justify-center px-1">
+        <div
+          ref={contentRef}
+          className="math-preview inline-block break-all text-center text-2xl font-semibold tabular-nums tracking-tight text-gray-500"
+        >
+          {flat}
+        </div>
+      </div>
     </div>
   );
 }

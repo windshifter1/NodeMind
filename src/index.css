@@ -377,6 +377,45 @@ html[data-theme='light'] .nm-scrollbar::-webkit-scrollbar-thumb:hover {
   color: rgb(107 114 128);
 }
 
+.math-preview-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: visible;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.55) transparent;
+}
+
+.math-preview-scroll::-webkit-scrollbar {
+  height: 6px;
+}
+
+.math-preview-scroll::-webkit-scrollbar-track {
+  background: transparent;
+  margin: 0 8px;
+}
+
+.math-preview-scroll::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.45);
+  border-radius: 999px;
+}
+
+.math-preview-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.7);
+}
+
+html[data-theme='light'] .math-preview-scroll {
+  scrollbar-color: rgba(100, 116, 139, 0.45) transparent;
+}
+
+html[data-theme='light'] .math-preview-scroll::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.4);
+}
+
+html[data-theme='light'] .math-preview-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.65);
+}
+
 .math-preview .katex-display {
   margin: 0.2em 0;
 }

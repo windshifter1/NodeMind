@@ -13,7 +13,14 @@ function inputClass(darkNodes, color) {
   };
 }
 
-export default function MathNodeBody({ node, darkNodes, result, onUpdate, applicableModes = null }) {
+export default function MathNodeBody({
+  node,
+  darkNodes,
+  result,
+  onUpdate,
+  applicableModes = null,
+  onPreviewMetrics,
+}) {
   const def = defForKind(node.kind);
   const fieldLooks = inputClass(darkNodes, node.color);
   const emptyHint =
@@ -88,6 +95,7 @@ export default function MathNodeBody({ node, darkNodes, result, onUpdate, applic
         flat={result?.flat}
         error={isError ? result.error : null}
         empty={emptyHint || (!result?.flat && !result?.latex)}
+        onMetrics={onPreviewMetrics}
       />
     </div>
   );

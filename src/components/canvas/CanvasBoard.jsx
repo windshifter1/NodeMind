@@ -59,6 +59,10 @@ export default function CanvasBoard({
   mathResults = null,
 }) {
   const graphOrientation = normalizeOrientation(orientation);
+  const [layoutEpoch, setLayoutEpoch] = useState(0);
+  const notifyLayoutChange = useCallback(() => {
+    setLayoutEpoch((n) => n + 1);
+  }, []);
   const boardRef = useRef(null);
   const pointers = useRef(new Map());
   const panState = useRef({
@@ -1224,6 +1228,8 @@ export default function CanvasBoard({
         style={{ pointerEvents: 'none' }}
       >
         {edges.map((edge) => {
+          // layoutEpoch: recompute paths when Math nodes resize to fit equations
+          void layoutEpoch;
           const from = nodes.find((n) => n.id === edge.fromNode);
           const to = nodes.find((n) => n.id === edge.toNode);
           if (!from || !to) return null;
@@ -1301,6 +1307,7 @@ export default function CanvasBoard({
             onStartNodeDrag={startNodeDrag}
             onStartConnect={startConnect}
             onOpenEdit={onOpenEdit}
+            onLayoutChange={notifyLayoutChange}
           />
         ))}
         <NodeTypeMenu

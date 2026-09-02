@@ -7,6 +7,8 @@ export const MATH_NODE_MIN_WIDTH = 260;
 export const MATH_NODE_MAX_WIDTH = MATH_NODE_MIN_WIDTH * 2;
 /** Horizontal chrome around the Math preview (body px-3 + preview padding). */
 export const MATH_NODE_PREVIEW_PAD_X = 32;
+/** Clear gap between a source output and the next node’s input (and vertical equivalent). */
+export const NODE_CLEARANCE = 48;
 export const TOP_BAR_HEIGHT = 44;
 export const SOCKET_RADIUS = 8;
 
@@ -177,37 +179,110 @@ export function socketWorld(node, type, orientation = GRAPH_ORIENTATIONS.HORIZON
 
 export function bezierPath(x1, y1, x2, y2, reversed = false, orientation = GRAPH_ORIENTATIONS.HORIZONTAL) {
   const o = normalizeOrientation(orientation);
+  // `reversed` means the path starts at an input socket (left/top) rather than an output.
+  const startDir = reversed ? -1 : 1;
+  const endDir = reversed ? 1 : -1;
+
   if (o === GRAPH_ORIENTATIONS.VERTICAL) {
-    const dy = Math.max(60, Math.abs(y2 - y1) * 0.5);
-    if (reversed) {
-      return `M ${x1} ${y1} C ${x1} ${y1 - dy}, ${x2} ${y2 + dy}, ${x2} ${y2}`;
+    const dist = Math.abs(y2 - y1);
+    const dy = Math.max(60, dist * 0.5);
+    const against = (!reversed && y2 < y1) || (reversed && y2 > y1);
+    if (against) {
+      const dx = Math.max(50, dist * 0.35 + 40);
+      return `M ${x1} ${y1} C ${x1 + dx} ${y1 + startDir * dy}, ${x2 + dx} ${y2 + endDir * dy}, ${x2} ${y2}`;
     }
-    return `M ${x1} ${y1} C ${x1} ${y1 + dy}, ${x2} ${y2 - dy}, ${x2} ${y2}`;
+    return `M ${x1} ${y1} C ${x1} ${y1 + startDir * dy}, ${x2} ${y2 + endDir * dy}, ${x2} ${y2}`;
   }
 
-  const dx = Math.max(60, Math.abs(x2 - x1) * 0.5);
-  if (reversed) {
-    return `M ${x1} ${y1} C ${x1 - dx} ${y1}, ${x2 + dx} ${y2}, ${x2} ${y2}`;
+  const dist = Math.abs(x2 - x1);
+  const dx = Math.max(60, dist * 0.5);
+  const against = (!reversed && x2 < x1) || (reversed && x2 > x1);
+  if (against) {
+    // Keep socket exit/entry sides, but arc so the curve doesn’t look handle-reversed.
+    const dy = Math.max(50, dist * 0.35 + 40);
+    return `M ${x1} ${y1} C ${x1 + startDir * dx} ${y1 + dy}, ${x2 + endDir * dx} ${y2 + dy}, ${x2} ${y2}`;
   }
-
-  return `M ${x1} ${y1} C ${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}`;
+  return `M ${x1} ${y1} C ${x1 + startDir * dx} ${y1}, ${x2 + endDir * dx} ${y2}, ${x2} ${y2}`;
 }
 
-export function connectedNodePositionAtSocket(point, fromType, orientation = GRAPH_ORIENTATIONS.HORIZONTAL, title = '') {
+export function connectedNodePositionAtSocket(
+  point,
+  fromType,
+  orientation = GRAPH_ORIENTATIONS.HORIZONTAL,
+  title = '',
+  sourceNode = null
+) {
   const o = normalizeOrientation(orientation);
   const size = nodeSizeForLayout(title);
+  const sourceSize = sourceNode ? nodeSizeForLayout(sourceNode) : null;
 
   if (o === GRAPH_ORIENTATIONS.VERTICAL) {
-    return {
-      x: point.x - size.width / 2,
-      y: fromType === 'output' ? point.y : point.y - size.height,
-    };
+    let x = point.x - size.width / 2;
+    let y = fromType === 'output' ? point.y : point.y - size.height;
+    if (sourceNode && sourceSize) {
+      if (fromType === 'output') {
+        y = Math.max(y, sourceNode.y + sourceSize.height + NODE_CLEARANCE);
+      } else {
+        y = Math.min(y, sourceNode.y - NODE_CLEARANCE - size.height);
+      }
+    }
+    return { x, y };
   }
 
-  return {
-    x: fromType === 'output' ? point.x : point.x - size.width,
-    y: point.y - TOP_BAR_HEIGHT / 2,
-  };
+  let x = fromType === 'output' ? point.x : point.x - size.width;
+  let y = point.y - TOP_BAR_HEIGHT / 2;
+  if (sourceNode && sourceSize) {
+    if (fromType === 'output') {
+      x = Math.max(x, sourceNode.x + sourceSize.width + NODE_CLEARANCE);
+    } else {
+      x = Math.min(x, sourceNode.x - NODE_CLEARANCE - size.width);
+    }
+  }
+  return { x, y };
+}
+
+/** Push targets so each output→input edge keeps a clear forward gap (fixes backwards Math beziers). */
+export function clearanceFixesForEdges(nodes, edges, orientation = GRAPH_ORIENTATIONS.HORIZONTAL) {
+  const o = normalizeOrientation(orientation);
+  const byId = new Map(nodes.map((node) => [node.id, { ...node }]));
+  const fixes = new Map();
+
+  const ordered = [...(edges || [])];
+  // Multiple passes so chains of wide Math nodes separate cleanly.
+  for (let pass = 0; pass < nodes.length; pass++) {
+    let moved = false;
+    ordered.forEach((edge) => {
+      const sourceId = edge.fromType === 'output' ? edge.fromNode : edge.toNode;
+      const targetId = edge.fromType === 'output' ? edge.toNode : edge.fromNode;
+      const source = byId.get(sourceId);
+      const target = byId.get(targetId);
+      if (!source || !target) return;
+      const sourceSize = nodeSizeForLayout(source);
+      const targetSize = nodeSizeForLayout(target);
+
+      if (o === GRAPH_ORIENTATIONS.VERTICAL) {
+        const minY = source.y + sourceSize.height + NODE_CLEARANCE;
+        if (target.y < minY) {
+          target.y = minY;
+          byId.set(targetId, target);
+          fixes.set(targetId, { x: target.x, y: target.y });
+          moved = true;
+        }
+        return;
+      }
+
+      const minX = source.x + sourceSize.width + NODE_CLEARANCE;
+      if (target.x < minX) {
+        target.x = minX;
+        byId.set(targetId, target);
+        fixes.set(targetId, { x: target.x, y: target.y });
+        moved = true;
+      }
+    });
+    if (!moved) break;
+  }
+
+  return [...fixes.entries()].map(([id, pos]) => ({ id, ...pos }));
 }
 
 export function nextChildGraphPosition(nodes, parentId, title = '', orientation = GRAPH_ORIENTATIONS.HORIZONTAL) {

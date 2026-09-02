@@ -170,11 +170,13 @@ export default function Canvas() {
       if (source === 'connected') {
         const dropX = Number.isFinite(worldX) ? worldX : x;
         const dropY = Number.isFinite(worldY) ? worldY : y;
+        const sourceNode = active.nodes.find((node) => node.id === fromNode) || null;
         const pos = connectedNodePositionAtSocket(
           { x: dropX, y: dropY },
           fromType,
           active.orientation,
-          fieldsForKind(kind)
+          fieldsForKind(kind),
+          sourceNode
         );
         dispatch({
           type: 'ADD_CONNECTED_NODE',
@@ -192,7 +194,7 @@ export default function Canvas() {
       }
       setNodePicker(null);
     },
-    [active.orientation, dispatch, nodePicker]
+    [active.nodes, active.orientation, dispatch, nodePicker]
   );
 
   const addNode = (x, y, anchor) =>

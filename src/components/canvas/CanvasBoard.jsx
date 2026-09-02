@@ -7,6 +7,7 @@ import {
   MIN_ZOOM,
   MAX_ZOOM,
   bezierPath,
+  clearanceFixesForEdges,
   connectedNodePositionAtSocket,
   normalizeOrientation,
   nodeLayoutRect,
@@ -60,9 +61,7 @@ export default function CanvasBoard({
 }) {
   const graphOrientation = normalizeOrientation(orientation);
   const [layoutEpoch, setLayoutEpoch] = useState(0);
-  const notifyLayoutChange = useCallback(() => {
-    setLayoutEpoch((n) => n + 1);
-  }, []);
+  const separatingRef = useRef(false);
   const boardRef = useRef(null);
   const pointers = useRef(new Map());
   const panState = useRef({
@@ -107,6 +106,23 @@ export default function CanvasBoard({
   nodesRef.current = nodes;
   const edgesRef = useRef(edges);
   edgesRef.current = edges;
+
+  const notifyLayoutChange = useCallback(() => {
+    setLayoutEpoch((n) => n + 1);
+    if (separatingRef.current) return;
+    separatingRef.current = true;
+    requestAnimationFrame(() => {
+      try {
+        const fixes = clearanceFixesForEdges(nodesRef.current, edgesRef.current, graphOrientation);
+        fixes.forEach((fix) => {
+          onUpdateNode?.(fix.id, { x: fix.x, y: fix.y });
+        });
+        if (fixes.length) setLayoutEpoch((n) => n + 1);
+      } finally {
+        separatingRef.current = false;
+      }
+    });
+  }, [graphOrientation, onUpdateNode]);
 
   const [pending, setPending] = useState(null);
   const pendingRef = useRef(null);
@@ -1162,7 +1178,14 @@ export default function CanvasBoard({
           }
         } else if (!overNode && !pickerOpenRef.current) {
           const w = screenToWorld(e.clientX, e.clientY);
-          const pos = connectedNodePositionAtSocket(w, cur.fromType, graphOrientation);
+          const fromNodeObj = nodesRef.current.find((n) => n.id === cur.fromNode);
+          const pos = connectedNodePositionAtSocket(
+            w,
+            cur.fromType,
+            graphOrientation,
+            '',
+            fromNodeObj || null
+          );
           onAddConnectedNode(pos.x, pos.y, cur.fromNode, cur.fromType, {
             clientX: e.clientX,
             clientY: e.clientY,

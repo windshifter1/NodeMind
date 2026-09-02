@@ -41,6 +41,8 @@ export default function MathNodeBody({
   applicableSelectionOps = null,
   onPreviewMetrics,
   onSelectionMenu,
+  ghostSelection = null,
+  onSelectNode,
 }) {
   const def = defForKind(node.kind);
   const fieldLooks = inputClass(darkNodes, node.color);
@@ -140,6 +142,8 @@ export default function MathNodeBody({
         <select
           value={currentOpKey}
           disabled={!hasInput}
+          onFocus={() => onSelectNode?.(node.id)}
+          onPointerDown={() => onSelectNode?.(node.id)}
           onChange={(e) => pickSelectionOp(e.target.value)}
           className={`${fieldLooks.className} ${!hasInput ? 'opacity-60 cursor-not-allowed' : ''}`}
           style={fieldLooks.style}
@@ -231,6 +235,7 @@ export default function MathNodeBody({
         empty={emptyHint || (!result?.flat && !result?.latex && result?.ast == null)}
         onMetrics={onPreviewMetrics}
         onSelectionMenu={onSelectionMenu}
+        ghostSelection={ghostSelection}
       />
     </div>
   );

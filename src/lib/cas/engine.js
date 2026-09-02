@@ -566,6 +566,7 @@ function nodeContainsRef(root, target) {
 }
 
 const PREVIEW_INK = '#6b7280';
+const GHOST_SELECTION_BLUE = '#2563eb';
 
 function isBlackInk(value) {
   return (
@@ -574,6 +575,21 @@ function isBlackInk(value) {
     value === '#000000' ||
     value === 'rgb(0, 0, 0)' ||
     value === 'rgba(0, 0, 0, 1)'
+  );
+}
+
+function isSelectionInk(value) {
+  if (!value || typeof value !== 'string') return false;
+  const v = value.toLowerCase();
+  return (
+    v === 'red' ||
+    v === '#f00' ||
+    v === '#ff0000' ||
+    v === 'rgb(255, 0, 0)' ||
+    v === 'blue' ||
+    v === '#00f' ||
+    v === '#0000ff' ||
+    v === 'rgb(0, 0, 255)'
   );
 }
 
@@ -593,7 +609,15 @@ function installPreviewInk(canvas, ink = PREVIEW_INK) {
           return fillDesc.get.call(this);
         },
         set(v) {
-          fillDesc.set.call(this, isBlackInk(v) ? ink : v);
+          if (isBlackInk(v)) {
+            fillDesc.set.call(this, ink);
+            return;
+          }
+          if (canvas._nmGhostBlue && isSelectionInk(v)) {
+            fillDesc.set.call(this, GHOST_SELECTION_BLUE);
+            return;
+          }
+          fillDesc.set.call(this, v);
         },
       });
       if (strokeDesc?.set) {
@@ -640,6 +664,7 @@ export function layoutSelectablePreview(eq) {
   const canvas = typeof document !== 'undefined' ? document.getElementById(eq.canvasid) : null;
   if (!canvas) return { width: 0, height: 0 };
   installPreviewInk(canvas);
+  canvas._nmGhostBlue = false;
   eq.nodeproperties = new Map();
   if (eq.equation === '' || eq.equation == null) {
     canvas.width = 1;
@@ -713,12 +738,99 @@ export function clearPreviewSelection(eq) {
     const selected = ensureSelectedFlags(value);
     selected.fill(false);
   });
+  const canvas = typeof document !== 'undefined' ? document.getElementById(eq.canvasid) : null;
+  if (canvas) canvas._nmGhostBlue = false;
   if (eq.equation !== '' && eq.equation != null && eq.canvasid) {
     try {
       eq.draw(eq.equation);
     } catch {
       /* ignore */
     }
+  }
+}
+
+/** Mark every glyph under an AST node as selected (no simplify/redraw side effects). */
+function selectSubtreeGlyphs(eq, node) {
+  if (!eq?.nodeproperties || !Array.isArray(node)) return;
+  const queue = [node];
+  while (queue.length) {
+    const cn = queue.shift();
+    const prop = eq.nodeproperties.get(cn);
+    if (prop) {
+      const selected = ensureSelectedFlags(prop);
+      selected.fill(true);
+    }
+    for (let i = 1; i < cn.length; i++) {
+      if (Array.isArray(cn[i])) queue.push(cn[i]);
+    }
+  }
+}
+
+/** Select leaf variable glyphs on a node that match `atom`. */
+function selectLeafAtom(eq, parentNode, atom) {
+  const prop = eq.nodeproperties.get(parentNode);
+  if (!prop || atom == null) return;
+  const selected = ensureSelectedFlags(prop);
+  const text = String(atom);
+  const parts = text.split('_');
+  for (let i = 0; i < prop.char.length; i++) {
+    if (!prop.isvar[i]) continue;
+    if (parts.length > 1) {
+      if (prop.char[i] === parts[0] && prop.char[i + 1] === parts[1]) {
+        selected[i] = true;
+        if (i + 1 < selected.length) selected[i + 1] = true;
+        return;
+      }
+    } else if (prop.char[i] === text) {
+      selected[i] = true;
+      return;
+    }
+  }
+}
+
+/**
+ * Paint a read-only blue highlight for a stored selection (`path` + `issel`)
+ * on an already-laid-out preview equation. Used when an operation node is
+ * selected so the upstream preview shows what the op originally targeted.
+ */
+export function applyVisualSelection(eq, selection) {
+  if (!eq?.nodeproperties || eq.equation === '' || eq.equation == null) return false;
+
+  eq.nodeproperties.forEach((value) => {
+    ensureSelectedFlags(value).fill(false);
+  });
+
+  const path = Array.isArray(selection?.path) ? selection.path : [];
+  const target = walkPath(eq.equation, path) ?? eq.equation;
+  const issel = Array.isArray(selection?.issel) ? selection.issel : null;
+
+  if (!issel || !Array.isArray(target)) {
+    if (Array.isArray(target)) selectSubtreeGlyphs(eq, target);
+    else if (Array.isArray(eq.equation)) selectSubtreeGlyphs(eq, eq.equation);
+  } else {
+    const prop = eq.nodeproperties.get(target);
+    if (prop && issel[0]) {
+      const selected = ensureSelectedFlags(prop);
+      for (let i = 0; i < selected.length; i++) {
+        if (prop.isfunc[i] || prop.isop[i]) selected[i] = true;
+      }
+    }
+    for (let i = 1; i < target.length; i++) {
+      if (!issel[i]) continue;
+      if (Array.isArray(target[i])) selectSubtreeGlyphs(eq, target[i]);
+      else selectLeafAtom(eq, target, target[i]);
+    }
+  }
+
+  const canvas = typeof document !== 'undefined' ? document.getElementById(eq.canvasid) : null;
+  if (canvas) canvas._nmGhostBlue = true;
+
+  try {
+    eq.draw(eq.equation);
+    return true;
+  } catch {
+    if (canvas) canvas._nmGhostBlue = false;
+    return false;
   }
 }
 

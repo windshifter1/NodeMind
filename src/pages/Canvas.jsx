@@ -23,7 +23,7 @@ import {
   workspaceNodesBounds,
   zoomToFrameBounds,
 } from '@/lib/canvasConstants';
-import { fieldsForKind, isMathNode, NODE_KIND } from '@/lib/nodeTypes';
+import { fieldsForKind, isMathNode, isSelectionOpNode, NODE_KIND } from '@/lib/nodeTypes';
 import { evaluateMathGraph } from '@/lib/cas/evalGraph';
 import { shouldStartOnboarding } from '@/lib/onboarding';
 import { emitTutorial } from '@/lib/tutorialEvents';
@@ -157,6 +157,27 @@ export default function Canvas() {
     () => evaluateMathGraph(active.nodes, active.edges),
     [active.nodes, active.edges]
   );
+
+  /** When an operation node is selected, highlight its stored selection on the upstream preview. */
+  const ghostSelections = useMemo(() => {
+    const map = new Map();
+    if (!selectedNodeIds.length) return map;
+    const byId = new Map(active.nodes.map((node) => [node.id, node]));
+    selectedNodeIds.forEach((id) => {
+      const node = byId.get(id);
+      if (!isSelectionOpNode(node) || !node.selection) return;
+      const edge = (active.edges || []).find((item) => {
+        const target = item.fromType === 'output' ? item.toNode : item.fromNode;
+        return target === id;
+      });
+      if (!edge) return;
+      const sourceId = edge.fromType === 'output' ? edge.fromNode : edge.toNode;
+      if (!sourceId || !byId.has(sourceId)) return;
+      // Prefer the most recently selected operation when several share a source.
+      map.set(sourceId, node.selection);
+    });
+    return map;
+  }, [selectedNodeIds, active.nodes, active.edges]);
 
   const closeNodePicker = useCallback(() => setNodePicker(null), []);
 
@@ -541,6 +562,7 @@ export default function Canvas() {
         onPickerSelect={pickNodeType}
         mathResults={mathResults}
         onSelectionMenu={handleSelectionMenu}
+        ghostSelections={ghostSelections}
       />
       <SelectionOpMenu
         open={!!selectionMenu}

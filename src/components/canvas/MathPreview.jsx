@@ -26,6 +26,7 @@ function selectionKey(selection) {
       issel: selection.issel || null,
       arg: selection.arg,
       callStyle: selection.callStyle,
+      color: selection.color || '',
     });
   } catch {
     return String(selection);
@@ -36,7 +37,7 @@ function selectionKey(selection) {
  * Grey CAS preview using the original equation canvas so characters can be
  * selected the same way as Algebra Backend. Selection is red/blue; ink is grey.
  * When `ghostSelection` is set (operation node selected), the stored selection
- * is painted blue as a read-only highlight.
+ * is painted in the node outline colour as a read-only highlight.
  */
 export default function MathPreview({
   nodeId,

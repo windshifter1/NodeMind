@@ -566,7 +566,7 @@ function nodeContainsRef(root, target) {
 }
 
 const PREVIEW_INK = '#6b7280';
-const GHOST_SELECTION_BLUE = '#2563eb';
+const DEFAULT_GHOST_SELECTION_COLOR = '#6366f1';
 
 function isBlackInk(value) {
   return (
@@ -613,8 +613,8 @@ function installPreviewInk(canvas, ink = PREVIEW_INK) {
             fillDesc.set.call(this, ink);
             return;
           }
-          if (canvas._nmGhostBlue && isSelectionInk(v)) {
-            fillDesc.set.call(this, GHOST_SELECTION_BLUE);
+          if (canvas._nmGhostColor && isSelectionInk(v)) {
+            fillDesc.set.call(this, canvas._nmGhostColor);
             return;
           }
           fillDesc.set.call(this, v);
@@ -664,7 +664,7 @@ export function layoutSelectablePreview(eq) {
   const canvas = typeof document !== 'undefined' ? document.getElementById(eq.canvasid) : null;
   if (!canvas) return { width: 0, height: 0 };
   installPreviewInk(canvas);
-  canvas._nmGhostBlue = false;
+  canvas._nmGhostColor = '';
   eq.nodeproperties = new Map();
   if (eq.equation === '' || eq.equation == null) {
     canvas.width = 1;
@@ -739,7 +739,7 @@ export function clearPreviewSelection(eq) {
     selected.fill(false);
   });
   const canvas = typeof document !== 'undefined' ? document.getElementById(eq.canvasid) : null;
-  if (canvas) canvas._nmGhostBlue = false;
+  if (canvas) canvas._nmGhostColor = '';
   if (eq.equation !== '' && eq.equation != null && eq.canvasid) {
     try {
       eq.draw(eq.equation);
@@ -789,9 +789,9 @@ function selectLeafAtom(eq, parentNode, atom) {
 }
 
 /**
- * Paint a read-only blue highlight for a stored selection (`path` + `issel`)
- * on an already-laid-out preview equation. Used when an operation node is
- * selected so the upstream preview shows what the op originally targeted.
+ * Paint a read-only highlight for a stored selection (`path` + `issel`) on an
+ * already-laid-out preview equation. Color defaults to the node outline tint
+ * (`selection.color`) so the ghost matches the selected operation chain.
  */
 export function applyVisualSelection(eq, selection) {
   if (!eq?.nodeproperties || eq.equation === '' || eq.equation == null) return false;
@@ -803,6 +803,10 @@ export function applyVisualSelection(eq, selection) {
   const path = Array.isArray(selection?.path) ? selection.path : [];
   const target = walkPath(eq.equation, path) ?? eq.equation;
   const issel = Array.isArray(selection?.issel) ? selection.issel : null;
+  const ghostColor =
+    typeof selection?.color === 'string' && selection.color
+      ? selection.color
+      : DEFAULT_GHOST_SELECTION_COLOR;
 
   if (!issel || !Array.isArray(target)) {
     if (Array.isArray(target)) selectSubtreeGlyphs(eq, target);
@@ -823,13 +827,13 @@ export function applyVisualSelection(eq, selection) {
   }
 
   const canvas = typeof document !== 'undefined' ? document.getElementById(eq.canvasid) : null;
-  if (canvas) canvas._nmGhostBlue = true;
+  if (canvas) canvas._nmGhostColor = ghostColor;
 
   try {
     eq.draw(eq.equation);
     return true;
   } catch {
-    if (canvas) canvas._nmGhostBlue = false;
+    if (canvas) canvas._nmGhostColor = '';
     return false;
   }
 }

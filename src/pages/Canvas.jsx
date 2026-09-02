@@ -173,8 +173,13 @@ export default function Canvas() {
       if (!edge) return;
       const sourceId = edge.fromType === 'output' ? edge.fromNode : edge.toNode;
       if (!sourceId || !byId.has(sourceId)) return;
+      const sourceNode = byId.get(sourceId);
       // Prefer the most recently selected operation when several share a source.
-      map.set(sourceId, node.selection);
+      // Tint the upstream highlight with the previous node's outline colour.
+      map.set(sourceId, {
+        ...node.selection,
+        color: sourceNode?.color || node.color || '#6366f1',
+      });
     });
     return map;
   }, [selectedNodeIds, active.nodes, active.edges]);

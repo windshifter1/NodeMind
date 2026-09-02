@@ -6,8 +6,15 @@ import {
   isDefaultExprEqTitle,
   isExpressionNode,
   isMathNode,
+  isSubstituteNode,
   normalizeNodeKind,
 } from './nodeTypes.js';
+import {
+  migrateSubstituteEdges,
+  normalizeSubstituteTexts,
+  parseSlotId,
+  substituteSlotOffsetY,
+} from './substituteSlots.js';
 
 export const NODE_WIDTH = 180; // default (empty title) width
 /** Typical Math node width; nodes grow with the equation up to 2× this. */
@@ -174,15 +181,51 @@ export function zoomToFrameBounds(bounds, viewportW, viewportH, padding = 64) {
   return Math.min(availW / w, availH / h);
 }
 
-export function socketWorld(node, type, orientation = GRAPH_ORIENTATIONS.HORIZONTAL, size = nodeSizeForLayout(node)) {
+/**
+ * World-space socket centre.
+ * @param {{ inputSlot?: string|null, slotIndex?: number|null }} [opts]
+ *   For Substitute input sockets, pass `inputSlot` (A / B0…) or `slotIndex`.
+ */
+export function socketWorld(
+  node,
+  type,
+  orientation = GRAPH_ORIENTATIONS.HORIZONTAL,
+  size = nodeSizeForLayout(node),
+  opts = null
+) {
   const o = normalizeOrientation(orientation);
+  const slotIndex = (() => {
+    if (type !== 'input' || !isSubstituteNode(node) || node?.collapsed) return null;
+    if (Number.isFinite(opts?.slotIndex)) return opts.slotIndex;
+    const parsed = parseSlotId(opts?.inputSlot);
+    if (!parsed) return null;
+    return parsed.kind === 'A' ? 0 : parsed.index + 1;
+  })();
+
   if (o === GRAPH_ORIENTATIONS.VERTICAL) {
-    const x = node.x + size.width / 2;
-    return type === 'output' ? { x, y: node.y + size.height } : { x, y: node.y };
+    if (type === 'output') {
+      return { x: node.x + size.width / 2, y: node.y + size.height };
+    }
+    if (slotIndex != null) {
+      // Body-left slotted inputs even in vertical orientation.
+      return {
+        x: node.x,
+        y: node.y + TOP_BAR_HEIGHT + substituteSlotOffsetY(slotIndex),
+      };
+    }
+    return { x: node.x + size.width / 2, y: node.y };
   }
 
-  const y = node.y + TOP_BAR_HEIGHT / 2;
-  return type === 'output' ? { x: node.x + size.width, y } : { x: node.x, y };
+  if (type === 'output') {
+    return { x: node.x + size.width, y: node.y + TOP_BAR_HEIGHT / 2 };
+  }
+  if (slotIndex != null) {
+    return {
+      x: node.x,
+      y: node.y + TOP_BAR_HEIGHT + substituteSlotOffsetY(slotIndex),
+    };
+  }
+  return { x: node.x, y: node.y + TOP_BAR_HEIGHT / 2 };
 }
 
 export function bezierPath(x1, y1, x2, y2, reversed = false, orientation = GRAPH_ORIENTATIONS.HORIZONTAL) {
@@ -507,18 +550,36 @@ export function migrateWorkspaceNodeIds(workspace) {
           next.title = raw.includes('=') ? 'Equation' : 'Expression/Equation';
         }
       }
+      if (kind === 'substitute') {
+        const texts = normalizeSubstituteTexts(next);
+        if (next.subA == null) next.subA = texts.subA;
+        if (!Array.isArray(next.subB)) next.subB = texts.subB;
+      }
       if (node.mode == null && node.field == null) return next;
       return next;
     });
 
-  if (!nodes.length || nodes.every((node) => /^0*\d+$/.test(node.id))) {
+  const finish = (list, edges) => {
+    let nextNodes = withKinds(list);
+    let nextEdges = edges || [];
+    nextNodes = nextNodes.map((node) => {
+      if (!isSubstituteNode(node)) return node;
+      const migrated = migrateSubstituteEdges(node, nextEdges);
+      nextEdges = migrated.edges;
+      return migrated.nodePatch ? { ...node, ...migrated.nodePatch } : node;
+    });
     return {
       ...workspace,
       orientation,
       layoutOnOrientationChange,
       layoutSettings,
-      nodes: withKinds(nodes),
+      nodes: nextNodes,
+      edges: nextEdges,
     };
+  };
+
+  if (!nodes.length || nodes.every((node) => /^0*\d+$/.test(node.id))) {
+    return finish(nodes, workspace.edges || []);
   }
   const idMap = new Map();
   const migratedNodes = nodes.map((node, index) => {
@@ -531,12 +592,5 @@ export function migrateWorkspaceNodeIds(workspace) {
     fromNode: idMap.get(edge.fromNode) ?? edge.fromNode,
     toNode: idMap.get(edge.toNode) ?? edge.toNode,
   }));
-  return {
-    ...workspace,
-    orientation,
-    layoutOnOrientationChange,
-    layoutSettings,
-    nodes: withKinds(migratedNodes),
-    edges: migratedEdges,
-  };
+  return finish(migratedNodes, migratedEdges);
 }

@@ -20,6 +20,12 @@ import {
   selectionOpKey,
 } from '@/lib/cas/selectionOps';
 import { classifyExprEqText } from '@/lib/cas/engine';
+import {
+  SUB_SLOT_GAP,
+  SUB_SLOT_PAD_TOP,
+  SUB_SLOT_ROW_H,
+  patchSubstituteSlotText,
+} from '@/lib/substituteSlots';
 import MathPreview from './MathPreview';
 
 const FIELD_METHODS = new Set([
@@ -56,6 +62,7 @@ export default function MathNodeBody({
   ghostSelection = null,
   onSelectNode,
   zoom = 1,
+  substituteSlots = [],
 }) {
   const def = defForKind(node.kind);
   const fieldLooks = inputClass(darkNodes, node.color);
@@ -170,7 +177,62 @@ export default function MathNodeBody({
   };
 
   return (
-    <div className="px-3 pt-2 pb-3" onPointerDown={(e) => e.stopPropagation()}>
+    <div
+      className={`px-3 pb-3 ${isSubstituteNode(node) ? '' : 'pt-2'}`}
+      onPointerDown={(e) => e.stopPropagation()}
+      style={isSubstituteNode(node) ? { paddingTop: SUB_SLOT_PAD_TOP } : undefined}
+    >
+      {isSubstituteNode(node) && (
+        <div className="flex flex-col" style={{ gap: SUB_SLOT_GAP }}>
+          {substituteSlots.map((slot) => {
+            const placeholder =
+              slot.label === 'A' ? 'Equation, e.g. x=2*y' : 'Substitute, e.g. y=3';
+            return (
+              <div
+                key={slot.id}
+                className={`flex items-center gap-2 transition-opacity ${
+                  slot.greyed ? 'opacity-45' : 'opacity-100'
+                }`}
+                style={{ minHeight: SUB_SLOT_ROW_H }}
+              >
+                <span
+                  className={`w-4 shrink-0 text-center text-xs font-semibold ${
+                    darkNodes ? 'text-zinc-300' : 'text-slate-600'
+                  }`}
+                  title={slot.label === 'A' ? 'Base equation' : 'Substitution equation'}
+                >
+                  {slot.label}
+                </span>
+                {slot.connected ? (
+                  <div
+                    className={`min-w-0 flex-1 truncate rounded-md border border-dashed px-2 py-1.5 text-xs ${
+                      darkNodes
+                        ? 'border-white/15 text-zinc-400'
+                        : 'border-slate-300 text-slate-500'
+                    }`}
+                    title="Socket connected — typed value is remembered until disconnect"
+                  >
+                    Connected
+                  </div>
+                ) : (
+                  <input
+                    type="text"
+                    value={slot.text}
+                    onChange={(e) => {
+                      const patch = patchSubstituteSlotText(node, slot.id, e.target.value);
+                      if (patch) onUpdate(patch);
+                    }}
+                    placeholder={placeholder}
+                    className={`${fieldLooks.className} min-w-0 flex-1`}
+                    style={fieldLooks.style}
+                  />
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
       {isExpressionNode(node) && (
         <textarea
           value={node.expr ?? ''}

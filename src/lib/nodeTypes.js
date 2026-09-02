@@ -412,6 +412,10 @@ export function fieldsForKind(kind) {
   if (normalised === NODE_KIND.EXPRESSION) {
     fields.expr = '';
   }
+  if (normalised === NODE_KIND.SUBSTITUTE) {
+    fields.subA = '';
+    fields.subB = [''];
+  }
   if (
     normalised === NODE_KIND.CAS_OP ||
     normalised === NODE_KIND.MANIPULATION ||
@@ -483,9 +487,17 @@ export function isSubstituteNode(nodeOrKind) {
   return normalizeNodeKind(kind) === NODE_KIND.SUBSTITUTE;
 }
 
-/** Math nodes that may accept more than one inbound edge. */
+/**
+ * Math nodes that may accept more than one inbound edge on a single
+ * anonymous input socket (Basic operation). Substitute uses labelled slots.
+ */
 export function allowsMultipleInputs(nodeOrKind) {
-  return isBasicOperationNode(nodeOrKind) || isSubstituteNode(nodeOrKind);
+  return isBasicOperationNode(nodeOrKind);
+}
+
+/** Math nodes with labelled body input sockets (A / B…). */
+export function usesInputSlots(nodeOrKind) {
+  return isSubstituteNode(nodeOrKind);
 }
 
 /** Selection-menu driven Math nodes with a method/op picker (Manipulation). */

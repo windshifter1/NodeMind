@@ -27,6 +27,7 @@ import {
   selectionOpDisplayLabel,
   selectionOpKey,
 } from './selectionOps.js';
+import { listSubstituteSlots } from '../substituteSlots.js';
 
 function ignoredPassThrough(first, error) {
   return {
@@ -173,11 +174,57 @@ export function evaluateMathGraph(nodes = [], edges = []) {
     }
 
     if (isSubstituteNode(node)) {
-      if (inboundList.length < 2) {
-        results.set(id, ignoredPassThrough(inboundList[0]?.result, NOT_ENOUGH_INPUTS_ERROR));
+      const slots = listSubstituteSlots(node, edges);
+      const asts = [];
+      let first = null;
+      let parseFail = null;
+      for (const slot of slots) {
+        if (slot.greyed) continue;
+        if (slot.connected) {
+          // Socket always wins over remembered slot text.
+          const upstream = results.get(slot.sourceId);
+          if (!isUsableResult(upstream)) {
+            if (slot.id === 'A') {
+              results.set(id, emptyResult('Connect an equation'));
+              return;
+            }
+            break;
+          }
+          asts.push(upstream.ast);
+          if (!first) first = upstream;
+          continue;
+        }
+        const text = String(slot.text || '');
+        if (!text.replace(/\s+/g, '')) {
+          if (slot.id === 'A') {
+            results.set(id, ignoredPassThrough(null, NOT_ENOUGH_INPUTS_ERROR));
+            return;
+          }
+          break;
+        }
+        const parsed = parseExpressionOrEquation(text);
+        if (parsed.error) {
+          parseFail = parsed;
+          break;
+        }
+        asts.push(parsed.ast);
+        if (!first) first = parsed;
+      }
+      if (parseFail) {
+        results.set(id, {
+          ...parseFail,
+          ignored: false,
+          inputAst: first?.ast ?? null,
+          applicableModes: null,
+          applicableSelectionOps: null,
+        });
         return;
       }
-      const substituted = substituteEquations(inboundList.map((item) => item.result.ast));
+      if (asts.length < 2) {
+        results.set(id, ignoredPassThrough(first, NOT_ENOUGH_INPUTS_ERROR));
+        return;
+      }
+      const substituted = substituteEquations(asts);
       if (
         substituted.error === ALL_EQUATIONS_REQUIRED_ERROR ||
         substituted.error === NOT_ENOUGH_INPUTS_ERROR
@@ -185,7 +232,7 @@ export function evaluateMathGraph(nodes = [], edges = []) {
         results.set(
           id,
           ignoredPassThrough(
-            inboundList[0]?.result,
+            first,
             substituted.error === ALL_EQUATIONS_REQUIRED_ERROR
               ? ALL_EQUATIONS_REQUIRED_ERROR
               : NOT_ENOUGH_INPUTS_ERROR
@@ -196,7 +243,7 @@ export function evaluateMathGraph(nodes = [], edges = []) {
       results.set(id, {
         ...substituted,
         ignored: false,
-        inputAst: inboundList[0].result.ast,
+        inputAst: first?.ast ?? null,
         applicableModes: null,
         applicableSelectionOps: null,
       });

@@ -29,10 +29,16 @@ import {
   fieldsForKind,
   isMathNode,
   isSelectionOpNode,
+  usesInputSlots,
   NODE_KIND,
 } from '@/lib/nodeTypes';
 import { evaluateMathGraph } from '@/lib/cas/evalGraph';
-import { connectionInputTarget, hasInboundEdge } from '@/lib/graphEdges';
+import {
+  connectionInputSlot,
+  connectionInputTarget,
+  hasInboundEdge,
+} from '@/lib/graphEdges';
+import { hasInboundEdgeOnSlot } from '@/lib/substituteSlots';
 import { shouldStartOnboarding } from '@/lib/onboarding';
 import { readMathsCreditSeen, setMathsCreditSeen } from '@/lib/mathsCredit';
 import { emitTutorial } from '@/lib/tutorialEvents';
@@ -263,7 +269,8 @@ export default function Canvas() {
   const pickNodeType = useCallback(
     (kind) => {
       if (!nodePicker) return;
-      const { source, x, y, fromNode, fromType, worldX, worldY, preferredModes } = nodePicker;
+      const { source, x, y, fromNode, fromType, inputSlot, worldX, worldY, preferredModes } =
+        nodePicker;
       const preferredMode = preferredModes?.[kind]?.[0];
       if (source === 'connected') {
         const dropX = Number.isFinite(worldX) ? worldX : x;
@@ -282,6 +289,7 @@ export default function Canvas() {
           y: pos.y,
           fromNode,
           fromType,
+          inputSlot: inputSlot || null,
           kind,
           mode: preferredMode,
         });
@@ -312,35 +320,51 @@ export default function Canvas() {
     dispatch({ type: 'DELETE_NODES', ids });
     setSelectedNodeIds((prev) => prev.filter((id) => !ids.includes(id)));
   };
-  const addEdge = (fromNode, fromType, toNode, toType) => {
+  const addEdge = (fromNode, fromType, toNode, toType, slots = null) => {
+    const fromSlot = slots?.fromSlot || null;
+    const toSlot = slots?.toSlot || null;
     const inputTarget = connectionInputTarget(fromNode, fromType, toNode, toType);
     const targetNode = inputTarget
       ? active.nodes.find((node) => node.id === inputTarget)
       : null;
-    if (
-      targetNode &&
-      isMathNode(targetNode) &&
-      !allowsMultipleInputs(targetNode) &&
-      hasInboundEdge(active.edges, inputTarget)
-    ) {
-      showSocketHint(inputTarget);
-      return;
+    const inputSlot = connectionInputSlot(fromType, toType, fromSlot, toSlot);
+    if (targetNode && isMathNode(targetNode)) {
+      if (usesInputSlots(targetNode)) {
+        if (!inputSlot || hasInboundEdgeOnSlot(active.edges, inputTarget, inputSlot)) {
+          showSocketHint(inputTarget, 'This socket already has an input');
+          return;
+        }
+      } else if (!allowsMultipleInputs(targetNode) && hasInboundEdge(active.edges, inputTarget)) {
+        showSocketHint(inputTarget);
+        return;
+      }
     }
-    dispatch({ type: 'ADD_EDGE', fromNode, fromType, toNode, toType });
+    dispatch({
+      type: 'ADD_EDGE',
+      fromNode,
+      fromType,
+      toNode,
+      toType,
+      fromSlot,
+      toSlot,
+    });
   };
   const deleteEdge = (id) => dispatch({ type: 'DELETE_EDGE', id });
   const bringToFront = (id) => dispatch({ type: 'BRING_TO_FRONT', id });
   const addConnectedNode = (x, y, fromNode, fromType, anchor) => {
     const from = active.nodes.find((node) => node.id === fromNode);
     const fromMath = from && isMathNode(from);
-    if (
-      fromMath &&
-      fromType === 'input' &&
-      !allowsMultipleInputs(from) &&
-      hasInboundEdge(active.edges, fromNode)
-    ) {
-      showSocketHint(fromNode);
-      return;
+    const inputSlot = anchor?.inputSlot || null;
+    if (fromMath && fromType === 'input') {
+      if (usesInputSlots(from)) {
+        if (inputSlot && hasInboundEdgeOnSlot(active.edges, fromNode, inputSlot)) {
+          showSocketHint(fromNode, 'This socket already has an input');
+          return;
+        }
+      } else if (!allowsMultipleInputs(from) && hasInboundEdge(active.edges, fromNode)) {
+        showSocketHint(fromNode);
+        return;
+      }
     }
     let initialCategory = 'text';
     let valuesOnly = false;
@@ -358,6 +382,7 @@ export default function Canvas() {
       y,
       fromNode,
       fromType,
+      inputSlot,
       worldX: anchor?.worldX,
       worldY: anchor?.worldY,
       clientX: anchor?.clientX ?? window.innerWidth / 2,
@@ -650,6 +675,7 @@ export default function Canvas() {
             ? {
                 fromNode: nodePicker.fromNode,
                 fromType: nodePicker.fromType,
+                inputSlot: nodePicker.inputSlot || null,
                 toWorldX: nodePicker.worldX,
                 toWorldY: nodePicker.worldY,
               }

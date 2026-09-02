@@ -357,12 +357,14 @@ export default function CanvasBoard({
     };
   }, []);
 
-  const socketScreen = (node, type, overrides) => {
+  const socketScreen = (node, type, overrides, inputSlot = null) => {
     const override = overrides?.get?.(node.id);
     const x = override ? override.x : node.x;
     const y = override ? override.y : node.y;
     const overridden = { ...node, x, y };
-    const point = socketWorld(overridden, type, graphOrientation, nodeSizeForLayout(overridden));
+    const point = socketWorld(overridden, type, graphOrientation, nodeSizeForLayout(overridden), {
+      inputSlot,
+    });
     return { x: point.x * zoom + pan.x, y: point.y * zoom + pan.y };
   };
 
@@ -377,10 +379,10 @@ export default function CanvasBoard({
         let out, inp;
         if (edge.fromType === 'output') {
           out = socketScreen(from, 'output', overrideMap);
-          inp = socketScreen(to, 'input', overrideMap);
+          inp = socketScreen(to, 'input', overrideMap, edge.inputSlot || null);
         } else {
           out = socketScreen(to, 'output', overrideMap);
-          inp = socketScreen(from, 'input', overrideMap);
+          inp = socketScreen(from, 'input', overrideMap, edge.inputSlot || null);
         }
         const d = bezierPath(out.x, out.y, inp.x, inp.y, false, graphOrientation);
         boardRef.current
@@ -1128,15 +1130,17 @@ export default function CanvasBoard({
 
   // --- Socket connection drag ---
   const startConnect = useCallback(
-    (nodeId, type, e) => {
+    (nodeId, type, e, inputSlot = null) => {
       if (e && (!isPrimaryPointerStart(e) || shouldSuppressPrimaryPointer(e, 'down'))) return;
       if (isSpacePanArmed()) return;
       const node = nodes.find((n) => n.id === nodeId);
       if (!node) return;
-      const point = socketWorld(node, type, graphOrientation, nodeSizeForLayout(node));
+      const point = socketWorld(node, type, graphOrientation, nodeSizeForLayout(node), {
+        inputSlot,
+      });
       const fx = point.x * zoomRef.current + panRef.current.x;
       const fy = point.y * zoomRef.current + panRef.current.y;
-      const p = { fromNode: nodeId, fromType: type, toX: fx, toY: fy };
+      const p = { fromNode: nodeId, fromType: type, inputSlot: inputSlot || null, toX: fx, toY: fy };
       pendingRef.current = p;
       setPending(p);
     },
@@ -1164,8 +1168,12 @@ export default function CanvasBoard({
         if (socketEl) {
           const toNode = socketEl.getAttribute('data-node-id');
           const toType = socketEl.getAttribute('data-socket-type');
+          const toSlot = socketEl.getAttribute('data-socket-slot') || null;
           if (toNode && toType && toNode !== cur.fromNode && toType !== cur.fromType) {
-            onAddEdge(cur.fromNode, cur.fromType, toNode, toType);
+            onAddEdge(cur.fromNode, cur.fromType, toNode, toType, {
+              fromSlot: cur.inputSlot || null,
+              toSlot,
+            });
             emitTutorial('canvas.edge.create');
           }
         } else if (!overNode && !pickerOpenRef.current) {
@@ -1183,6 +1191,7 @@ export default function CanvasBoard({
             clientY: e.clientY,
             worldX: w.x,
             worldY: w.y,
+            inputSlot: cur.inputSlot || null,
           });
         }
       }
@@ -1251,10 +1260,10 @@ export default function CanvasBoard({
           let out, inp;
           if (edge.fromType === 'output') {
             out = socketScreen(from, 'output');
-            inp = socketScreen(to, 'input');
+            inp = socketScreen(to, 'input', null, edge.inputSlot || null);
           } else {
             out = socketScreen(to, 'output');
-            inp = socketScreen(from, 'input');
+            inp = socketScreen(from, 'input', null, edge.inputSlot || null);
           }
           const d = bezierPath(out.x, out.y, inp.x, inp.y, false, graphOrientation);
           return (
@@ -1280,7 +1289,7 @@ export default function CanvasBoard({
           if (!source) return null;
           const fn = nodes.find((n) => n.id === source.fromNode);
           if (!fn) return null;
-          const from = socketScreen(fn, source.fromType);
+          const from = socketScreen(fn, source.fromType, null, source.inputSlot || null);
           const toX = live ? live.toX : held.toWorldX * zoom + pan.x;
           const toY = live ? live.toY : held.toWorldY * zoom + pan.y;
           if (!Number.isFinite(toX) || !Number.isFinite(toY)) return null;
@@ -1332,6 +1341,7 @@ export default function CanvasBoard({
             inputBlocked={Boolean(mathInputBlockedIds?.has?.(node.id))}
             socketHint={socketHint?.nodeId === node.id ? socketHint : null}
             zoom={zoom}
+            edges={edges}
           />
         ))}
         <NodeTypeMenu

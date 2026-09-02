@@ -9,7 +9,11 @@ import {
   SOCKET_RADIUS,
 } from '@/lib/canvasConstants';
 import { emitTutorial } from '@/lib/tutorialEvents';
-import { displayNodeTitle, isMathNode } from '@/lib/nodeTypes';
+import { displayNodeTitle, isMathNode, isSubstituteNode } from '@/lib/nodeTypes';
+import {
+  listSubstituteSlots,
+  substituteSlotOffsetY,
+} from '@/lib/substituteSlots';
 import MathNodeBody from './MathNodeBody';
 
 const DOUBLE_TAP_MS = 450;
@@ -18,15 +22,36 @@ function selectionGlow(color) {
   return `0 0 0 3px ${color}f2, 0 0 0 7px ${color}80, 0 0 24px 6px ${color}a6, 0 12px 36px rgba(0, 0, 0, 0.45)`;
 }
 
-function Socket({ type, color, nodeId, pending, orientation, onStartConnect, inputBlocked = false }) {
+function Socket({
+  type,
+  color,
+  nodeId,
+  pending,
+  orientation,
+  onStartConnect,
+  inputBlocked = false,
+  inputSlot = null,
+  top = null,
+  dimmed = false,
+}) {
+  const pendingSlot = pending?.inputSlot || null;
+  const slotConflict =
+    type === 'input' &&
+    inputSlot &&
+    pending &&
+    pending.fromType === 'input' &&
+    pending.fromNode === nodeId &&
+    pendingSlot === inputSlot;
   const isTarget =
     pending &&
     pending.fromNode !== nodeId &&
     pending.fromType !== type &&
-    !(type === 'input' && inputBlocked);
+    !(type === 'input' && inputBlocked) &&
+    !slotConflict;
   const HIT = 36;
   const OUT = 28;
-  const vertical = orientation === 'vertical';
+  const vertical = orientation === 'vertical' && top == null;
+  const topPx = top != null ? top : TOP_BAR_HEIGHT / 2;
   const hitStyle = vertical
     ? {
         width: HIT,
@@ -41,7 +66,7 @@ function Socket({ type, color, nodeId, pending, orientation, onStartConnect, inp
         height: HIT,
         left: type === 'input' ? -OUT : 'auto',
         right: type === 'output' ? -OUT : 'auto',
-        top: TOP_BAR_HEIGHT / 2,
+        top: topPx,
         transform: 'translateY(-50%)',
       };
   const visibleStyle = vertical
@@ -58,7 +83,7 @@ function Socket({ type, color, nodeId, pending, orientation, onStartConnect, inp
         height: SOCKET_RADIUS * 2,
         left: type === 'input' ? -SOCKET_RADIUS : 'auto',
         right: type === 'output' ? -SOCKET_RADIUS : 'auto',
-        top: TOP_BAR_HEIGHT / 2,
+        top: topPx,
         transform: 'translateY(-50%)',
       };
   return (
@@ -67,15 +92,17 @@ function Socket({ type, color, nodeId, pending, orientation, onStartConnect, inp
         data-socket
         data-node-id={nodeId}
         data-socket-type={type}
+        data-socket-slot={inputSlot || undefined}
         onPointerDown={(e) => {
           e.stopPropagation();
-          onStartConnect(nodeId, type, e);
+          onStartConnect(nodeId, type, e, inputSlot);
         }}
         className="absolute"
         style={{
           ...hitStyle,
           cursor: 'crosshair',
           zIndex: 20,
+          opacity: dimmed ? 0.45 : 1,
         }}
       />
       <div
@@ -86,6 +113,7 @@ function Socket({ type, color, nodeId, pending, orientation, onStartConnect, inp
           boxShadow: isTarget ? `0 0 0 5px ${color}66` : '0 1px 3px rgba(0,0,0,0.3)',
           pointerEvents: 'none',
           zIndex: 21,
+          opacity: dimmed ? 0.45 : 1,
         }}
       />
     </>
@@ -113,7 +141,12 @@ export default function NoteNode({
   inputBlocked = false,
   socketHint = null,
   zoom = 1,
+  edges = [],
 }) {
+  const substituteSlots = useMemo(
+    () => (isSubstituteNode(node) && !node.collapsed ? listSubstituteSlots(node, edges) : []),
+    [node, edges]
+  );
   const textareaRef = useRef(null);
   const titleInputRef = useRef(null);
   const lastTitleTapRef = useRef(0);
@@ -140,7 +173,7 @@ export default function NoteNode({
     if (!isMathNode(node)) return undefined;
     onLayoutChange?.();
     return undefined;
-  }, [nodeWidth, node.kind, onLayoutChange]);
+  }, [nodeWidth, node.kind, substituteSlots.length, onLayoutChange]);
 
   const autoResize = () => {
     const ta = textareaRef.current;
@@ -235,15 +268,33 @@ export default function NoteNode({
           'left 250ms ease, top 250ms ease, opacity 180ms ease, width 250ms ease, box-shadow 180ms ease, border-color 180ms ease, border-width 180ms ease',
       }}
     >
-      <Socket
-        type="input"
-        color={node.color}
-        nodeId={node.id}
-        pending={pending}
-        orientation={orientation}
-        onStartConnect={onStartConnect}
-        inputBlocked={inputBlocked}
-      />
+      {substituteSlots.length > 0 ? (
+        substituteSlots.map((slot, index) => (
+          <Socket
+            key={slot.id}
+            type="input"
+            color={node.color}
+            nodeId={node.id}
+            pending={pending}
+            orientation={orientation}
+            onStartConnect={onStartConnect}
+            inputBlocked={slot.connected}
+            inputSlot={slot.id}
+            top={TOP_BAR_HEIGHT + substituteSlotOffsetY(index)}
+            dimmed={slot.greyed}
+          />
+        ))
+      ) : (
+        <Socket
+          type="input"
+          color={node.color}
+          nodeId={node.id}
+          pending={pending}
+          orientation={orientation}
+          onStartConnect={onStartConnect}
+          inputBlocked={inputBlocked}
+        />
+      )}
 
       <Socket
         type="output"
@@ -380,6 +431,7 @@ export default function NoteNode({
           ghostSelection={ghostSelection}
           onSelectNode={onSelectNode}
           zoom={zoom}
+          substituteSlots={substituteSlots}
         />
       )}
 

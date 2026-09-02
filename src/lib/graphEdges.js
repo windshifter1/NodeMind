@@ -13,6 +13,16 @@ export function connectionInputTarget(fromNode, fromType, toNode, toType) {
   return null;
 }
 
+/**
+ * Slot id on the input end of a pending / stored connection.
+ * Prefer an explicit slot on the input-side endpoint.
+ */
+export function connectionInputSlot(fromType, toType, fromSlot, toSlot) {
+  if (fromType === 'input') return fromSlot || null;
+  if (toType === 'input') return toSlot || null;
+  return null;
+}
+
 export function hasInboundEdge(edges, nodeId) {
   if (!nodeId) return false;
   return (edges || []).some((edge) => edgeFlow(edge).targetId === nodeId);

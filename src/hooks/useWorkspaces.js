@@ -6,8 +6,22 @@ import {
   normalizeLayoutSettings,
   normalizeOrientation,
 } from '@/lib/canvasConstants';
-import { connectionInputTarget, hasInboundEdge } from '@/lib/graphEdges';
-import { allowsMultipleInputs, fieldsForKind, isMathNode } from '@/lib/nodeTypes';
+import {
+  connectionInputSlot,
+  connectionInputTarget,
+  hasInboundEdge,
+} from '@/lib/graphEdges';
+import {
+  allowsMultipleInputs,
+  fieldsForKind,
+  isMathNode,
+  isSubstituteNode,
+  usesInputSlots,
+} from '@/lib/nodeTypes';
+import {
+  ensureSubstituteSlotCapacity,
+  hasInboundEdgeOnSlot,
+} from '@/lib/substituteSlots';
 
 const STORAGE_KEY = 'thoughts-canvas-workspaces-v2';
 const LEGACY_KEY = 'thoughts-canvas-graph-v1';
@@ -197,15 +211,15 @@ function reducer(state, action) {
       return withActiveGraph(state, (w) => {
         // Dragging from an input socket onto empty canvas would feed a new node
         // into that input — most Math nodes only accept one inbound edge.
+        const inputSlot = action.inputSlot || null;
         if (action.fromType === 'input') {
           const host = w.nodes.find((n) => n.id === action.fromNode);
-          if (
-            host &&
-            isMathNode(host) &&
-            !allowsMultipleInputs(host) &&
-            hasInboundEdge(w.edges, host.id)
-          ) {
-            return w;
+          if (host && isMathNode(host)) {
+            if (usesInputSlots(host)) {
+              if (inputSlot && hasInboundEdgeOnSlot(w.edges, host.id, inputSlot)) return w;
+            } else if (!allowsMultipleInputs(host) && hasInboundEdge(w.edges, host.id)) {
+              return w;
+            }
           }
         }
         const now = new Date().toISOString();
@@ -225,13 +239,43 @@ function reducer(state, action) {
           createdAt: now,
           updatedAt: now,
         };
+        // New Substitute nodes receive the first inbound edge on slot A.
+        const newNodeSlot =
+          action.fromType === 'output' && isSubstituteNode(node) ? 'A' : null;
+        const edgeSlot = action.fromType === 'input' ? inputSlot : newNodeSlot;
         let edge;
         if (action.fromType === 'output') {
-          edge = { id: uid('e'), fromNode: action.fromNode, fromType: 'output', toNode: id, toType: 'input' };
+          edge = {
+            id: uid('e'),
+            fromNode: action.fromNode,
+            fromType: 'output',
+            toNode: id,
+            toType: 'input',
+            ...(edgeSlot ? { inputSlot: edgeSlot } : {}),
+          };
         } else {
-          edge = { id: uid('e'), fromNode: id, fromType: 'output', toNode: action.fromNode, toType: 'input' };
+          edge = {
+            id: uid('e'),
+            fromNode: id,
+            fromType: 'output',
+            toNode: action.fromNode,
+            toType: 'input',
+            ...(edgeSlot ? { inputSlot: edgeSlot } : {}),
+          };
         }
-        return { ...w, nodes: [...w.nodes, node], edges: [...w.edges, edge], nextZ: w.nextZ + 1 };
+        let nodes = [...w.nodes, node];
+        if (action.fromType === 'input' && inputSlot) {
+          const host = w.nodes.find((n) => n.id === action.fromNode);
+          if (isSubstituteNode(host)) {
+            const cap = ensureSubstituteSlotCapacity(host, inputSlot);
+            if (cap) {
+              nodes = nodes.map((n) =>
+                n.id === host.id ? { ...n, ...cap, updatedAt: now } : n
+              );
+            }
+          }
+        }
+        return { ...w, nodes, edges: [...w.edges, edge], nextZ: w.nextZ + 1 };
       });
     case 'UPDATE_NODE':
       return withActiveGraph(state, (w) => ({
@@ -264,8 +308,14 @@ function reducer(state, action) {
     case 'ADD_EDGE': {
       if (action.fromNode === action.toNode || action.fromType === action.toType) return state;
       return withActiveGraph(state, (w) => {
-        const exists = w.edges.some(
-          (e) =>
+        const inputSlot = connectionInputSlot(
+          action.fromType,
+          action.toType,
+          action.fromSlot,
+          action.toSlot
+        );
+        const exists = w.edges.some((e) => {
+          const sameEndpoints =
             (e.fromNode === action.fromNode &&
               e.toNode === action.toNode &&
               e.fromType === action.fromType &&
@@ -273,8 +323,12 @@ function reducer(state, action) {
             (e.fromNode === action.toNode &&
               e.toNode === action.fromNode &&
               e.fromType === action.toType &&
-              e.toType === action.fromType)
-        );
+              e.toType === action.fromType);
+          if (!sameEndpoints) return false;
+          // Slotted edges only collide when they share the same slot.
+          if (inputSlot || e.inputSlot) return (e.inputSlot || null) === (inputSlot || null);
+          return true;
+        });
         if (exists) return w;
         const inputTarget = connectionInputTarget(
           action.fromNode,
@@ -283,19 +337,36 @@ function reducer(state, action) {
           action.toType
         );
         const targetNode = inputTarget ? w.nodes.find((n) => n.id === inputTarget) : null;
-        if (
-          targetNode &&
-          isMathNode(targetNode) &&
-          !allowsMultipleInputs(targetNode) &&
-          hasInboundEdge(w.edges, inputTarget)
-        ) {
-          return w;
+        if (targetNode && isMathNode(targetNode)) {
+          if (usesInputSlots(targetNode)) {
+            if (!inputSlot || hasInboundEdgeOnSlot(w.edges, inputTarget, inputSlot)) return w;
+          } else if (!allowsMultipleInputs(targetNode) && hasInboundEdge(w.edges, inputTarget)) {
+            return w;
+          }
+        }
+        let nodes = w.nodes;
+        if (targetNode && isSubstituteNode(targetNode) && inputSlot) {
+          const cap = ensureSubstituteSlotCapacity(targetNode, inputSlot);
+          if (cap) {
+            const now = new Date().toISOString();
+            nodes = nodes.map((n) =>
+              n.id === targetNode.id ? { ...n, ...cap, updatedAt: now } : n
+            );
+          }
         }
         return {
           ...w,
+          nodes,
           edges: [
             ...w.edges,
-            { id: uid('e'), fromNode: action.fromNode, fromType: action.fromType, toNode: action.toNode, toType: action.toType },
+            {
+              id: uid('e'),
+              fromNode: action.fromNode,
+              fromType: action.fromType,
+              toNode: action.toNode,
+              toType: action.toType,
+              ...(inputSlot ? { inputSlot } : {}),
+            },
           ],
         };
       });

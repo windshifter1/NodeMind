@@ -743,6 +743,7 @@ export default function CanvasBoard({
     const el = boardRef.current;
     if (!el) return;
     const handler = (e) => {
+      if (e.target?.closest?.('[data-graph-plot]')) return;
       e.preventDefault();
       const rect = el.getBoundingClientRect();
       const cx = e.clientX - rect.left;
@@ -919,6 +920,8 @@ export default function CanvasBoard({
 
     const onDown = (e) => {
       if (e.pointerType === 'mouse') return;
+      // Graph plot owns pinch/pan when the gesture is on the plot canvas.
+      if (e.target?.closest?.('[data-graph-plot]')) return;
       touchPointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
       if (touchPointers.current.size >= 2) beginPinch();
     };

@@ -265,7 +265,7 @@ export default function MathNodeBody({
             </div>
           </div>
         )}
-        <GraphPlot plot={result?.plot} darkNodes={darkNodes} height={plotH} />
+        <GraphPlot plot={result?.plot} darkNodes={darkNodes} height={plotH} zoom={zoom} />
         {!basicView && softErrors.length > 0 && (
           <div
             className={`mt-2 rounded-md border px-2.5 py-2 text-left text-xs leading-relaxed ${

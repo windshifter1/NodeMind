@@ -195,22 +195,6 @@ export function parseAxisBound(text, fallback) {
   return Number.isFinite(n) ? n : fallback;
 }
 
-function sampleFunction(exprAst, xMin, xMax, independent = 'x') {
-  const points = [];
-  const span = xMax - xMin;
-  if (!(span > 0) || !Number.isFinite(span)) return points;
-  for (let i = 0; i <= SAMPLE_COUNT; i++) {
-    const x = xMin + (span * i) / SAMPLE_COUNT;
-    const y = evalAstNumeric(exprAst, { [independent]: x });
-    if (Number.isFinite(y) && Math.abs(y) < 1e8) {
-      points.push({ x, y });
-    } else {
-      points.push(null);
-    }
-  }
-  return points;
-}
-
 function autoYRange(series) {
   let min = Infinity;
   let max = -Infinity;
@@ -259,7 +243,9 @@ export function buildPlotFromInputs(inboundList = [], node = {}) {
       value: null,
     };
     if (desc.kind === 'function') {
-      base.points = sampleFunction(desc.exprAst, lo, hi, desc.independent || 'x');
+      base.exprAst = desc.exprAst;
+      base.independent = desc.independent || 'x';
+      base.points = sampleFunction(desc.exprAst, lo, hi, base.independent);
     } else if (desc.kind === 'hline') {
       const value = evalAstNumeric(desc.valueAst, {});
       base.value = value;
@@ -297,6 +283,31 @@ export function buildPlotFromInputs(inboundList = [], node = {}) {
         ? null
         : series[0]?.error || 'Nothing to plot',
   };
+}
+
+/** Resample a function series over an arbitrary x window (for interactive zoom). */
+export function sampleSeriesInRange(series, xMin, xMax, sampleCount = SAMPLE_COUNT) {
+  if (!series || series.kind !== 'function' || !series.exprAst) {
+    return series?.points || [];
+  }
+  return sampleFunction(series.exprAst, xMin, xMax, series.independent || 'x', sampleCount);
+}
+
+function sampleFunction(exprAst, xMin, xMax, independent = 'x', sampleCount = SAMPLE_COUNT) {
+  const points = [];
+  const span = xMax - xMin;
+  const n = Math.max(32, Math.floor(sampleCount));
+  if (!(span > 0) || !Number.isFinite(span)) return points;
+  for (let i = 0; i <= n; i++) {
+    const x = xMin + (span * i) / n;
+    const y = evalAstNumeric(exprAst, { [independent]: x });
+    if (Number.isFinite(y) && Math.abs(y) < 1e8) {
+      points.push({ x, y });
+    } else {
+      points.push(null);
+    }
+  }
+  return points;
 }
 
 export { DEFAULT_X_MIN, DEFAULT_X_MAX, SAMPLE_COUNT };

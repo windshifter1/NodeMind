@@ -71,6 +71,7 @@ export default function GraphPlot({
   colorForSource = null,
   height = 336,
   zoom = 1,
+  uiStyle = 'modern',
 }) {
   const canvasRef = useRef(null);
   const wrapRef = useRef(null);
@@ -265,7 +266,9 @@ export default function GraphPlot({
     canvas.style.width = `${cssW}px`;
     canvas.style.height = `${cssH}px`;
 
-    const ctx = canvas.getContext('2d', { alpha: false });
+    const modernUi = uiStyle === 'modern';
+    // Keep alpha enabled so Modern glass plot backgrounds can be translucent.
+    const ctx = canvas.getContext('2d', { alpha: true });
     if (!ctx) return;
     ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
     ctx.imageSmoothingEnabled = false;
@@ -273,7 +276,13 @@ export default function GraphPlot({
     const snap = (v) => Math.round(v * pixelRatio) / pixelRatio;
     const strokeWidth = (cssPx) => Math.max(hairline, Math.round(cssPx * pixelRatio) / pixelRatio);
 
-    const bg = darkNodes ? '#1f2226' : '#f8fafc';
+    const bg = modernUi
+      ? darkNodes
+        ? 'rgba(15, 25, 40, 0.45)'
+        : 'rgba(255, 255, 255, 0.45)'
+      : darkNodes
+        ? '#1f2226'
+        : '#f8fafc';
     const grid = darkNodes ? 'rgba(255,255,255,0.08)' : 'rgba(15,23,42,0.08)';
     const axis = darkNodes ? 'rgba(255,255,255,0.5)' : 'rgba(15,23,42,0.5)';
     const labelCol = darkNodes ? 'rgba(255,255,255,0.72)' : 'rgba(15,23,42,0.72)';
@@ -454,7 +463,7 @@ export default function GraphPlot({
         lx += ctx.measureText(text).width + 28;
       });
     }
-  }, [plot, darkNodes, colorForSource, plotBox, view, zoom]);
+  }, [plot, darkNodes, colorForSource, plotBox, view, zoom, uiStyle]);
 
   return (
     <div

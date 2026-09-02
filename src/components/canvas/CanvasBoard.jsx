@@ -47,6 +47,7 @@ export default function CanvasBoard({
   selectionArmed = false,
   onSelectionArmConsumed,
   darkNodes,
+  uiStyle = 'modern',
   zoom,
   setZoom,
   pan,
@@ -1215,6 +1216,26 @@ export default function CanvasBoard({
   const cursor =
     spacePanCursor ||
     (marqueeRect ? 'crosshair' : panState.current.panning ? 'grabbing' : 'grab');
+  const modernUi = uiStyle === 'modern';
+  const dotSize = `${24 * zoom}px ${24 * zoom}px`;
+  const boardBackground = modernUi
+    ? {
+        backgroundColor: 'var(--nm-canvas)',
+        backgroundImage: [
+          'radial-gradient(900px 500px at 15% 10%, var(--nm-canvas-glow-a), transparent 55%)',
+          'radial-gradient(700px 480px at 85% 75%, var(--nm-canvas-glow-b), transparent 50%)',
+          'radial-gradient(600px 400px at 50% 100%, var(--nm-canvas-glow-c), transparent 55%)',
+          'radial-gradient(circle, var(--nm-canvas-dot) 1px, transparent 1px)',
+        ].join(', '),
+        backgroundSize: `auto, auto, auto, ${dotSize}`,
+        backgroundPosition: `0 0, 0 0, 0 0, ${pan.x}px ${pan.y}px`,
+      }
+    : {
+        backgroundColor: 'var(--nm-canvas)',
+        backgroundImage: 'radial-gradient(circle, var(--nm-canvas-dot) 1px, transparent 1px)',
+        backgroundSize: dotSize,
+        backgroundPosition: `${pan.x}px ${pan.y}px`,
+      };
 
   return (
     <div
@@ -1233,11 +1254,7 @@ export default function CanvasBoard({
       style={{
         touchAction: 'none',
         cursor,
-        backgroundColor: 'var(--nm-canvas)',
-        backgroundImage:
-          'radial-gradient(circle, var(--nm-canvas-dot) 1px, transparent 1px)',
-        backgroundSize: `${24 * zoom}px ${24 * zoom}px`,
-        backgroundPosition: `${pan.x}px ${pan.y}px`,
+        ...boardBackground,
       }}
     >
       {nodes.length === 0 && (
@@ -1324,6 +1341,7 @@ export default function CanvasBoard({
             pending={pending || heldConnection}
             orientation={graphOrientation}
             darkNodes={darkNodes}
+            uiStyle={uiStyle}
             selected={selectedSet.has(node.id)}
             ghost={overBin && draggingSet?.has(node.id)}
             mathResult={mathResults?.get?.(node.id) || null}

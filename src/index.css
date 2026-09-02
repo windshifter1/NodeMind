@@ -61,6 +61,12 @@
     --nm-terminal-prompt: #6ee7b7;
     --nm-bin: rgba(24, 24, 27, 0.82);
     --nm-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.55);
+    --nm-node-bg: #424448;
+    --nm-node-bar: transparent;
+    --nm-glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    --nm-canvas-glow-a: transparent;
+    --nm-canvas-glow-b: transparent;
+    --nm-canvas-glow-c: transparent;
   }
 
   html[data-theme='light'] {
@@ -115,6 +121,67 @@
     --nm-terminal-prompt: #047857;
     --nm-bin: rgba(255, 255, 255, 0.9);
     --nm-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.18);
+    --nm-node-bg: #f8fafc;
+    --nm-node-bar: transparent;
+    --nm-glass-shadow: 0 8px 28px rgba(15, 23, 42, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.65);
+    --nm-canvas-glow-a: transparent;
+    --nm-canvas-glow-b: transparent;
+    --nm-canvas-glow-c: transparent;
+  }
+
+  /* Modern = glassmorphism (composes with light/dark) */
+  html[data-ui-style='modern'][data-theme='dark'] {
+    --nm-page: #071018;
+    --nm-canvas: #071018;
+    --nm-canvas-dot: rgba(140, 200, 255, 0.14);
+    --nm-panel: rgba(255, 255, 255, 0.08);
+    --nm-chrome: rgba(255, 255, 255, 0.08);
+    --nm-header: rgba(255, 255, 255, 0.06);
+    --nm-sidebar: rgba(255, 255, 255, 0.04);
+    --nm-hover: rgba(255, 255, 255, 0.12);
+    --nm-hover-strong: rgba(255, 255, 255, 0.18);
+    --nm-border: rgba(255, 255, 255, 0.22);
+    --nm-border-strong: rgba(255, 255, 255, 0.32);
+    --nm-divider: rgba(255, 255, 255, 0.14);
+    --nm-overlay: rgba(0, 10, 20, 0.55);
+    --nm-edge: rgba(186, 230, 253, 0.55);
+    --nm-input: rgba(255, 255, 255, 0.08);
+    --nm-option: rgba(255, 255, 255, 0.06);
+    --nm-tooltip: rgba(15, 25, 40, 0.72);
+    --nm-bin: rgba(255, 255, 255, 0.08);
+    --nm-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+    --nm-node-bg: rgba(255, 255, 255, 0.08);
+    --nm-node-bar: rgba(255, 255, 255, 0.06);
+    --nm-canvas-glow-a: rgba(56, 189, 248, 0.28);
+    --nm-canvas-glow-b: rgba(16, 185, 129, 0.22);
+    --nm-canvas-glow-c: rgba(99, 102, 241, 0.18);
+  }
+
+  html[data-ui-style='modern'][data-theme='light'] {
+    --nm-page: #e8f2f8;
+    --nm-canvas: #e8f2f8;
+    --nm-canvas-dot: rgba(30, 80, 120, 0.12);
+    --nm-panel: rgba(255, 255, 255, 0.55);
+    --nm-chrome: rgba(255, 255, 255, 0.55);
+    --nm-header: rgba(255, 255, 255, 0.4);
+    --nm-sidebar: rgba(255, 255, 255, 0.28);
+    --nm-hover: rgba(15, 23, 42, 0.06);
+    --nm-hover-strong: rgba(15, 23, 42, 0.1);
+    --nm-border: rgba(255, 255, 255, 0.65);
+    --nm-border-strong: rgba(15, 23, 42, 0.14);
+    --nm-divider: rgba(15, 23, 42, 0.08);
+    --nm-overlay: rgba(15, 40, 60, 0.28);
+    --nm-edge: rgba(14, 116, 144, 0.45);
+    --nm-input: rgba(255, 255, 255, 0.55);
+    --nm-option: rgba(255, 255, 255, 0.4);
+    --nm-tooltip: rgba(255, 255, 255, 0.75);
+    --nm-bin: rgba(255, 255, 255, 0.55);
+    --nm-shadow: 0 8px 28px rgba(15, 23, 42, 0.12);
+    --nm-node-bg: rgba(255, 255, 255, 0.55);
+    --nm-node-bar: rgba(255, 255, 255, 0.35);
+    --nm-canvas-glow-a: rgba(56, 189, 248, 0.22);
+    --nm-canvas-glow-b: rgba(52, 211, 153, 0.18);
+    --nm-canvas-glow-c: rgba(129, 140, 248, 0.16);
   }
 }
 
@@ -453,4 +520,26 @@ html[data-theme='light'] .math-preview-scroll::-webkit-scrollbar-thumb:hover {
 .math-preview .katex .msqrt,
 .math-preview .katex .accent {
   color: inherit;
+}
+
+/* ——— Modern glass surfaces (toolbar, dialogs, menus, bin, nodes) ——— */
+html[data-ui-style='modern'] .bg-nm-chrome,
+html[data-ui-style='modern'] .bg-nm-panel,
+html[data-ui-style='modern'] .bg-nm-bin,
+html[data-ui-style='modern'] .bg-nm-tooltip,
+html[data-ui-style='modern'] [data-note-node] {
+  backdrop-filter: blur(18px) saturate(1.4);
+  -webkit-backdrop-filter: blur(18px) saturate(1.4);
+  box-shadow: var(--nm-glass-shadow);
+}
+
+html[data-ui-style='modern'] .bg-nm-chrome,
+html[data-ui-style='modern'] .bg-nm-panel,
+html[data-ui-style='modern'] .bg-nm-bin {
+  background-color: var(--nm-chrome);
+}
+
+html[data-ui-style='modern'] .shadow-xl,
+html[data-ui-style='modern'] .shadow-2xl {
+  box-shadow: var(--nm-glass-shadow) !important;
 }

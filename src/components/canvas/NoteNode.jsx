@@ -121,7 +121,9 @@ function Socket({
         style={{
           ...visibleStyle,
           backgroundColor: color,
-          boxShadow: isTarget ? `0 0 0 5px ${color}66` : '0 1px 3px rgba(0,0,0,0.3)',
+          boxShadow: isTarget
+            ? `0 0 0 5px ${color}66`
+            : `0 0 10px ${color}66, 0 1px 3px rgba(0,0,0,0.3)`,
           pointerEvents: 'none',
           zIndex: 21,
           opacity: dimmed ? 0.45 : 1,
@@ -136,6 +138,7 @@ export default function NoteNode({
   pending,
   orientation,
   darkNodes,
+  uiStyle = 'modern',
   selected,
   ghost,
   mathResult = null,
@@ -276,21 +279,29 @@ export default function NoteNode({
     onStartNodeDrag(node.id, e);
   };
 
+  const modernUi = uiStyle === 'modern';
+
   return (
     <div
       data-note-node={node.id}
-      className="absolute rounded-xl shadow-2xl select-none"
+      className={`absolute select-none ${modernUi ? 'rounded-[1.1rem]' : 'rounded-xl shadow-2xl'}`}
       style={{
         left: node.x,
         top: node.y,
         width: nodeWidth,
         zIndex: node.z,
-        borderWidth: selected ? 3 : 2,
+        borderWidth: selected ? 3 : modernUi ? 1 : 2,
         borderStyle: 'solid',
-        borderColor: node.color,
-        backgroundColor: darkNodes ? '#424448' : '#f8fafc',
+        borderColor: modernUi && !selected ? 'var(--nm-border)' : node.color,
+        backgroundColor: modernUi ? 'var(--nm-node-bg)' : darkNodes ? '#424448' : '#f8fafc',
         opacity: ghost ? 0.3 : 1,
-        boxShadow: selected ? selectionGlow(node.color) : undefined,
+        boxShadow: selected
+          ? selectionGlow(node.color)
+          : modernUi
+            ? 'var(--nm-glass-shadow)'
+            : undefined,
+        backdropFilter: modernUi ? 'blur(18px) saturate(1.4)' : undefined,
+        WebkitBackdropFilter: modernUi ? 'blur(18px) saturate(1.4)' : undefined,
         transition:
           'left 250ms ease, top 250ms ease, opacity 180ms ease, width 250ms ease, box-shadow 180ms ease, border-color 180ms ease, border-width 180ms ease',
       }}
@@ -358,8 +369,10 @@ export default function NoteNode({
         style={{
           height: TOP_BAR_HEIGHT,
           cursor: editingTitle ? 'text' : 'grab',
-          backgroundColor: node.color + '22',
-          borderBottom: `1px solid ${node.color}33`,
+          backgroundColor: modernUi ? `${node.color}33` : node.color + '22',
+          borderBottom: modernUi
+            ? '1px solid var(--nm-border)'
+            : `1px solid ${node.color}33`,
         }}
         onPointerDown={startDrag}
       >
@@ -484,6 +497,7 @@ export default function NoteNode({
           ghostSelection={ghostSelection}
           onSelectNode={onSelectNode}
           zoom={zoom}
+          uiStyle={uiStyle}
           bodySlots={bodySlots}
           basicView={mathView === MATH_VIEW.BASIC}
         />

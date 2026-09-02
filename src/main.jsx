@@ -3,9 +3,11 @@ import ReactDOM from 'react-dom/client'
 import App from '@/App.jsx'
 import '@/index.css'
 import { applyDocumentTheme, readStoredTheme } from '@/lib/theme'
+import { applyDocumentUiStyle, readStoredUiStyle } from '@/lib/uiStyle'
 import { registerServiceWorker } from '@/registerServiceWorker'
 
 applyDocumentTheme(readStoredTheme())
+applyDocumentUiStyle(readStoredUiStyle())
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <App />

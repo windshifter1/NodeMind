@@ -1,17 +1,25 @@
 import React, { useEffect, useState } from 'react';
-import { Moon, RotateCcw, Sun, X } from 'lucide-react';
+import { Layers, Moon, RotateCcw, Sparkles, Sun, X } from 'lucide-react';
 import OptionHelpRow from './OptionHelpRow';
 import {
   readOnboardingReplayPending,
   setOnboardingCompleted,
   setOnboardingReplayPending,
 } from '@/lib/onboarding';
+import { UI_STYLE } from '@/lib/uiStyle';
 import { emitTutorial } from '@/lib/tutorialEvents';
 
 const REPLAY_HELP =
   'Resets the first-run flag. After the tour shows again, this option turns itself off automatically.';
 
-export default function SettingsDialog({ open, onClose, nodeTheme, onThemeChange }) {
+export default function SettingsDialog({
+  open,
+  onClose,
+  nodeTheme,
+  onThemeChange,
+  uiStyle,
+  onUiStyleChange,
+}) {
   const [section, setSection] = useState('style');
   const [replayPending, setReplayPending] = useState(() => readOnboardingReplayPending());
 
@@ -27,11 +35,25 @@ export default function SettingsDialog({ open, onClose, nodeTheme, onThemeChange
     { value: 'dark', label: 'Dark Theme', icon: Moon },
   ];
 
+  const styleOptions = [
+    {
+      value: UI_STYLE.ORIGINAL,
+      label: 'Original',
+      hint: 'Solid panels and the classic canvas look.',
+      icon: Layers,
+    },
+    {
+      value: UI_STYLE.MODERN,
+      label: 'Modern',
+      hint: 'Glassmorphism — frosted chrome, soft aurora canvas.',
+      icon: Sparkles,
+    },
+  ];
+
   const setReplay = (enabled) => {
     setReplayPending(enabled);
     setOnboardingReplayPending(enabled);
     if (enabled) {
-      // Clear completion so the tour runs on the next reload.
       setOnboardingCompleted(false);
     }
   };
@@ -89,34 +111,70 @@ export default function SettingsDialog({ open, onClose, nodeTheme, onThemeChange
 
           <section className="overflow-auto p-4">
             {section === 'style' && (
-              <div data-onboarding="settings-theme">
-                <h3 className="text-sm font-semibold text-nm-text">Style</h3>
-                <p className="mt-1 text-xs text-nm-text-muted">
-                  Choose how notes and application windows are displayed.
-                </p>
-                <div className="mt-4 grid gap-2">
-                  {themeOptions.map(({ value, label, icon: Icon }) => {
-                    const selected = nodeTheme === value;
-                    return (
-                      <button
-                        key={value}
-                        type="button"
-                        onClick={() => {
-                          if (value !== nodeTheme) emitTutorial('settings.theme');
-                          onThemeChange(value);
-                        }}
-                        className="flex items-center gap-3 rounded-xl border px-3 py-3 text-left transition hover:bg-nm-hover"
-                        style={{
-                          backgroundColor: selected ? 'rgba(99,102,241,0.18)' : 'var(--nm-option)',
-                          borderColor: selected ? '#818cf8' : 'var(--nm-border)',
-                          color: selected ? 'var(--nm-text)' : 'var(--nm-option-text)',
-                        }}
-                      >
-                        <Icon size={18} />
-                        <span className="text-sm font-medium">{label}</span>
-                      </button>
-                    );
-                  })}
+              <div className="space-y-6">
+                <div data-onboarding="settings-ui-style">
+                  <h3 className="text-sm font-semibold text-nm-text">Interface style</h3>
+                  <p className="mt-1 text-xs text-nm-text-muted">
+                    Choose the overall look of NodeMind chrome and notes.
+                  </p>
+                  <div className="mt-4 grid gap-2">
+                    {styleOptions.map(({ value, label, hint, icon: Icon }) => {
+                      const selected = uiStyle === value;
+                      return (
+                        <button
+                          key={value}
+                          type="button"
+                          onClick={() => {
+                            if (value !== uiStyle) emitTutorial('settings.ui-style');
+                            onUiStyleChange?.(value);
+                          }}
+                          className="flex items-start gap-3 rounded-xl border px-3 py-3 text-left transition hover:bg-nm-hover"
+                          style={{
+                            backgroundColor: selected ? 'rgba(99,102,241,0.18)' : 'var(--nm-option)',
+                            borderColor: selected ? '#818cf8' : 'var(--nm-border)',
+                            color: selected ? 'var(--nm-text)' : 'var(--nm-option-text)',
+                          }}
+                        >
+                          <Icon size={18} className="mt-0.5 shrink-0" />
+                          <span>
+                            <span className="block text-sm font-medium">{label}</span>
+                            <span className="mt-0.5 block text-[11px] opacity-70">{hint}</span>
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div data-onboarding="settings-theme">
+                  <h3 className="text-sm font-semibold text-nm-text">Theme</h3>
+                  <p className="mt-1 text-xs text-nm-text-muted">
+                    Light or dark colour palette (works with either interface style).
+                  </p>
+                  <div className="mt-4 grid gap-2">
+                    {themeOptions.map(({ value, label, icon: Icon }) => {
+                      const selected = nodeTheme === value;
+                      return (
+                        <button
+                          key={value}
+                          type="button"
+                          onClick={() => {
+                            if (value !== nodeTheme) emitTutorial('settings.theme');
+                            onThemeChange(value);
+                          }}
+                          className="flex items-center gap-3 rounded-xl border px-3 py-3 text-left transition hover:bg-nm-hover"
+                          style={{
+                            backgroundColor: selected ? 'rgba(99,102,241,0.18)' : 'var(--nm-option)',
+                            borderColor: selected ? '#818cf8' : 'var(--nm-border)',
+                            color: selected ? 'var(--nm-text)' : 'var(--nm-option-text)',
+                          }}
+                        >
+                          <Icon size={18} />
+                          <span className="text-sm font-medium">{label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
             )}

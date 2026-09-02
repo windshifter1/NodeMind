@@ -1,4 +1,4 @@
-import { readdir, stat, writeFile } from 'node:fs/promises';
+import { copyFile, readdir, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 const distDir = path.resolve('dist');
@@ -124,4 +124,6 @@ self.addEventListener('fetch', (event) => {
 `;
 
 await writeFile(path.join(distDir, 'sw.js'), serviceWorker);
+// GitHub Pages: unknown paths like /NodeMind/mockup1 serve this SPA shell.
+await copyFile(path.join(distDir, 'index.html'), path.join(distDir, '404.html'));
 console.log(`Generated service worker with ${urls.length} precached URLs.`);

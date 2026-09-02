@@ -43,6 +43,11 @@ import { shouldStartOnboarding } from '@/lib/onboarding';
 import { readMathsCreditSeen, setMathsCreditSeen } from '@/lib/mathsCredit';
 import { emitTutorial } from '@/lib/tutorialEvents';
 import { applyDocumentTheme, persistTheme, readStoredTheme } from '@/lib/theme';
+import {
+  applyDocumentUiStyle,
+  persistUiStyle,
+  readStoredUiStyle,
+} from '@/lib/uiStyle';
 
 const MATH_SINGLE_INPUT_MESSAGE = 'This node accepts only one input';
 
@@ -67,6 +72,7 @@ export default function Canvas() {
   const [selectedNodeIds, setSelectedNodeIds] = useState([]);
   const [selectionArmed, setSelectionArmed] = useState(false);
   const [nodeTheme, setNodeTheme] = useState(() => readStoredTheme());
+  const [uiStyle, setUiStyle] = useState(() => readStoredUiStyle());
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [mathsCreditOpen, setMathsCreditOpen] = useState(false);
   const [nodePicker, setNodePicker] = useState(null);
@@ -78,6 +84,11 @@ export default function Canvas() {
     applyDocumentTheme(nodeTheme);
     persistTheme(nodeTheme);
   }, [nodeTheme]);
+
+  useEffect(() => {
+    applyDocumentUiStyle(uiStyle);
+    persistUiStyle(uiStyle);
+  }, [uiStyle]);
 
   // One-time credit popup after the first Manipulation / Solve node is added.
   // Scan every workspace so switching boards (or loading existing graphs) never retriggers it.
@@ -665,6 +676,7 @@ export default function Canvas() {
         selectionArmed={selectionArmed}
         onSelectionArmConsumed={() => setSelectionArmed(false)}
         darkNodes={nodeTheme === 'dark'}
+        uiStyle={uiStyle}
         zoom={zoom}
         setZoom={setZoom}
         pan={pan}
@@ -784,6 +796,8 @@ export default function Canvas() {
         onClose={() => setSettingsOpen(false)}
         nodeTheme={nodeTheme}
         onThemeChange={setNodeTheme}
+        uiStyle={uiStyle}
+        onUiStyleChange={setUiStyle}
       />
 
       <OnboardingTour open={onboardingOpen} onClose={finishOnboarding} />

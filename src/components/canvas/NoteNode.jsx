@@ -24,6 +24,7 @@ import {
   listSubstituteSlots,
   substituteSlotOffsetY,
 } from '@/lib/substituteSlots';
+import { listGraphSlots, graphSlotOffsetY } from '@/lib/graphSlots';
 import MathNodeBody from './MathNodeBody';
 
 const DOUBLE_TAP_MS = 450;
@@ -155,13 +156,13 @@ export default function NoteNode({
 }) {
   const mathView = isMathNode(node) ? getMathView(node) : null;
   const bodyCollapsed = isNodeBodyCollapsed(node);
-  const substituteSlots = useMemo(
-    () =>
-      isSubstituteNode(node) && mathView === MATH_VIEW.FULL
-        ? listSubstituteSlots(node, edges)
-        : [],
-    [node, edges, mathView]
-  );
+  const bodySlots = useMemo(() => {
+    if (mathView !== MATH_VIEW.FULL) return [];
+    if (isSubstituteNode(node)) return listSubstituteSlots(node, edges);
+    if (isGraphNode(node)) return listGraphSlots(node, edges);
+    return [];
+  }, [node, edges, mathView]);
+  const slotOffsetY = isGraphNode(node) ? graphSlotOffsetY : substituteSlotOffsetY;
   const textareaRef = useRef(null);
   const titleInputRef = useRef(null);
   const lastTitleTapRef = useRef(0);
@@ -190,7 +191,7 @@ export default function NoteNode({
     if (!isMathNode(node)) return undefined;
     onLayoutChange?.();
     return undefined;
-  }, [nodeWidth, node.kind, mathView, substituteSlots.length, onLayoutChange]);
+  }, [nodeWidth, node.kind, mathView, bodySlots.length, onLayoutChange]);
 
   const autoResize = () => {
     const ta = textareaRef.current;
@@ -285,8 +286,8 @@ export default function NoteNode({
           'left 250ms ease, top 250ms ease, opacity 180ms ease, width 250ms ease, box-shadow 180ms ease, border-color 180ms ease, border-width 180ms ease',
       }}
     >
-      {substituteSlots.length > 0 ? (
-        substituteSlots.map((slot, index) => (
+      {bodySlots.length > 0 ? (
+        bodySlots.map((slot, index) => (
           <Socket
             key={slot.id}
             type="input"
@@ -297,7 +298,7 @@ export default function NoteNode({
             onStartConnect={onStartConnect}
             inputBlocked={slot.connected}
             inputSlot={slot.id}
-            top={TOP_BAR_HEIGHT + substituteSlotOffsetY(index)}
+            top={TOP_BAR_HEIGHT + slotOffsetY(index)}
             dimmed={slot.greyed}
           />
         ))
@@ -474,7 +475,7 @@ export default function NoteNode({
           ghostSelection={ghostSelection}
           onSelectNode={onSelectNode}
           zoom={zoom}
-          substituteSlots={substituteSlots}
+          bodySlots={bodySlots}
           basicView={mathView === MATH_VIEW.BASIC}
         />
       )}

@@ -29,6 +29,7 @@ import {
   SUB_SLOT_ROW_H,
   patchSubstituteSlotText,
 } from '@/lib/substituteSlots';
+import { patchGraphSlotText } from '@/lib/graphSlots';
 import MathPreview from './MathPreview';
 import GraphPlot from './GraphPlot';
 
@@ -66,7 +67,7 @@ export default function MathNodeBody({
   ghostSelection = null,
   onSelectNode,
   zoom = 1,
-  substituteSlots = [],
+  bodySlots = [],
   basicView = false,
 }) {
   const def = defForKind(node.kind);
@@ -182,38 +183,86 @@ export default function MathNodeBody({
   };
 
   if (isGraphNode(node)) {
-    const bodyH = basicView ? GRAPH_NODE_BASIC_BODY_HEIGHT : GRAPH_NODE_BODY_HEIGHT;
-    const controlsH = basicView ? 0 : 40;
-    const plotH = Math.max(160, bodyH - controlsH - 16);
+    const plotH = basicView
+      ? Math.max(160, GRAPH_NODE_BASIC_BODY_HEIGHT - 16)
+      : Math.max(200, GRAPH_NODE_BODY_HEIGHT - 48);
     const softErrors = (result?.plot?.series || []).filter((s) => s.kind === 'error');
     return (
-      <div className="px-3 pt-2 pb-3" onPointerDown={(e) => e.stopPropagation()}>
+      <div
+        className={`px-3 pb-3 ${basicView ? 'pt-2' : ''}`}
+        onPointerDown={(e) => e.stopPropagation()}
+        style={!basicView ? { paddingTop: SUB_SLOT_PAD_TOP } : undefined}
+      >
         {!basicView && (
-          <div className="mb-2 flex items-center gap-2">
-            <label
-              className={`shrink-0 text-xs font-medium ${
-                darkNodes ? 'text-zinc-400' : 'text-slate-500'
-              }`}
-            >
-              x ∈
-            </label>
-            <input
-              type="text"
-              value={node.xMin ?? '-10'}
-              onChange={(e) => onUpdate({ xMin: e.target.value })}
-              className={`${fieldLooks.className} w-20`}
-              style={fieldLooks.style}
-              title="x minimum"
-            />
-            <span className={darkNodes ? 'text-zinc-500' : 'text-slate-400'}>…</span>
-            <input
-              type="text"
-              value={node.xMax ?? '10'}
-              onChange={(e) => onUpdate({ xMax: e.target.value })}
-              className={`${fieldLooks.className} w-20`}
-              style={fieldLooks.style}
-              title="x maximum"
-            />
+          <div className="mb-2 flex flex-col" style={{ gap: SUB_SLOT_GAP }}>
+            {bodySlots.map((slot) => (
+              <div
+                key={slot.id}
+                className={`flex items-center gap-2 transition-opacity ${
+                  slot.greyed ? 'opacity-45' : 'opacity-100'
+                }`}
+                style={{ minHeight: SUB_SLOT_ROW_H }}
+              >
+                <span
+                  className={`w-4 shrink-0 text-center text-xs font-semibold ${
+                    darkNodes ? 'text-zinc-300' : 'text-slate-600'
+                  }`}
+                  title={`Series ${slot.label}`}
+                >
+                  {slot.label}
+                </span>
+                {slot.connected ? (
+                  <div
+                    className={`min-w-0 flex-1 truncate rounded-md border border-dashed px-2 py-1.5 text-xs ${
+                      darkNodes
+                        ? 'border-white/15 text-zinc-400'
+                        : 'border-slate-300 text-slate-500'
+                    }`}
+                    title="Socket connected — typed value is remembered until disconnect"
+                  >
+                    Connected
+                  </div>
+                ) : (
+                  <input
+                    type="text"
+                    value={slot.text}
+                    onChange={(e) => {
+                      const patch = patchGraphSlotText(node, slot.id, e.target.value);
+                      if (patch) onUpdate(patch);
+                    }}
+                    placeholder="y=f(x) or expression in x"
+                    className={`${fieldLooks.className} min-w-0 flex-1`}
+                    style={fieldLooks.style}
+                  />
+                )}
+              </div>
+            ))}
+            <div className="mt-1 flex items-center gap-2">
+              <label
+                className={`shrink-0 text-xs font-medium ${
+                  darkNodes ? 'text-zinc-400' : 'text-slate-500'
+                }`}
+              >
+                x ∈
+              </label>
+              <input
+                type="text"
+                value={node.xMin ?? '-10'}
+                onChange={(e) => onUpdate({ xMin: e.target.value })}
+                className={`${fieldLooks.className} w-20`}
+                style={fieldLooks.style}
+                title="x minimum"
+              />
+              <span className={darkNodes ? 'text-zinc-500' : 'text-slate-400'}>…</span>
+              <input
+                type="text"
+                value={node.xMax ?? '10'}
+                onChange={(e) => onUpdate({ xMax: e.target.value })}
+                className={`${fieldLooks.className} w-20`}
+                style={fieldLooks.style}
+                title="x maximum"
+              />
+            </div>
           </div>
         )}
         <GraphPlot plot={result?.plot} darkNodes={darkNodes} height={plotH} />
@@ -245,7 +294,7 @@ export default function MathNodeBody({
         <>
           {isSubstituteNode(node) && (
             <div className="flex flex-col" style={{ gap: SUB_SLOT_GAP }}>
-              {substituteSlots.map((slot) => {
+              {bodySlots.map((slot) => {
                 const placeholder =
                   slot.label === 'A' ? 'Equation, e.g. x=2*y' : 'Substitute, e.g. y=3';
                 return (

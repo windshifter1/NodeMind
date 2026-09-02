@@ -51,9 +51,13 @@ export function connectedSlotsForNode(edges, nodeId) {
   return map;
 }
 
+/** True when `nodeId` already has an inbound edge on this slot id (any slotted node). */
 export function hasInboundEdgeOnSlot(edges, nodeId, slotId) {
-  if (!nodeId || !isSlotId(slotId)) return false;
-  return connectedSlotsForNode(edges, nodeId).has(slotId);
+  if (!nodeId || !slotId) return false;
+  return (edges || []).some((edge) => {
+    const { targetId } = edgeFlow(edge);
+    return targetId === nodeId && edge.inputSlot === slotId;
+  });
 }
 
 /**

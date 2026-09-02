@@ -30,6 +30,7 @@ import {
   selectionOpKey,
 } from './selectionOps.js';
 import { listSubstituteSlots } from '../substituteSlots.js';
+import { listGraphSlots } from '../graphSlots.js';
 
 function ignoredPassThrough(first, error) {
   return {
@@ -176,8 +177,67 @@ export function evaluateMathGraph(nodes = [], edges = []) {
     }
 
     if (isGraphNode(node)) {
-      const plot = buildPlotFromInputs(inboundList, node);
-      const first = inboundList[0]?.result || null;
+      const slots = listGraphSlots(node, edges);
+      const seriesInputs = [];
+      let parseFail = null;
+      for (const slot of slots) {
+        if (slot.greyed) continue;
+        if (slot.connected) {
+          const upstream = results.get(slot.sourceId);
+          if (!isUsableResult(upstream)) continue;
+          seriesInputs.push({
+            sourceId: slot.sourceId,
+            result: upstream,
+            slotId: slot.id,
+          });
+          continue;
+        }
+        const text = String(slot.text || '');
+        if (!text.replace(/\s+/g, '')) continue;
+        const parsed = parseExpressionOrEquation(text);
+        if (parsed.error) {
+          parseFail = { ...parsed, slotId: slot.id };
+          seriesInputs.push({
+            sourceId: null,
+            result: parsed,
+            slotId: slot.id,
+            slotError: parsed.error,
+          });
+          continue;
+        }
+        seriesInputs.push({
+          sourceId: null,
+          result: parsed,
+          slotId: slot.id,
+        });
+      }
+      const usableInputs = seriesInputs.filter((item) => isUsableResult(item.result));
+      const plot = buildPlotFromInputs(usableInputs, node);
+      // Surface per-slot parse failures alongside plot series errors.
+      if (parseFail && !usableInputs.length) {
+        results.set(id, {
+          ...parseFail,
+          ignored: false,
+          plot: {
+            ...plot,
+            series: seriesInputs.map((item, index) => ({
+              sourceId: item.sourceId,
+              index,
+              label: item.slotId,
+              kind: 'error',
+              error: item.slotError || item.result?.error || 'Invalid expression',
+              points: [],
+              value: null,
+            })),
+            error: parseFail.error,
+          },
+          inputAst: null,
+          applicableModes: null,
+          applicableSelectionOps: null,
+        });
+        return;
+      }
+      const first = usableInputs[0]?.result || null;
       results.set(id, {
         ast: first?.ast ?? '',
         flat: first?.flat ?? '',

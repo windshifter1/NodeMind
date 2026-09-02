@@ -22,6 +22,13 @@ import {
   parseSlotId,
   substituteSlotOffsetY,
 } from './substituteSlots.js';
+import {
+  graphSlotOffsetY,
+  isGraphSlotId,
+  migrateGraphEdges,
+  normalizeGraphExprs,
+  parseGraphSlotId,
+} from './graphSlots.js';
 
 export const NODE_WIDTH = 180; // default (empty title) width
 /** Typical Math node width; nodes grow with the equation up to 2× this. */
@@ -216,19 +223,22 @@ export function socketWorld(
 ) {
   const o = normalizeOrientation(orientation);
   const slotIndex = (() => {
-    // Body slot sockets only while the Substitute node is in Full view.
-    if (
-      type !== 'input' ||
-      !isSubstituteNode(node) ||
-      getMathView(node) !== MATH_VIEW.FULL
-    ) {
-      return null;
-    }
+    // Body slot sockets only while a slotted Math node is in Full view.
+    if (type !== 'input' || getMathView(node) !== MATH_VIEW.FULL) return null;
     if (Number.isFinite(opts?.slotIndex)) return opts.slotIndex;
-    const parsed = parseSlotId(opts?.inputSlot);
-    if (!parsed) return null;
-    return parsed.kind === 'A' ? 0 : parsed.index + 1;
+    if (isSubstituteNode(node)) {
+      const parsed = parseSlotId(opts?.inputSlot);
+      if (!parsed) return null;
+      return parsed.kind === 'A' ? 0 : parsed.index + 1;
+    }
+    if (isGraphNode(node)) {
+      if (!isGraphSlotId(opts?.inputSlot)) return null;
+      return parseGraphSlotId(opts.inputSlot);
+    }
+    return null;
   })();
+
+  const slotOffsetY = isGraphNode(node) ? graphSlotOffsetY : substituteSlotOffsetY;
 
   if (o === GRAPH_ORIENTATIONS.VERTICAL) {
     if (type === 'output') {
@@ -238,7 +248,7 @@ export function socketWorld(
       // Body-left slotted inputs even in vertical orientation.
       return {
         x: node.x,
-        y: node.y + TOP_BAR_HEIGHT + substituteSlotOffsetY(slotIndex),
+        y: node.y + TOP_BAR_HEIGHT + slotOffsetY(slotIndex),
       };
     }
     return { x: node.x + size.width / 2, y: node.y };
@@ -250,7 +260,7 @@ export function socketWorld(
   if (slotIndex != null) {
     return {
       x: node.x,
-      y: node.y + TOP_BAR_HEIGHT + substituteSlotOffsetY(slotIndex),
+      y: node.y + TOP_BAR_HEIGHT + slotOffsetY(slotIndex),
     };
   }
   return { x: node.x, y: node.y + TOP_BAR_HEIGHT / 2 };
@@ -586,6 +596,7 @@ export function migrateWorkspaceNodeIds(workspace) {
       if (kind === 'graph') {
         if (next.xMin == null) next.xMin = '-10';
         if (next.xMax == null) next.xMax = '10';
+        if (!Array.isArray(next.graphExprs)) next.graphExprs = normalizeGraphExprs(next);
       }
       if (isMathNode(next)) {
         const view = getMathView(next);
@@ -600,10 +611,17 @@ export function migrateWorkspaceNodeIds(workspace) {
     let nextNodes = withKinds(list);
     let nextEdges = edges || [];
     nextNodes = nextNodes.map((node) => {
-      if (!isSubstituteNode(node)) return node;
-      const migrated = migrateSubstituteEdges(node, nextEdges);
-      nextEdges = migrated.edges;
-      return migrated.nodePatch ? { ...node, ...migrated.nodePatch } : node;
+      if (isSubstituteNode(node)) {
+        const migrated = migrateSubstituteEdges(node, nextEdges);
+        nextEdges = migrated.edges;
+        return migrated.nodePatch ? { ...node, ...migrated.nodePatch } : node;
+      }
+      if (isGraphNode(node)) {
+        const migrated = migrateGraphEdges(node, nextEdges);
+        nextEdges = migrated.edges;
+        return migrated.nodePatch ? { ...node, ...migrated.nodePatch } : node;
+      }
+      return node;
     });
     return {
       ...workspace,

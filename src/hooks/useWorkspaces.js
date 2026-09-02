@@ -14,6 +14,7 @@ import {
 import {
   allowsMultipleInputs,
   fieldsForKind,
+  isGraphNode,
   isMathNode,
   isSubstituteNode,
   usesInputSlots,
@@ -22,6 +23,13 @@ import {
   ensureSubstituteSlotCapacity,
   hasInboundEdgeOnSlot,
 } from '@/lib/substituteSlots';
+import { ensureGraphSlotCapacity } from '@/lib/graphSlots';
+
+function ensureSlottedCapacity(host, inputSlot) {
+  if (isSubstituteNode(host)) return ensureSubstituteSlotCapacity(host, inputSlot);
+  if (isGraphNode(host)) return ensureGraphSlotCapacity(host, inputSlot);
+  return null;
+}
 
 const STORAGE_KEY = 'thoughts-canvas-workspaces-v2';
 const LEGACY_KEY = 'thoughts-canvas-graph-v1';
@@ -239,9 +247,9 @@ function reducer(state, action) {
           createdAt: now,
           updatedAt: now,
         };
-        // New Substitute nodes receive the first inbound edge on slot A.
+        // New slotted nodes receive the first inbound edge on slot A.
         const newNodeSlot =
-          action.fromType === 'output' && isSubstituteNode(node) ? 'A' : null;
+          action.fromType === 'output' && usesInputSlots(node) ? 'A' : null;
         const edgeSlot = action.fromType === 'input' ? inputSlot : newNodeSlot;
         let edge;
         if (action.fromType === 'output') {
@@ -266,13 +274,11 @@ function reducer(state, action) {
         let nodes = [...w.nodes, node];
         if (action.fromType === 'input' && inputSlot) {
           const host = w.nodes.find((n) => n.id === action.fromNode);
-          if (isSubstituteNode(host)) {
-            const cap = ensureSubstituteSlotCapacity(host, inputSlot);
-            if (cap) {
-              nodes = nodes.map((n) =>
-                n.id === host.id ? { ...n, ...cap, updatedAt: now } : n
-              );
-            }
+          const cap = ensureSlottedCapacity(host, inputSlot);
+          if (cap) {
+            nodes = nodes.map((n) =>
+              n.id === host.id ? { ...n, ...cap, updatedAt: now } : n
+            );
           }
         }
         return { ...w, nodes, edges: [...w.edges, edge], nextZ: w.nextZ + 1 };
@@ -345,8 +351,8 @@ function reducer(state, action) {
           }
         }
         let nodes = w.nodes;
-        if (targetNode && isSubstituteNode(targetNode) && inputSlot) {
-          const cap = ensureSubstituteSlotCapacity(targetNode, inputSlot);
+        if (targetNode && usesInputSlots(targetNode) && inputSlot) {
+          const cap = ensureSlottedCapacity(targetNode, inputSlot);
           if (cap) {
             const now = new Date().toISOString();
             nodes = nodes.map((n) =>

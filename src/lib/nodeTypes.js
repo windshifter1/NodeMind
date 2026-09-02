@@ -485,6 +485,7 @@ export function fieldsForKind(kind) {
   if (normalised === NODE_KIND.GRAPH) {
     fields.xMin = '-10';
     fields.xMax = '10';
+    fields.graphExprs = ['', ''];
   }
   if (
     normalised === NODE_KIND.CAS_OP ||
@@ -564,15 +565,15 @@ export function isGraphNode(nodeOrKind) {
 
 /**
  * Math nodes that may accept more than one inbound edge on a single
- * anonymous input socket (Basic operation, Graph). Substitute uses labelled slots.
+ * anonymous input socket (Basic operation). Graph / Substitute use labelled slots.
  */
 export function allowsMultipleInputs(nodeOrKind) {
-  return isBasicOperationNode(nodeOrKind) || isGraphNode(nodeOrKind);
+  return isBasicOperationNode(nodeOrKind);
 }
 
-/** Math nodes with labelled body input sockets (A / B…). */
+/** Math nodes with labelled body input sockets (Substitute A/B…, Graph A/B/C…). */
 export function usesInputSlots(nodeOrKind) {
-  return isSubstituteNode(nodeOrKind);
+  return isSubstituteNode(nodeOrKind) || isGraphNode(nodeOrKind);
 }
 
 /** Selection-menu driven Math nodes with a method/op picker (Manipulation). */

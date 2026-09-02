@@ -48,6 +48,7 @@ import {
   persistUiStyle,
   readStoredUiStyle,
 } from '@/lib/uiStyle';
+import { attachLiquidButtons } from '@/lib/liquidButtons';
 
 const MATH_SINGLE_INPUT_MESSAGE = 'This node accepts only one input';
 
@@ -78,8 +79,12 @@ export default function Canvas() {
   const [nodePicker, setNodePicker] = useState(null);
   const [selectionMenu, setSelectionMenu] = useState(null);
   const [socketHint, setSocketHint] = useState(null);
+  const [spawnNodeIds, setSpawnNodeIds] = useState(() => new Set());
+  const [spawnRipples, setSpawnRipples] = useState([]);
   const socketHintTimerRef = useRef(null);
   const hadCreditOpRef = useRef(null);
+  const knownNodeIdsRef = useRef(null);
+  const spawnTimerRef = useRef([]);
   useEffect(() => {
     applyDocumentTheme(nodeTheme);
     persistTheme(nodeTheme);
@@ -89,6 +94,63 @@ export default function Canvas() {
     applyDocumentUiStyle(uiStyle);
     persistUiStyle(uiStyle);
   }, [uiStyle]);
+
+  useEffect(() => {
+    if (uiStyle !== 'modern') return undefined;
+    return attachLiquidButtons();
+  }, [uiStyle]);
+
+  // Modern only: plop animation + subtle ripples when nodes appear.
+  useEffect(() => {
+    const ids = (active.nodes || []).map((n) => n.id);
+    const next = new Set(ids);
+    const tracked = knownNodeIdsRef.current;
+    if (!tracked || tracked.workspaceId !== state.activeId) {
+      knownNodeIdsRef.current = { workspaceId: state.activeId, ids: next };
+      return;
+    }
+    const added = ids.filter((id) => !tracked.ids.has(id));
+    knownNodeIdsRef.current = { workspaceId: state.activeId, ids: next };
+    if (!added.length || uiStyle !== 'modern' || added.length > 12) return;
+
+    setSpawnNodeIds((prev) => {
+      const merged = new Set(prev);
+      added.forEach((id) => merged.add(id));
+      return merged;
+    });
+    const ripples = added
+      .map((id) => {
+        const node = active.nodes.find((n) => n.id === id);
+        if (!node) return null;
+        return {
+          key: `${id}-${Date.now()}`,
+          x: node.x + nodeWidthForTitle(node.title || '') / 2,
+          y: node.y + TOP_BAR_HEIGHT / 2,
+        };
+      })
+      .filter(Boolean);
+    if (ripples.length) {
+      setSpawnRipples((prev) => [...prev, ...ripples]);
+    }
+    const t = window.setTimeout(() => {
+      spawnTimerRef.current = spawnTimerRef.current.filter((id) => id !== t);
+      setSpawnNodeIds((prev) => {
+        const cleaned = new Set(prev);
+        added.forEach((id) => cleaned.delete(id));
+        return cleaned;
+      });
+    }, 820);
+    spawnTimerRef.current.push(t);
+  }, [active.nodes, uiStyle, state.activeId]);
+
+  useEffect(() => {
+    const timers = spawnTimerRef.current;
+    return () => timers.forEach((id) => window.clearTimeout(id));
+  }, []);
+
+  const clearSpawnRipple = useCallback((key) => {
+    setSpawnRipples((prev) => prev.filter((r) => r.key !== key));
+  }, []);
 
   // One-time credit popup after the first Manipulation / Solve node is added.
   // Scan every workspace so switching boards (or loading existing graphs) never retriggers it.
@@ -677,6 +739,9 @@ export default function Canvas() {
         onSelectionArmConsumed={() => setSelectionArmed(false)}
         darkNodes={nodeTheme === 'dark'}
         uiStyle={uiStyle}
+        spawnNodeIds={spawnNodeIds}
+        spawnRipples={spawnRipples}
+        onSpawnRippleEnd={clearSpawnRipple}
         zoom={zoom}
         setZoom={setZoom}
         pan={pan}

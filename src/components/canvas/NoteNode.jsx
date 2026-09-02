@@ -139,6 +139,7 @@ export default function NoteNode({
   orientation,
   darkNodes,
   uiStyle = 'modern',
+  liquidSpawn = false,
   selected,
   ghost,
   mathResult = null,
@@ -280,17 +281,21 @@ export default function NoteNode({
   };
 
   const modernUi = uiStyle === 'modern';
+  const nodeRadius = modernUi ? '1.1rem' : '0.75rem';
+  const borderW = selected ? 3 : modernUi ? 1 : 2;
+  const innerRadius = `calc(${nodeRadius} - ${borderW}px)`;
 
   return (
     <div
       data-note-node={node.id}
+      data-liquid-spawn={liquidSpawn ? '1' : undefined}
       className={`absolute select-none ${modernUi ? 'rounded-[1.1rem]' : 'rounded-xl shadow-2xl'}`}
       style={{
         left: node.x,
         top: node.y,
         width: nodeWidth,
         zIndex: node.z,
-        borderWidth: selected ? 3 : modernUi ? 1 : 2,
+        borderWidth: borderW,
         borderStyle: 'solid',
         borderColor: modernUi && !selected ? 'var(--nm-border)' : node.color,
         backgroundColor: modernUi ? 'var(--nm-node-bg)' : darkNodes ? '#424448' : '#f8fafc',
@@ -300,8 +305,8 @@ export default function NoteNode({
           : modernUi
             ? 'var(--nm-glass-shadow)'
             : undefined,
-        backdropFilter: modernUi ? 'blur(18px) saturate(1.4)' : undefined,
-        WebkitBackdropFilter: modernUi ? 'blur(18px) saturate(1.4)' : undefined,
+        backdropFilter: modernUi ? 'blur(28px) saturate(1.75) brightness(1.05)' : undefined,
+        WebkitBackdropFilter: modernUi ? 'blur(28px) saturate(1.75) brightness(1.05)' : undefined,
         transition:
           'left 250ms ease, top 250ms ease, opacity 180ms ease, width 250ms ease, box-shadow 180ms ease, border-color 180ms ease, border-width 180ms ease',
       }}
@@ -370,9 +375,16 @@ export default function NoteNode({
           height: TOP_BAR_HEIGHT,
           cursor: editingTitle ? 'text' : 'grab',
           backgroundColor: modernUi ? `${node.color}33` : node.color + '22',
-          borderBottom: modernUi
-            ? '1px solid var(--nm-border)'
-            : `1px solid ${node.color}33`,
+          borderBottom: bodyCollapsed
+            ? 'none'
+            : modernUi
+              ? '1px solid var(--nm-border)'
+              : `1px solid ${node.color}33`,
+          // Match the card radius so the bar doesn’t square-poke rounded corners.
+          borderTopLeftRadius: innerRadius,
+          borderTopRightRadius: innerRadius,
+          borderBottomLeftRadius: bodyCollapsed ? innerRadius : 0,
+          borderBottomRightRadius: bodyCollapsed ? innerRadius : 0,
         }}
         onPointerDown={startDrag}
       >

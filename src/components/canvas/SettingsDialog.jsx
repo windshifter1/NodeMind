@@ -45,7 +45,7 @@ export default function SettingsDialog({
     {
       value: UI_STYLE.MODERN,
       label: 'Modern',
-      hint: 'Glassmorphism — frosted chrome, soft aurora canvas.',
+      hint: 'Liquid glass — frosted chrome, gel buttons, and a black/grey canvas.',
       icon: Sparkles,
     },
   ];

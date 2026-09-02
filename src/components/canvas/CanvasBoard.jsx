@@ -48,6 +48,9 @@ export default function CanvasBoard({
   onSelectionArmConsumed,
   darkNodes,
   uiStyle = 'modern',
+  spawnNodeIds = null,
+  spawnRipples = null,
+  onSpawnRippleEnd = null,
   zoom,
   setZoom,
   pan,
@@ -1222,9 +1225,10 @@ export default function CanvasBoard({
     ? {
         backgroundColor: 'var(--nm-canvas)',
         backgroundImage: [
-          'radial-gradient(900px 500px at 15% 10%, var(--nm-canvas-glow-a), transparent 55%)',
-          'radial-gradient(700px 480px at 85% 75%, var(--nm-canvas-glow-b), transparent 50%)',
-          'radial-gradient(600px 400px at 50% 100%, var(--nm-canvas-glow-c), transparent 55%)',
+          // Black / grey wash only — no accent hues.
+          'radial-gradient(1200px 700px at 50% -10%, var(--nm-canvas-glow-a), transparent 60%)',
+          'radial-gradient(900px 600px at 100% 100%, var(--nm-canvas-glow-b), transparent 55%)',
+          'radial-gradient(800px 500px at 0% 80%, var(--nm-canvas-glow-c), transparent 50%)',
           'radial-gradient(circle, var(--nm-canvas-dot) 1px, transparent 1px)',
         ].join(', '),
         backgroundSize: `auto, auto, auto, ${dotSize}`,
@@ -1334,6 +1338,22 @@ export default function CanvasBoard({
           transformOrigin: '0 0',
         }}
       >
+        {(spawnRipples || []).map((ripple) => (
+          <React.Fragment key={ripple.key}>
+            <div
+              className="nm-liquid-ripple"
+              style={{ left: ripple.x, top: ripple.y }}
+              aria-hidden="true"
+            />
+            <div
+              className="nm-liquid-ripple nm-liquid-ripple--delay"
+              style={{ left: ripple.x, top: ripple.y }}
+              aria-hidden="true"
+              onAnimationEnd={() => onSpawnRippleEnd?.(ripple.key)}
+            />
+          </React.Fragment>
+        ))}
+
         {nodes.map((node) => (
           <NoteNode
             key={node.id}
@@ -1342,6 +1362,7 @@ export default function CanvasBoard({
             orientation={graphOrientation}
             darkNodes={darkNodes}
             uiStyle={uiStyle}
+            liquidSpawn={Boolean(spawnNodeIds?.has?.(node.id))}
             selected={selectedSet.has(node.id)}
             ghost={overBin && draggingSet?.has(node.id)}
             mathResult={mathResults?.get?.(node.id) || null}

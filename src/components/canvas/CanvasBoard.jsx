@@ -7,7 +7,6 @@ import {
   MIN_ZOOM,
   MAX_ZOOM,
   bezierPath,
-  clearanceFixesForEdges,
   connectedNodePositionAtSocket,
   normalizeOrientation,
   nodeLayoutRect,
@@ -62,7 +61,6 @@ export default function CanvasBoard({
 }) {
   const graphOrientation = normalizeOrientation(orientation);
   const [layoutEpoch, setLayoutEpoch] = useState(0);
-  const separatingRef = useRef(false);
   const boardRef = useRef(null);
   const pointers = useRef(new Map());
   const panState = useRef({
@@ -108,22 +106,12 @@ export default function CanvasBoard({
   const edgesRef = useRef(edges);
   edgesRef.current = edges;
 
+  // Only bump the layout epoch so edges redraw when Math nodes resize.
+  // Clearance / placement sorting runs once at selection-op creation (Canvas.jsx),
+  // not continuously as equation width changes.
   const notifyLayoutChange = useCallback(() => {
     setLayoutEpoch((n) => n + 1);
-    if (separatingRef.current) return;
-    separatingRef.current = true;
-    requestAnimationFrame(() => {
-      try {
-        const fixes = clearanceFixesForEdges(nodesRef.current, edgesRef.current, graphOrientation);
-        fixes.forEach((fix) => {
-          onUpdateNode?.(fix.id, { x: fix.x, y: fix.y });
-        });
-        if (fixes.length) setLayoutEpoch((n) => n + 1);
-      } finally {
-        separatingRef.current = false;
-      }
-    });
-  }, [graphOrientation, onUpdateNode]);
+  }, []);
 
   const [pending, setPending] = useState(null);
   const pendingRef = useRef(null);

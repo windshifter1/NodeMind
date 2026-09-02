@@ -95,8 +95,12 @@ export default function MathNodeBody({
     isSelectionOpNode(node) &&
     (methodNeedsField(node.method) || (isEquationOpNode(node) && hasInput && !selectionOps.length));
 
+  const ignoredSelectValue = '__ignored__';
+  const selectValue = isIgnored && node.method ? ignoredSelectValue : currentOpKey;
+
   const pickSelectionOp = (opId) => {
-    if (!opId) {
+    if (!opId || opId === ignoredSelectValue) {
+      if (opId === ignoredSelectValue) return;
       onUpdate({ method: '', selection: null, opId: '', field: isEquationOpNode(node) ? node.field : '' });
       return;
     }
@@ -147,7 +151,7 @@ export default function MathNodeBody({
 
       {isSelectionOpNode(node) && (
         <select
-          value={currentOpKey}
+          value={selectValue}
           disabled={!hasInput}
           onFocus={() => onSelectNode?.(node.id)}
           onPointerDown={() => onSelectNode?.(node.id)}
@@ -163,8 +167,13 @@ export default function MathNodeBody({
                 : 'No applicable operations'
               : 'Connect input to select…'}
           </option>
+          {isIgnored && node.method && (
+            <option value={ignoredSelectValue}>Ignored</option>
+          )}
           {selectionOps.map((op) => {
             const key = op.id || selectionOpKey(op);
+            // Hide the broken/stale current entry while ignored — shown as "Ignored" above.
+            if (isIgnored && (key === currentOpKey || op.method === node.method)) return null;
             return (
               <option key={key} value={key}>
                 {op.label}

@@ -188,7 +188,7 @@ export function isSelectionOpApplicable(ast, method, selection = null, field = '
 export const OPERATION_IGNORED_ERROR = 'Operation not applicable';
 
 export const OPERATION_IGNORED_MESSAGE =
-  'This operation no longer applies to the connected equation. The equation itself is fine — this node is ignored for now, and will work again if the operation becomes applicable.';
+  'Operation not applicable. This node is ignored until applicable.';
 
 function plainLabel(html) {
   return String(html || '')

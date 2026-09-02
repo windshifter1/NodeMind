@@ -31,6 +31,8 @@ export const NODE_KIND = {
   EVALUATE: 'evaluate',
   CONVERT: 'convert',
   SUBSTITUTE: 'substitute',
+  /** 2D Cartesian graph of upstream y = f(x) / expressions. */
+  GRAPH: 'graph',
   /** @deprecated Rewrite-style solve; hidden from picker in favour of EQUATION_OP. */
   SOLVE: 'solve',
 };
@@ -83,6 +85,12 @@ export const NODE_TYPE_DEFS = [
     category: 'math',
     group: 'values',
     label: 'Substitute',
+  },
+  {
+    id: NODE_KIND.GRAPH,
+    category: 'math',
+    group: 'values',
+    label: 'Graph',
   },
   {
     id: NODE_KIND.MANIPULATION,
@@ -357,6 +365,10 @@ export const NUMBER_NODE_BODY_HEIGHT = EXPRESSION_NODE_BODY_HEIGHT;
 export const MATH_NODE_BODY_HEIGHT = 168;
 /** Compact Math body: equation preview only (no inputs / selectors). */
 export const MATH_NODE_BASIC_BODY_HEIGHT = 72;
+/** Graph node body ≈ 2× standard Math body (plot panel). */
+export const GRAPH_NODE_BODY_HEIGHT = MATH_NODE_BODY_HEIGHT * 2;
+/** Graph basic view: plot only (still large). */
+export const GRAPH_NODE_BASIC_BODY_HEIGHT = Math.round(GRAPH_NODE_BODY_HEIGHT * 0.85);
 
 /** Math node body presentation: full controls, preview-only, or title bar only. */
 export const MATH_VIEW = {
@@ -470,6 +482,10 @@ export function fieldsForKind(kind) {
     fields.subA = '';
     fields.subB = [''];
   }
+  if (normalised === NODE_KIND.GRAPH) {
+    fields.xMin = '-10';
+    fields.xMax = '10';
+  }
   if (
     normalised === NODE_KIND.CAS_OP ||
     normalised === NODE_KIND.MANIPULATION ||
@@ -541,12 +557,17 @@ export function isSubstituteNode(nodeOrKind) {
   return normalizeNodeKind(kind) === NODE_KIND.SUBSTITUTE;
 }
 
+export function isGraphNode(nodeOrKind) {
+  const kind = typeof nodeOrKind === 'object' ? nodeOrKind?.kind : nodeOrKind;
+  return normalizeNodeKind(kind) === NODE_KIND.GRAPH;
+}
+
 /**
  * Math nodes that may accept more than one inbound edge on a single
- * anonymous input socket (Basic operation). Substitute uses labelled slots.
+ * anonymous input socket (Basic operation, Graph). Substitute uses labelled slots.
  */
 export function allowsMultipleInputs(nodeOrKind) {
-  return isBasicOperationNode(nodeOrKind);
+  return isBasicOperationNode(nodeOrKind) || isGraphNode(nodeOrKind);
 }
 
 /** Math nodes with labelled body input sockets (A / B…). */

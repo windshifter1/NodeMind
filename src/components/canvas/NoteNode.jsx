@@ -12,6 +12,7 @@ import { emitTutorial } from '@/lib/tutorialEvents';
 import {
   displayNodeTitle,
   getMathView,
+  isGraphNode,
   isMathNode,
   isNodeBodyCollapsed,
   isSubstituteNode,
@@ -176,6 +177,8 @@ export default function NoteNode({
   const nodeWidth = useMemo(() => {
     const titleWidth = nodeWidthForTitle(editingTitle ? titleDraft : displayNodeTitle(node));
     if (!isMathNode(node) || bodyCollapsed) return titleWidth;
+    // Graph nodes are fixed at the 2× Math width.
+    if (isGraphNode(node)) return MATH_NODE_MAX_WIDTH;
     const needed = mathPreviewWidth > 0 ? mathPreviewWidth + MATH_NODE_PREVIEW_PAD_X : 0;
     return Math.min(
       MATH_NODE_MAX_WIDTH,

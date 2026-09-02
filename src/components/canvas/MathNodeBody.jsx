@@ -2,9 +2,12 @@ import React, { useMemo } from 'react';
 import {
   defForKind,
   fieldVisibleForNode,
+  GRAPH_NODE_BASIC_BODY_HEIGHT,
+  GRAPH_NODE_BODY_HEIGHT,
   isBasicOperationNode,
   isDefaultExprEqTitle,
   isExpressionNode,
+  isGraphNode,
   isSelectionOpNode,
   isSolveNode,
   isSubstituteNode,
@@ -27,6 +30,7 @@ import {
   patchSubstituteSlotText,
 } from '@/lib/substituteSlots';
 import MathPreview from './MathPreview';
+import GraphPlot from './GraphPlot';
 
 const FIELD_METHODS = new Set([
   'collect',
@@ -176,6 +180,58 @@ export default function MathNodeBody({
       },
     });
   };
+
+  if (isGraphNode(node)) {
+    const bodyH = basicView ? GRAPH_NODE_BASIC_BODY_HEIGHT : GRAPH_NODE_BODY_HEIGHT;
+    const controlsH = basicView ? 0 : 40;
+    const plotH = Math.max(160, bodyH - controlsH - 16);
+    const softErrors = (result?.plot?.series || []).filter((s) => s.kind === 'error');
+    return (
+      <div className="px-3 pt-2 pb-3" onPointerDown={(e) => e.stopPropagation()}>
+        {!basicView && (
+          <div className="mb-2 flex items-center gap-2">
+            <label
+              className={`shrink-0 text-xs font-medium ${
+                darkNodes ? 'text-zinc-400' : 'text-slate-500'
+              }`}
+            >
+              x ∈
+            </label>
+            <input
+              type="text"
+              value={node.xMin ?? '-10'}
+              onChange={(e) => onUpdate({ xMin: e.target.value })}
+              className={`${fieldLooks.className} w-20`}
+              style={fieldLooks.style}
+              title="x minimum"
+            />
+            <span className={darkNodes ? 'text-zinc-500' : 'text-slate-400'}>…</span>
+            <input
+              type="text"
+              value={node.xMax ?? '10'}
+              onChange={(e) => onUpdate({ xMax: e.target.value })}
+              className={`${fieldLooks.className} w-20`}
+              style={fieldLooks.style}
+              title="x maximum"
+            />
+          </div>
+        )}
+        <GraphPlot plot={result?.plot} darkNodes={darkNodes} height={plotH} />
+        {!basicView && softErrors.length > 0 && (
+          <div
+            className={`mt-2 rounded-md border px-2.5 py-2 text-left text-xs leading-relaxed ${
+              darkNodes
+                ? 'border-amber-400/35 bg-amber-400/10 text-amber-100/90'
+                : 'border-amber-500/40 bg-amber-50 text-amber-900/90'
+            }`}
+            role="status"
+          >
+            {softErrors.map((s) => s.error).filter(Boolean).join(' · ')}
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div

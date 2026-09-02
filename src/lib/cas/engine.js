@@ -655,6 +655,7 @@ export function isOpApplicable(ast, kind, mode) {
     kind === 'equation' ||
     kind === 'basicOperation' ||
     kind === 'substitute' ||
+    kind === 'graph' ||
     kind === 'number'
   ) {
     return false;

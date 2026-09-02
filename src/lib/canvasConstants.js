@@ -1,6 +1,8 @@
 import { autoOrganiseGraph } from './layout/index.js';
 import {
   EXPRESSION_NODE_BODY_HEIGHT,
+  GRAPH_NODE_BASIC_BODY_HEIGHT,
+  GRAPH_NODE_BODY_HEIGHT,
   MATH_NODE_BASIC_BODY_HEIGHT,
   MATH_NODE_BODY_HEIGHT,
   MATH_VIEW,
@@ -8,6 +10,7 @@ import {
   getMathView,
   isDefaultExprEqTitle,
   isExpressionNode,
+  isGraphNode,
   isMathNode,
   isNodeBodyCollapsed,
   isSubstituteNode,
@@ -120,6 +123,14 @@ export function nodeHeightForLayout(nodeOrTitle = '') {
     return TOP_BAR_HEIGHT;
   }
   if (typeof nodeOrTitle === 'object' && isMathNode(nodeOrTitle)) {
+    if (isGraphNode(nodeOrTitle)) {
+      return (
+        TOP_BAR_HEIGHT +
+        (getMathView(nodeOrTitle) === MATH_VIEW.BASIC
+          ? GRAPH_NODE_BASIC_BODY_HEIGHT
+          : GRAPH_NODE_BODY_HEIGHT)
+      );
+    }
     if (getMathView(nodeOrTitle) === MATH_VIEW.BASIC) {
       return TOP_BAR_HEIGHT + MATH_NODE_BASIC_BODY_HEIGHT;
     }
@@ -147,7 +158,9 @@ export function nodeSizeForLayout(nodeOrTitle = '') {
     typeof nodeOrTitle === 'object' ? displayNodeTitle(nodeOrTitle) : nodeOrTitle;
   let width = nodeWidthForTitle(title);
   if (typeof nodeOrTitle === 'object' && isMathNode(nodeOrTitle)) {
-    width = Math.max(width, MATH_NODE_MIN_WIDTH);
+    width = isGraphNode(nodeOrTitle)
+      ? MATH_NODE_MAX_WIDTH
+      : Math.max(width, MATH_NODE_MIN_WIDTH);
   }
   return {
     width,
@@ -569,6 +582,10 @@ export function migrateWorkspaceNodeIds(workspace) {
         const texts = normalizeSubstituteTexts(next);
         if (next.subA == null) next.subA = texts.subA;
         if (!Array.isArray(next.subB)) next.subB = texts.subB;
+      }
+      if (kind === 'graph') {
+        if (next.xMin == null) next.xMin = '-10';
+        if (next.xMax == null) next.xMax = '10';
       }
       if (isMathNode(next)) {
         const view = getMathView(next);

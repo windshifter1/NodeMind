@@ -1,6 +1,7 @@
 import {
   isBasicOperationNode,
   isExpressionNode,
+  isGraphNode,
   isMathNode,
   isSelectionOpNode,
   isSolveNode,
@@ -15,6 +16,7 @@ import {
   parseExpressionOrEquation,
   substituteEquations,
 } from './engine.js';
+import { buildPlotFromInputs } from './plotting.js';
 import {
   ALL_EQUATIONS_REQUIRED_ERROR,
   collectVariables,
@@ -167,6 +169,23 @@ export function evaluateMathGraph(nodes = [], edges = []) {
         ...combined,
         ignored: false,
         inputAst: inboundList[0].result.ast,
+        applicableModes: null,
+        applicableSelectionOps: null,
+      });
+      return;
+    }
+
+    if (isGraphNode(node)) {
+      const plot = buildPlotFromInputs(inboundList, node);
+      const first = inboundList[0]?.result || null;
+      results.set(id, {
+        ast: first?.ast ?? '',
+        flat: first?.flat ?? '',
+        latex: first?.latex ?? '',
+        error: plot.error,
+        ignored: false,
+        plot,
+        inputAst: first?.ast ?? null,
         applicableModes: null,
         applicableSelectionOps: null,
       });

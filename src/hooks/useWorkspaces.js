@@ -6,7 +6,8 @@ import {
   normalizeLayoutSettings,
   normalizeOrientation,
 } from '@/lib/canvasConstants';
-import { fieldsForKind } from '@/lib/nodeTypes';
+import { connectionInputTarget, hasInboundEdge } from '@/lib/graphEdges';
+import { fieldsForKind, isMathNode } from '@/lib/nodeTypes';
 
 const STORAGE_KEY = 'thoughts-canvas-workspaces-v2';
 const LEGACY_KEY = 'thoughts-canvas-graph-v1';
@@ -194,6 +195,14 @@ function reducer(state, action) {
       });
     case 'ADD_CONNECTED_NODE':
       return withActiveGraph(state, (w) => {
+        // Dragging from an input socket onto empty canvas would feed a new node
+        // into that input — Math nodes only accept one inbound edge.
+        if (action.fromType === 'input') {
+          const host = w.nodes.find((n) => n.id === action.fromNode);
+          if (host && isMathNode(host) && hasInboundEdge(w.edges, host.id)) {
+            return w;
+          }
+        }
         const now = new Date().toISOString();
         const id = nextNumericNodeId(w.nodes);
         const node = {
@@ -262,6 +271,16 @@ function reducer(state, action) {
               e.toType === action.fromType)
         );
         if (exists) return w;
+        const inputTarget = connectionInputTarget(
+          action.fromNode,
+          action.fromType,
+          action.toNode,
+          action.toType
+        );
+        const targetNode = inputTarget ? w.nodes.find((n) => n.id === inputTarget) : null;
+        if (targetNode && isMathNode(targetNode) && hasInboundEdge(w.edges, inputTarget)) {
+          return w;
+        }
         return {
           ...w,
           edges: [

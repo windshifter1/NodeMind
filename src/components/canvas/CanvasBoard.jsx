@@ -59,6 +59,8 @@ export default function CanvasBoard({
   mathResults = null,
   onSelectionMenu,
   ghostSelections = null,
+  mathInputBlockedIds = null,
+  socketHint = null,
 }) {
   const graphOrientation = normalizeOrientation(orientation);
   const [layoutEpoch, setLayoutEpoch] = useState(0);
@@ -1327,6 +1329,8 @@ export default function CanvasBoard({
                 : undefined
             }
             ghostSelection={ghostSelections?.get?.(node.id) || null}
+            inputBlocked={Boolean(mathInputBlockedIds?.has?.(node.id))}
+            socketHint={socketHint?.nodeId === node.id ? socketHint : null}
           />
         ))}
         <NodeTypeMenu

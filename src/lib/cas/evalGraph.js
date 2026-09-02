@@ -102,10 +102,12 @@ export function evaluateMathGraph(nodes = [], edges = []) {
     const sources = incoming.get(id) || [];
     const inbound = sources
       .map((src) => results.get(src))
-      .find(
-        (item) =>
-          item && !item.error && !item.ignored && item.ast !== '' && item.ast != null
-      );
+      .find((item) => {
+        if (!item || item.ast === '' || item.ast == null) return false;
+        // Ignored Manipulation / Equation ops pass their input through unchanged.
+        if (item.ignored) return true;
+        return !item.error;
+      });
 
     if (isNumberNode(node)) {
       results.set(id, {
@@ -162,10 +164,20 @@ export function evaluateMathGraph(nodes = [], edges = []) {
       // Listed ops win (some menu entries are shown without a check-mode pass).
       // Otherwise keep the stored selection if it still dry-runs successfully.
       if (!listedMatch && !selectionOk) {
+        const passThrough =
+          node.kind === NODE_KIND.MANIPULATION || node.kind === NODE_KIND.EQUATION_OP;
         results.set(id, {
-          ...emptyResult(OPERATION_IGNORED_ERROR),
+          ...(passThrough
+            ? {
+                ast: inbound.ast,
+                flat: inbound.flat ?? '',
+                latex: inbound.latex ?? '',
+                error: OPERATION_IGNORED_ERROR,
+              }
+            : emptyResult(OPERATION_IGNORED_ERROR)),
           ignored: true,
           inputAst: inbound.ast,
+          applicableModes: null,
           applicableSelectionOps: listedOps,
         });
         return;

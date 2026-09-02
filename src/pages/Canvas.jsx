@@ -8,6 +8,7 @@ import TextExportDialog from '@/components/canvas/TextExportDialog';
 import TerminalDialog from '@/components/canvas/TerminalDialog';
 import SettingsDialog from '@/components/canvas/SettingsDialog';
 import SelectionOpMenu from '@/components/canvas/SelectionOpMenu';
+import MathsCreditDialog from '@/components/canvas/MathsCreditDialog';
 import OnboardingTour from '@/components/onboarding/OnboardingTour';
 import { useWorkspaces } from '@/hooks/useWorkspaces';
 import {
@@ -25,9 +26,17 @@ import {
 } from '@/lib/canvasConstants';
 import { fieldsForKind, isMathNode, isSelectionOpNode, NODE_KIND } from '@/lib/nodeTypes';
 import { evaluateMathGraph } from '@/lib/cas/evalGraph';
+import { connectionInputTarget, hasInboundEdge } from '@/lib/graphEdges';
 import { shouldStartOnboarding } from '@/lib/onboarding';
+import { readMathsCreditSeen, setMathsCreditSeen } from '@/lib/mathsCredit';
 import { emitTutorial } from '@/lib/tutorialEvents';
 import { applyDocumentTheme, persistTheme, readStoredTheme } from '@/lib/theme';
+
+const MATH_SINGLE_INPUT_MESSAGE = 'Math nodes accept only one input';
+
+function isCreditOpNode(node) {
+  return node?.kind === NODE_KIND.MANIPULATION || node?.kind === NODE_KIND.EQUATION_OP;
+}
 
 function clampZoom(z) {
   return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z));
@@ -47,12 +56,63 @@ export default function Canvas() {
   const [selectionArmed, setSelectionArmed] = useState(false);
   const [nodeTheme, setNodeTheme] = useState(() => readStoredTheme());
   const [onboardingOpen, setOnboardingOpen] = useState(false);
+  const [mathsCreditOpen, setMathsCreditOpen] = useState(false);
   const [nodePicker, setNodePicker] = useState(null);
   const [selectionMenu, setSelectionMenu] = useState(null);
+  const [socketHint, setSocketHint] = useState(null);
+  const socketHintTimerRef = useRef(null);
+  const hadCreditOpRef = useRef(null);
   useEffect(() => {
     applyDocumentTheme(nodeTheme);
     persistTheme(nodeTheme);
   }, [nodeTheme]);
+
+  // One-time credit popup after the first Manipulation / Equation operation node is added.
+  // Scan every workspace so switching boards (or loading existing graphs) never retriggers it.
+  useEffect(() => {
+    const hasOp = (state.workspaces || []).some((ws) => (ws.nodes || []).some(isCreditOpNode));
+    if (hadCreditOpRef.current === null) {
+      hadCreditOpRef.current = hasOp;
+      return;
+    }
+    if (!hadCreditOpRef.current && hasOp && !readMathsCreditSeen()) {
+      setMathsCreditSeen(true);
+      setMathsCreditOpen(true);
+    }
+    hadCreditOpRef.current = hasOp;
+  }, [state.workspaces]);
+
+  const closeMathsCredit = useCallback(() => {
+    setMathsCreditSeen(true);
+    setMathsCreditOpen(false);
+  }, []);
+
+  const showSocketHint = useCallback((nodeId, message = MATH_SINGLE_INPUT_MESSAGE) => {
+    if (!nodeId) return;
+    if (socketHintTimerRef.current) window.clearTimeout(socketHintTimerRef.current);
+    setSocketHint({ nodeId, message, key: Date.now() });
+    socketHintTimerRef.current = window.setTimeout(() => {
+      setSocketHint(null);
+      socketHintTimerRef.current = null;
+    }, 2200);
+  }, []);
+
+  useEffect(
+    () => () => {
+      if (socketHintTimerRef.current) window.clearTimeout(socketHintTimerRef.current);
+    },
+    []
+  );
+
+  const mathInputBlockedIds = useMemo(() => {
+    const blocked = new Set();
+    (active.nodes || []).forEach((node) => {
+      if (isMathNode(node) && hasInboundEdge(active.edges, node.id)) {
+        blocked.add(node.id);
+      }
+    });
+    return blocked;
+  }, [active.nodes, active.edges]);
 
   useEffect(() => {
     if (!shouldStartOnboarding()) return undefined;
@@ -242,13 +302,26 @@ export default function Canvas() {
     dispatch({ type: 'DELETE_NODES', ids });
     setSelectedNodeIds((prev) => prev.filter((id) => !ids.includes(id)));
   };
-  const addEdge = (fromNode, fromType, toNode, toType) =>
+  const addEdge = (fromNode, fromType, toNode, toType) => {
+    const inputTarget = connectionInputTarget(fromNode, fromType, toNode, toType);
+    const targetNode = inputTarget
+      ? active.nodes.find((node) => node.id === inputTarget)
+      : null;
+    if (targetNode && isMathNode(targetNode) && hasInboundEdge(active.edges, inputTarget)) {
+      showSocketHint(inputTarget);
+      return;
+    }
     dispatch({ type: 'ADD_EDGE', fromNode, fromType, toNode, toType });
+  };
   const deleteEdge = (id) => dispatch({ type: 'DELETE_EDGE', id });
   const bringToFront = (id) => dispatch({ type: 'BRING_TO_FRONT', id });
   const addConnectedNode = (x, y, fromNode, fromType, anchor) => {
     const from = active.nodes.find((node) => node.id === fromNode);
     const fromMath = from && isMathNode(from);
+    if (fromMath && fromType === 'input' && hasInboundEdge(active.edges, fromNode)) {
+      showSocketHint(fromNode);
+      return;
+    }
     let initialCategory = 'text';
     let valuesOnly = false;
 
@@ -568,6 +641,8 @@ export default function Canvas() {
         mathResults={mathResults}
         onSelectionMenu={handleSelectionMenu}
         ghostSelections={ghostSelections}
+        mathInputBlockedIds={mathInputBlockedIds}
+        socketHint={socketHint}
       />
       <SelectionOpMenu
         open={!!selectionMenu}
@@ -666,6 +741,8 @@ export default function Canvas() {
       />
 
       <OnboardingTour open={onboardingOpen} onClose={finishOnboarding} />
+
+      <MathsCreditDialog open={mathsCreditOpen} onClose={closeMathsCredit} />
 
       <TerminalDialog
         open={terminalOpen}

@@ -18,8 +18,12 @@ function selectionGlow(color) {
   return `0 0 0 3px ${color}f2, 0 0 0 7px ${color}80, 0 0 24px 6px ${color}a6, 0 12px 36px rgba(0, 0, 0, 0.45)`;
 }
 
-function Socket({ type, color, nodeId, pending, orientation, onStartConnect }) {
-  const isTarget = pending && pending.fromNode !== nodeId && pending.fromType !== type;
+function Socket({ type, color, nodeId, pending, orientation, onStartConnect, inputBlocked = false }) {
+  const isTarget =
+    pending &&
+    pending.fromNode !== nodeId &&
+    pending.fromType !== type &&
+    !(type === 'input' && inputBlocked);
   const HIT = 36;
   const OUT = 28;
   const vertical = orientation === 'vertical';
@@ -106,6 +110,8 @@ export default function NoteNode({
   onLayoutChange,
   onSelectionMenu,
   ghostSelection = null,
+  inputBlocked = false,
+  socketHint = null,
 }) {
   const textareaRef = useRef(null);
   const titleInputRef = useRef(null);
@@ -235,6 +241,7 @@ export default function NoteNode({
         pending={pending}
         orientation={orientation}
         onStartConnect={onStartConnect}
+        inputBlocked={inputBlocked}
       />
 
       <Socket
@@ -245,6 +252,27 @@ export default function NoteNode({
         orientation={orientation}
         onStartConnect={onStartConnect}
       />
+
+      {socketHint?.message && (
+        <div
+          key={socketHint.key || socketHint.message}
+          role="status"
+          className={`pointer-events-none absolute z-50 whitespace-nowrap rounded-md px-2 py-1 text-[11px] font-medium shadow-lg ${
+            darkNodes
+              ? 'bg-rose-500/95 text-white'
+              : 'bg-rose-600 text-white'
+          }`}
+          style={{
+            left: orientation === 'vertical' ? '50%' : -8,
+            top: orientation === 'vertical' ? -36 : TOP_BAR_HEIGHT / 2,
+            transform:
+              orientation === 'vertical' ? 'translate(-50%, -100%)' : 'translate(-100%, -50%)',
+            animation: 'nm-socket-hint 2.2s ease-out forwards',
+          }}
+        >
+          {socketHint.message}
+        </div>
+      )}
 
       <div
         className="relative flex items-center gap-1 px-2"

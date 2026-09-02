@@ -187,6 +187,19 @@
   }
 }
 
+/* Short canvas socket / connection hint near a node */
+@keyframes nm-socket-hint {
+  0%,
+  55% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
 /* Interactive tutorial */
 @keyframes nm-tutorial-ring {
   0%,

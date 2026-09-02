@@ -59,15 +59,14 @@ export default function MathNodeBody({
     [node]
   );
   const emptyHint =
-    isIgnored ||
-    (!result?.flat &&
-      (result?.error === 'Empty number' ||
-        result?.error === 'Empty expression' ||
-        result?.error === 'Connect a Math node' ||
-        result?.error === 'Select an operation' ||
-        result?.error === 'Select an equation operation' ||
-        result?.error === 'No operation selected' ||
-        !result));
+    !result?.flat &&
+    (result?.error === 'Empty number' ||
+      result?.error === 'Empty expression' ||
+      result?.error === 'Connect a Math node' ||
+      result?.error === 'Select an operation' ||
+      result?.error === 'Select an equation operation' ||
+      result?.error === 'No operation selected' ||
+      !result);
   const isError = Boolean(result?.error) && !emptyHint && !isIgnored;
   const showField = fieldVisibleForNode(def, node);
 

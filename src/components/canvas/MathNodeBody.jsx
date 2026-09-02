@@ -247,8 +247,8 @@ export default function MathNodeBody({
         <div
           className={`mt-2 rounded-md border px-2.5 py-2 text-left text-xs leading-relaxed ${
             darkNodes
-              ? 'border-zinc-500/35 bg-zinc-500/10 text-zinc-300'
-              : 'border-slate-300 bg-slate-100 text-slate-500'
+              ? 'border-amber-400/35 bg-amber-400/10 text-amber-100/90'
+              : 'border-amber-500/40 bg-amber-50 text-amber-900/90'
           }`}
           role="status"
         >

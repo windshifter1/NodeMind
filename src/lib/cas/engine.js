@@ -565,7 +565,7 @@ function nodeContainsRef(root, target) {
   return false;
 }
 
-const PREVIEW_INK = '#6b7280';
+const PREVIEW_INK = '#a1a1aa';
 const DEFAULT_GHOST_SELECTION_COLOR = '#6366f1';
 
 function isBlackInk(value) {

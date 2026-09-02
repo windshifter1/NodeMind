@@ -7,7 +7,11 @@ import {
   isSelectionOpNode,
   NODE_KIND,
 } from '@/lib/nodeTypes';
-import { selectionOpKey } from '@/lib/cas/selectionOps';
+import {
+  OPERATION_IGNORED_ERROR,
+  OPERATION_IGNORED_MESSAGE,
+  selectionOpKey,
+} from '@/lib/cas/selectionOps';
 import MathPreview from './MathPreview';
 
 const FIELD_METHODS = new Set([
@@ -47,16 +51,19 @@ export default function MathNodeBody({
   const def = defForKind(node.kind);
   const fieldLooks = inputClass(darkNodes, node.color);
   const hasInput = result?.inputAst != null && result?.inputAst !== '';
+  const isIgnored =
+    Boolean(result?.ignored) || result?.error === OPERATION_IGNORED_ERROR;
   const emptyHint =
-    !result?.flat &&
-    (result?.error === 'Empty number' ||
-      result?.error === 'Empty expression' ||
-      result?.error === 'Connect a Math node' ||
-      result?.error === 'Select an operation' ||
-      result?.error === 'Select an equation operation' ||
-      result?.error === 'No operation selected' ||
-      !result);
-  const isError = Boolean(result?.error) && !emptyHint;
+    isIgnored ||
+    (!result?.flat &&
+      (result?.error === 'Empty number' ||
+        result?.error === 'Empty expression' ||
+        result?.error === 'Connect a Math node' ||
+        result?.error === 'Select an operation' ||
+        result?.error === 'Select an equation operation' ||
+        result?.error === 'No operation selected' ||
+        !result));
+  const isError = Boolean(result?.error) && !emptyHint && !isIgnored;
   const showField = fieldVisibleForNode(def, node);
 
   const modes = (() => {
@@ -227,6 +234,19 @@ export default function MathNodeBody({
         />
       )}
 
+      {isIgnored && (
+        <div
+          className={`mt-2 rounded-md border px-2.5 py-2 text-left text-xs leading-relaxed ${
+            darkNodes
+              ? 'border-amber-400/35 bg-amber-400/10 text-amber-100/90'
+              : 'border-amber-500/40 bg-amber-50 text-amber-900/90'
+          }`}
+          role="status"
+        >
+          {OPERATION_IGNORED_MESSAGE}
+        </div>
+      )}
+
       <MathPreview
         nodeId={node.id}
         ast={result?.ast}
@@ -235,7 +255,7 @@ export default function MathNodeBody({
         empty={emptyHint || (!result?.flat && !result?.latex && result?.ast == null)}
         onMetrics={onPreviewMetrics}
         onSelectionMenu={onSelectionMenu}
-        ghostSelection={ghostSelection}
+        ghostSelection={isIgnored ? null : ghostSelection}
       />
     </div>
   );

@@ -126,6 +126,70 @@ export function listApplicableOpsForAst(ast, category = 'manipulation') {
   }
 }
 
+/**
+ * Whether a stored selection-scoped operation still applies to `ast`.
+ * Used when an upstream equation changes after the op node was created.
+ */
+export function isSelectionOpApplicable(ast, method, selection = null, field = '') {
+  if (ast === '' || ast == null || !method) return false;
+
+  if (isEquationSelectionMethod(method)) {
+    const variable = selection?.arg ?? field;
+    if (variable == null || variable === '') return false;
+    return collectVariables(ast).has(String(variable));
+  }
+
+  const canvasId = `cas-applicable-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+  let canvas = null;
+  try {
+    canvas = document.createElement('canvas');
+    canvas.id = canvasId;
+    canvas.style.cssText = 'position:fixed;left:-9999px;top:-9999px;opacity:0;pointer-events:none;';
+    document.body.appendChild(canvas);
+
+    const eq = createPreviewEquation(ast, canvasId);
+    if (Array.isArray(eq.equation)) {
+      try {
+        eq.printimage(eq.equation);
+      } catch {
+        /* some leaves have no glyph layout */
+      }
+    }
+
+    let path = Array.isArray(selection?.path) ? selection.path : [];
+    let issel = Array.isArray(selection?.issel) ? selection.issel : null;
+
+    if (path.length && walkAstPath(eq.equation, path) == null) {
+      return false;
+    }
+
+    // Dropdown-picked / whole-expression ops may omit issel — fall back to select-all.
+    if (!issel) {
+      selectAllPreview(eq);
+      const resolved = resolveSelection(eq);
+      if (!resolved) return false;
+      path = resolved.path || [];
+      issel = resolved.issel || null;
+    }
+
+    return checkMethod(eq, method, path, issel);
+  } catch {
+    return false;
+  } finally {
+    try {
+      canvas?.remove();
+    } catch {
+      /* ignore */
+    }
+  }
+}
+
+/** Soft status when a Manipulation / Equation op no longer matches its input. */
+export const OPERATION_IGNORED_ERROR = 'Operation not applicable';
+
+export const OPERATION_IGNORED_MESSAGE =
+  'This operation no longer applies to the connected equation. The equation itself is fine — this node is ignored for now, and will work again if the operation becomes applicable.';
+
 function plainLabel(html) {
   return String(html || '')
     .replace(/<br\s*\/?>/gi, ' ')

@@ -1,6 +1,12 @@
 import { isMathNode, isNumberNode, isSelectionOpNode, NODE_KIND } from '@/lib/nodeTypes';
 import { applyRewrite, applySelectionOp, astFromNumber, listApplicableOps, parseExpression } from './engine.js';
-import { isEquationSelectionMethod, listApplicableOpsForAst, selectionOpKey } from './selectionOps.js';
+import {
+  isEquationSelectionMethod,
+  isSelectionOpApplicable,
+  listApplicableOpsForAst,
+  OPERATION_IGNORED_ERROR,
+  selectionOpKey,
+} from './selectionOps.js';
 
 function edgeDirection(edge) {
   return edge.fromType === 'output'
@@ -14,6 +20,7 @@ function emptyResult(error = null) {
     flat: '',
     latex: '',
     error,
+    ignored: false,
     inputAst: null,
     applicableModes: null,
     applicableSelectionOps: null,
@@ -83,7 +90,10 @@ export function evaluateMathGraph(nodes = [], edges = []) {
     const sources = incoming.get(id) || [];
     const inbound = sources
       .map((src) => results.get(src))
-      .find((item) => item && !item.error && item.ast !== '' && item.ast != null);
+      .find(
+        (item) =>
+          item && !item.error && !item.ignored && item.ast !== '' && item.ast != null
+      );
 
     if (isNumberNode(node)) {
       results.set(id, {
@@ -133,9 +143,19 @@ export function evaluateMathGraph(nodes = [], edges = []) {
         });
         return;
       }
+      if (!isSelectionOpApplicable(inbound.ast, node.method, node.selection, node.field)) {
+        results.set(id, {
+          ...emptyResult(OPERATION_IGNORED_ERROR),
+          ignored: true,
+          inputAst: inbound.ast,
+          applicableSelectionOps,
+        });
+        return;
+      }
       const applied = applySelectionOp(inbound.ast, node.method, node.selection, node.field);
       results.set(id, {
         ...applied,
+        ignored: false,
         inputAst: inbound.ast,
         applicableModes: null,
         applicableSelectionOps,

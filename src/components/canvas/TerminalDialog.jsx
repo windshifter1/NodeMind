@@ -14,7 +14,7 @@ import {
 } from '@/lib/appVersion';
 import { isDesktopPlatform } from '@/lib/onboarding';
 import { normalizeTerminal } from '@/hooks/useWorkspaces';
-import { fieldsForKind, isNumberNode, nodeTypeLabel } from '@/lib/nodeTypes';
+import { fieldsForKind, isMathNode, isNumberNode, nodeTypeLabel } from '@/lib/nodeTypes';
 import { COMMAND_NAMES, HELP_ALL, helpFor } from '@/lib/terminal/help';
 import { commandMatchesStep, getTerminalTutorialSteps } from '@/lib/terminal/tutorial';
 import TerminalTutorial from './TerminalTutorial';
@@ -183,6 +183,11 @@ function formatNode(nodes, node) {
   ];
   if (isNumberNode(node)) {
     lines.push(node.value === '' || node.value == null ? 'Value: (empty)' : `Value: ${node.value}`);
+  } else if (isMathNode(node)) {
+    if (node.expr) lines.push(`Expression: ${node.expr}`);
+    if (node.mode) lines.push(`Mode: ${node.mode}`);
+    if (node.field) lines.push(`Field: ${node.field}`);
+    if (!node.expr && !node.mode && !node.field) lines.push('Math: (empty)');
   } else {
     lines.push(node.content ? `Description: ${node.content}` : 'Description: (empty)');
   }

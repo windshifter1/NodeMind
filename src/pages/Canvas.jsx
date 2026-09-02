@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import CanvasBoard from '@/components/canvas/CanvasBoard';
 import Toolbar from '@/components/canvas/Toolbar';
 import NodeEditDialog from '@/components/canvas/NodeEditDialog';
@@ -22,6 +22,7 @@ import {
   zoomToFrameBounds,
 } from '@/lib/canvasConstants';
 import { fieldsForKind } from '@/lib/nodeTypes';
+import { evaluateMathGraph } from '@/lib/cas/evalGraph';
 import { shouldStartOnboarding } from '@/lib/onboarding';
 import { emitTutorial } from '@/lib/tutorialEvents';
 import { applyDocumentTheme, persistTheme, readStoredTheme } from '@/lib/theme';
@@ -387,6 +388,11 @@ export default function Canvas() {
     );
   }, [active.nodes, animateCamera]);
 
+  const mathResults = useMemo(
+    () => evaluateMathGraph(active.nodes, active.edges),
+    [active.nodes, active.edges]
+  );
+
   const editingNode = active.nodes.find((n) => n.id === editingNodeId) || null;
 
   return (
@@ -426,6 +432,7 @@ export default function Canvas() {
         nodePicker={nodePicker}
         onPickerClose={closeNodePicker}
         onPickerSelect={pickNodeType}
+        mathResults={mathResults}
       />
 
       <Toolbar

@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
-import { NODE_CATEGORIES, typesForCategory } from '@/lib/nodeTypes';
+import { NODE_CATEGORIES, mathTypesByGroup, typesForCategory } from '@/lib/nodeTypes';
 
-const MENU_WIDTH = 280;
+const MENU_WIDTH = 300;
 
 export default function NodeTypeMenu({ open, x = 0, y = 0, onClose, onSelect }) {
   const [category, setCategory] = useState('text');
@@ -20,7 +20,8 @@ export default function NodeTypeMenu({ open, x = 0, y = 0, onClose, onSelect }) 
 
   if (!open) return null;
 
-  const types = typesForCategory(category);
+  const mathGroups = category === 'math' ? mathTypesByGroup() : null;
+  const types = category === 'math' ? null : typesForCategory(category);
 
   return (
     <div
@@ -41,7 +42,7 @@ export default function NodeTypeMenu({ open, x = 0, y = 0, onClose, onSelect }) 
           <X size={14} />
         </button>
       </div>
-      <div className="flex min-h-[120px]">
+      <div className="flex max-h-[420px] min-h-[120px]">
         <div className="flex w-[92px] shrink-0 flex-col gap-1 p-2">
           {NODE_CATEGORIES.map((cat) => (
             <button
@@ -59,8 +60,8 @@ export default function NodeTypeMenu({ open, x = 0, y = 0, onClose, onSelect }) 
           ))}
         </div>
         <div className="w-px self-stretch bg-nm-divider" />
-        <div className="flex min-w-0 flex-1 flex-col gap-1 p-2">
-          {types.map((type) => (
+        <div className="flex min-w-0 flex-1 flex-col gap-1 overflow-y-auto p-2">
+          {types?.map((type) => (
             <button
               key={type.id}
               type="button"
@@ -69,6 +70,23 @@ export default function NodeTypeMenu({ open, x = 0, y = 0, onClose, onSelect }) 
             >
               {type.label}
             </button>
+          ))}
+          {mathGroups?.map((group) => (
+            <div key={group.id} className="pb-1">
+              <p className="px-3 pb-1 pt-1.5 text-[10px] font-semibold uppercase tracking-wider text-nm-text-faint">
+                {group.label}
+              </p>
+              {group.types.map((type) => (
+                <button
+                  key={type.id}
+                  type="button"
+                  onClick={() => onSelect(type.id)}
+                  className="w-full rounded-xl px-3 py-2 text-left text-sm font-medium text-nm-text-secondary transition hover:bg-nm-hover hover:text-nm-text active:scale-[0.98]"
+                >
+                  {type.label}
+                </button>
+              ))}
+            </div>
           ))}
         </div>
       </div>

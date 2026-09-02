@@ -56,6 +56,7 @@ export default function CanvasBoard({
   nodePicker = null,
   onPickerClose,
   onPickerSelect,
+  mathResults = null,
 }) {
   const graphOrientation = normalizeOrientation(orientation);
   const boardRef = useRef(null);
@@ -1292,6 +1293,7 @@ export default function CanvasBoard({
             darkNodes={darkNodes}
             selected={selectedSet.has(node.id)}
             ghost={overBin && draggingSet?.has(node.id)}
+            mathResult={mathResults?.get?.(node.id) || null}
             onUpdate={(patch) => onUpdateNode(node.id, patch)}
             onSelectNode={selectNode}
             onArmNodeDrag={armNodeDrag}

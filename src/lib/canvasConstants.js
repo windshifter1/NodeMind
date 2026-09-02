@@ -1,5 +1,5 @@
 import { autoOrganiseGraph } from './layout/index.js';
-import { NUMBER_NODE_BODY_HEIGHT, isNumberNode, normalizeNodeKind } from './nodeTypes.js';
+import { MATH_NODE_BODY_HEIGHT, NUMBER_NODE_BODY_HEIGHT, isMathNode, isNumberNode, normalizeNodeKind } from './nodeTypes.js';
 
 export const NODE_WIDTH = 180; // default (empty title) width
 export const TOP_BAR_HEIGHT = 44;
@@ -94,6 +94,9 @@ export function nodeHeightForLayout(nodeOrTitle = '') {
   if (collapsed) return TOP_BAR_HEIGHT;
   if (typeof nodeOrTitle === 'object' && isNumberNode(nodeOrTitle)) {
     return TOP_BAR_HEIGHT + NUMBER_NODE_BODY_HEIGHT;
+  }
+  if (typeof nodeOrTitle === 'object' && isMathNode(nodeOrTitle)) {
+    return TOP_BAR_HEIGHT + MATH_NODE_BODY_HEIGHT;
   }
   const content = typeof nodeOrTitle === 'object' ? nodeOrTitle.content || '' : '';
   const lineCount = Math.max(1, content.split('\n').length);
@@ -346,11 +349,14 @@ export function migrateWorkspaceNodeIds(workspace) {
   const layoutOnOrientationChange = normalizeLayoutOnOrientationChange(workspace.layoutOnOrientationChange);
   const layoutSettings = normalizeLayoutSettings(workspace.layoutSettings);
   const withKinds = (list) =>
-    list.map((node) => ({
-      ...node,
-      kind: normalizeNodeKind(node.kind),
-      ...(normalizeNodeKind(node.kind) === 'number' && node.value == null ? { value: '' } : {}),
-    }));
+    list.map((node) => {
+      const kind = normalizeNodeKind(node.kind);
+      const next = { ...node, kind };
+      if (kind === 'number' && node.value == null) next.value = '';
+      if (kind === 'expression' && node.expr == null) next.expr = '';
+      if (node.mode == null && node.field == null) return next;
+      return next;
+    });
 
   if (!nodes.length || nodes.every((node) => /^0*\d+$/.test(node.id))) {
     return {

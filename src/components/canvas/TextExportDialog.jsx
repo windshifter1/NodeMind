@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Copy, X, ListTree, AlignLeft } from 'lucide-react';
-import { isNumberNode } from '@/lib/nodeTypes';
+import { isMathNode, isNumberNode } from '@/lib/nodeTypes';
 
 export default function TextExportDialog({ open, onClose, workspaceName, nodes, edges }) {
   const [expanded, setExpanded] = useState(false);
@@ -38,6 +38,12 @@ export default function TextExportDialog({ open, onClose, workspaceName, nodes, 
           if (value) {
             lines.push('');
             lines.push(`      ${value}`);
+          }
+        } else if (isMathNode(n)) {
+          const bits = [n.expr, n.mode, n.field].filter((bit) => bit != null && String(bit).trim());
+          if (bits.length) {
+            lines.push('');
+            lines.push(`      ${bits.join('  ·  ')}`);
           }
         } else if (n.content && n.content.trim()) {
           lines.push('');

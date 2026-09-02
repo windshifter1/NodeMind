@@ -6,7 +6,7 @@ Built by **Windshifter**.
 
 ## Features
 
-- Infinite pan/zoom canvas with Text and Math node types
+- Infinite pan/zoom canvas with Text notes and Math CAS nodes (expand, factor, calculus, solve)
 - Multiple workspaces with custom names, colours, and icons
 - Export/import workspaces as JSON
 - Copy workspace contents as plain text

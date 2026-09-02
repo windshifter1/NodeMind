@@ -373,8 +373,11 @@ html[data-theme='light'] .nm-scrollbar::-webkit-scrollbar-thumb:hover {
   transform-origin: center;
 }
 
-.math-preview {
-  color: rgb(107 114 128);
+.math-eq-canvas {
+  display: block;
+  cursor: text;
+  max-width: none;
+  touch-action: none;
 }
 
 .math-preview-scroll {

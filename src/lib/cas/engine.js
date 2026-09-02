@@ -547,4 +547,271 @@ export function listApplicableOps(ast) {
   return { kinds, modesByKind };
 }
 
-export { printflat, printlatex, deepCopy, simplifyAst, OP_DISPATCH };
+function walkPath(root, path = []) {
+  let node = root;
+  for (const index of path) {
+    if (!Array.isArray(node) || node[index] === undefined) return null;
+    node = node[index];
+  }
+  return node;
+}
+
+function nodeContainsRef(root, target) {
+  if (root === target) return true;
+  if (!Array.isArray(root)) return false;
+  for (let i = 1; i < root.length; i++) {
+    if (nodeContainsRef(root[i], target)) return true;
+  }
+  return false;
+}
+
+const PREVIEW_INK = '#6b7280';
+
+function isBlackInk(value) {
+  return (
+    value === 'black' ||
+    value === '#000' ||
+    value === '#000000' ||
+    value === 'rgb(0, 0, 0)' ||
+    value === 'rgba(0, 0, 0, 1)'
+  );
+}
+
+function installPreviewInk(canvas, ink = PREVIEW_INK) {
+  if (!canvas || canvas._nmInkMapped) return;
+  canvas._nmInkMapped = true;
+  const nativeGet = canvas.getContext.bind(canvas);
+  const fillDesc = Object.getOwnPropertyDescriptor(CanvasRenderingContext2D.prototype, 'fillStyle');
+  const strokeDesc = Object.getOwnPropertyDescriptor(CanvasRenderingContext2D.prototype, 'strokeStyle');
+  canvas.getContext = function getContextMapped(type, attrs) {
+    const ctx = nativeGet(type, attrs);
+    if (type === '2d' && fillDesc?.set && !ctx._nmInk) {
+      ctx._nmInk = true;
+      Object.defineProperty(ctx, 'fillStyle', {
+        configurable: true,
+        get() {
+          return fillDesc.get.call(this);
+        },
+        set(v) {
+          fillDesc.set.call(this, isBlackInk(v) ? ink : v);
+        },
+      });
+      if (strokeDesc?.set) {
+        Object.defineProperty(ctx, 'strokeStyle', {
+          configurable: true,
+          get() {
+            return strokeDesc.get.call(this);
+          },
+          set(v) {
+            strokeDesc.set.call(this, !v || isBlackInk(v) ? ink : v);
+          },
+        });
+      }
+      ctx.fillStyle = ink;
+      ctx.strokeStyle = ink;
+    }
+    return ctx;
+  };
+}
+
+/** Live equation bound to a canvas for selectable grey previews. */
+export function createPreviewEquation(ast, canvasId) {
+  const eq = new equation();
+  eq.history = undefined;
+  eq.headless = false;
+  eq.canvasid = canvasId;
+  eq.inputid = '';
+  eq.fontsize = 22 * ((typeof window !== 'undefined' && window.devicePixelRatio) || 1);
+  equation.fontname = 'Georgia, "Times New Roman", serif';
+  eq.equation = ast === undefined || ast === '' ? '' : cloneAst(ast);
+  return eq;
+}
+
+function ensureSelectedFlags(value) {
+  const n = Math.max(value?.char?.length || 0, value?.x?.length || 0);
+  if (!Array.isArray(value.selected) || value.selected.length !== n) {
+    value.selected = Array(n).fill(false);
+  }
+  return value.selected;
+}
+
+/** Measure + paint without simplifying (eval already simplified the AST). */
+export function layoutSelectablePreview(eq) {
+  const canvas = typeof document !== 'undefined' ? document.getElementById(eq.canvasid) : null;
+  if (!canvas) return { width: 0, height: 0 };
+  installPreviewInk(canvas);
+  eq.nodeproperties = new Map();
+  if (eq.equation === '' || eq.equation == null) {
+    canvas.width = 1;
+    canvas.height = 1;
+    canvas.style.width = '0px';
+    canvas.style.height = '0px';
+    return { width: 0, height: 0 };
+  }
+  if (Array.isArray(eq.equation)) {
+    eq.printimage(eq.equation);
+    eq.nodeproperties.forEach((value) => {
+      ensureSelectedFlags(value);
+      value.selected.fill(false);
+    });
+  }
+  eq.draw(eq.equation);
+  const width = Math.ceil(canvas.offsetWidth || parseFloat(canvas.style.width) || 0);
+  const height = Math.ceil(canvas.offsetHeight || parseFloat(canvas.style.height) || 0);
+  return { width, height };
+}
+
+/** Hit-test like original detectevents (vars + function names). */
+export function selectPreviewAt(eq, canvas, clientX, clientY, additive, localX, localY) {
+  if (!eq || !canvas) return;
+  let cssX;
+  let cssY;
+  if (Number.isFinite(localX) && Number.isFinite(localY)) {
+    cssX = localX;
+    cssY = localY;
+  } else {
+    const rect = canvas.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    cssX = ((clientX - rect.left) / rect.width) * (canvas.offsetWidth || rect.width);
+    cssY = ((clientY - rect.top) / rect.height) * (canvas.offsetHeight || rect.height);
+  }
+  const dpr = (typeof window !== 'undefined' && window.devicePixelRatio) || 1;
+  const x = cssX * dpr - eq.borderwidth;
+  const y = cssY * dpr - eq.borderwidth;
+  eq.nodeproperties.forEach((value) => {
+    const selected = ensureSelectedFlags(value);
+    for (let i = 0; i < value.x.length; i++) {
+      if (!(value.isvar[i] || value.isfunc[i])) continue;
+      const hit =
+        x > value.x[i] && x < value.x[i] + value.w[i] && y > value.y[i] && y < value.y[i] + value.h[i];
+      if (additive) {
+        if (hit) selected[i] = true;
+      } else {
+        selected[i] = hit;
+      }
+    }
+  });
+  eq.draw(eq.equation);
+}
+
+/** Select every selectable glyph (for double-click / whole-expression ops). */
+export function selectAllPreview(eq) {
+  if (!eq) return;
+  eq.nodeproperties.forEach((value) => {
+    const selected = ensureSelectedFlags(value);
+    for (let i = 0; i < value.x.length; i++) {
+      selected[i] = !!(value.isvar[i] || value.isfunc[i]);
+    }
+  });
+  if (eq.equation !== '' && eq.equation != null) eq.draw(eq.equation);
+}
+
+/**
+ * Apply a selection-scoped CAS method (from the original op menu) to an AST.
+ * `selection` is { path: number[], issel: boolean[] } from resolveSelection.
+ */
+export function applySelectionOp(ast, method, selection, field) {
+  if (ast === '' || ast == null) {
+    return { ast: '', flat: '', latex: '', error: 'No input expression' };
+  }
+  if (!method) {
+    return { ast: cloneAst(ast), flat: '', latex: '', error: 'No operation selected' };
+  }
+
+  const canvasId = `cas-apply-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+  let canvas = null;
+  let menu = null;
+
+  try {
+    canvas = document.createElement('canvas');
+    canvas.id = canvasId;
+    canvas.style.cssText = 'position:fixed;left:-9999px;top:-9999px;opacity:0;pointer-events:none;';
+    document.body.appendChild(canvas);
+
+    menu = document.createElement('div');
+    menu.id = 'opmenu';
+    menu.style.cssText = 'position:fixed;left:-9999px;top:-9999px;';
+    document.body.appendChild(menu);
+
+    const eq = createPreviewEquation(ast, canvasId);
+    if (Array.isArray(eq.equation)) {
+      try {
+        eq.printimage(eq.equation);
+      } catch {
+        /* some leaves have no glyph layout */
+      }
+    }
+
+    const path = selection?.path || [];
+    const issel = Array.isArray(selection?.issel) ? selection.issel : null;
+    const target = walkPath(eq.equation, path) ?? eq.equation;
+
+    if (issel) {
+      eq.isselected = function selectedForOp(node) {
+        if (node === target) return issel.slice();
+        if (Array.isArray(node) && nodeContainsRef(node, target)) {
+          const flags = new Array(node.length).fill(false);
+          for (let i = 1; i < node.length; i++) {
+            if (nodeContainsRef(node[i], target) || node[i] === target) flags[i] = true;
+          }
+          if (flags.some(Boolean)) flags[0] = true;
+          return flags;
+        }
+        if (!Array.isArray(node)) return [false];
+        return new Array(node.length).fill(false);
+      };
+      eq.countselected = function countForOp(node) {
+        if (node === target) return Math.max(1, issel.filter(Boolean).length);
+        if (Array.isArray(node) && nodeContainsRef(node, target)) {
+          return Math.max(1, issel.filter(Boolean).length);
+        }
+        return 0;
+      };
+    }
+
+    const callStyle = selection?.callStyle || (method === 'solveui' ? 'solve' : 'node');
+    const extraArg = selection?.arg;
+    const fieldText = field != null && field !== '' ? field : selection?.field;
+
+    if (callStyle === 'solve') {
+      runMethod(eq, method, [extraArg ?? fieldText, menu]);
+    } else if (method === 'collect' || method === 'polynomialdivision' || method === 'partialfractions') {
+      let menuArg = fieldText;
+      if (method === 'collect' && fieldText) {
+        const parsed = parseField(fieldText);
+        if (parsed.error) return { ast: cloneAst(ast), flat: '', latex: '', error: parsed.error };
+        menuArg = parsed.ast;
+      }
+      runMethod(eq, method, [target, menuArg || undefined]);
+    } else if (method === 'mult1powpow') {
+      runMethod(eq, method, [target, menu, extraArg]);
+    } else if (method === 'intsplitlimits') {
+      withFakeInput(fieldText || '0', () => {
+        runMethod(eq, method, [target, menu]);
+      });
+    } else if (method === 'factorsofint') {
+      runMethod(eq, method, [target, extraArg, menu]);
+    } else if (method === 'dec2frac') {
+      runMethod(eq, method, ['e', target, extraArg, menu]);
+    } else {
+      runMethod(eq, method, [target, menu]);
+    }
+
+    return formatResult(eq.equation);
+  } catch (err) {
+    return { ast: cloneAst(ast), flat: '', latex: '', error: err?.message || String(err) };
+  } finally {
+    try {
+      menu?.remove();
+    } catch {
+      /* ignore */
+    }
+    try {
+      canvas?.remove();
+    } catch {
+      /* ignore */
+    }
+  }
+}
+
+export { printflat, printlatex, deepCopy, simplifyAst, OP_DISPATCH, equation };

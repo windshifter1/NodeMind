@@ -20,6 +20,7 @@ export default function MathNodeBody({
   onUpdate,
   applicableModes = null,
   onPreviewMetrics,
+  onSelectionMenu,
 }) {
   const def = defForKind(node.kind);
   const fieldLooks = inputClass(darkNodes, node.color);
@@ -64,7 +65,7 @@ export default function MathNodeBody({
         />
       )}
 
-      {modes.length > 0 && (
+      {modes.length > 0 && node.kind !== NODE_KIND.CAS_OP && (
         <select
           value={modes.some((mode) => mode.id === node.mode) ? node.mode : modes[0].id}
           onChange={(e) => onUpdate({ mode: e.target.value })}
@@ -91,11 +92,13 @@ export default function MathNodeBody({
       )}
 
       <MathPreview
-        latex={result?.latex}
+        nodeId={node.id}
+        ast={result?.ast}
         flat={result?.flat}
         error={isError ? result.error : null}
-        empty={emptyHint || (!result?.flat && !result?.latex)}
+        empty={emptyHint || (!result?.flat && !result?.latex && result?.ast == null)}
         onMetrics={onPreviewMetrics}
+        onSelectionMenu={onSelectionMenu}
       />
     </div>
   );

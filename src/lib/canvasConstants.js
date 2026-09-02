@@ -241,6 +241,49 @@ export function connectedNodePositionAtSocket(
   return { x, y };
 }
 
+/** Place a node off a socket, then stack along the cross-axis so it does not overlap existing nodes. */
+export function connectedNodePositionAvoidingOverlap(
+  nodes,
+  sourceNode,
+  fromType,
+  orientation = GRAPH_ORIENTATIONS.HORIZONTAL,
+  newNodeLike = ''
+) {
+  const o = normalizeOrientation(orientation);
+  const size = nodeSizeForLayout(newNodeLike);
+  const sourceSize = nodeSizeForLayout(sourceNode);
+  const others = nodes || [];
+
+  const overlaps = (x, y) =>
+    others.some((node) => {
+      const other = nodeSizeForLayout(node);
+      return !(
+        x + size.width + 24 < node.x ||
+        node.x + other.width + 24 < x ||
+        y + size.height + 24 < node.y ||
+        node.y + other.height + 24 < y
+      );
+    });
+
+  if (o === GRAPH_ORIENTATIONS.VERTICAL) {
+    let x = sourceNode.x + (sourceSize.width - size.width) / 2;
+    let y =
+      fromType === 'output'
+        ? sourceNode.y + sourceSize.height + NODE_CLEARANCE
+        : sourceNode.y - NODE_CLEARANCE - size.height;
+    while (overlaps(x, y)) x += Math.max(240, size.width + NODE_CLEARANCE);
+    return { x, y };
+  }
+
+  let x =
+    fromType === 'output'
+      ? sourceNode.x + sourceSize.width + NODE_CLEARANCE
+      : sourceNode.x - NODE_CLEARANCE - size.width;
+  let y = sourceNode.y;
+  while (overlaps(x, y)) y += Math.max(96, size.height + 24);
+  return { x, y };
+}
+
 /** Push targets so each output→input edge keeps a clear forward gap (fixes backwards Math beziers). */
 export function clearanceFixesForEdges(nodes, edges, orientation = GRAPH_ORIENTATIONS.HORIZONTAL) {
   const o = normalizeOrientation(orientation);

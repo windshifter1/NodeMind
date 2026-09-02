@@ -104,6 +104,7 @@ export default function NoteNode({
   onStartConnect,
   onOpenEdit,
   onLayoutChange,
+  onSelectionMenu,
 }) {
   const textareaRef = useRef(null);
   const titleInputRef = useRef(null);
@@ -344,6 +345,7 @@ export default function NoteNode({
           onUpdate={onUpdate}
           applicableModes={mathResult?.applicableModes}
           onPreviewMetrics={handleMathPreviewMetrics}
+          onSelectionMenu={onSelectionMenu}
         />
       )}
 

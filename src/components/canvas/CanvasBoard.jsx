@@ -58,6 +58,7 @@ export default function CanvasBoard({
   onPickerClose,
   onPickerSelect,
   mathResults = null,
+  onSelectionMenu,
 }) {
   const graphOrientation = normalizeOrientation(orientation);
   const [layoutEpoch, setLayoutEpoch] = useState(0);
@@ -1331,6 +1332,11 @@ export default function CanvasBoard({
             onStartConnect={startConnect}
             onOpenEdit={onOpenEdit}
             onLayoutChange={notifyLayoutChange}
+            onSelectionMenu={
+              onSelectionMenu
+                ? (payload) => onSelectionMenu(node.id, payload)
+                : undefined
+            }
           />
         ))}
         <NodeTypeMenu

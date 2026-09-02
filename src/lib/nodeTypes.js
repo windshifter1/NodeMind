@@ -2,6 +2,7 @@ export const NODE_KIND = {
   NOTE: 'note',
   NUMBER: 'number',
   EXPRESSION: 'expression',
+  CAS_OP: 'casOp',
   COMBINE_LIKE: 'combineLike',
   EXPAND: 'expand',
   FACTOR: 'factor',
@@ -60,10 +61,18 @@ export const NODE_TYPE_DEFS = [
     field: { key: 'expr', label: 'Expression', placeholder: 'x^2+2*x+1' },
   },
   {
+    id: NODE_KIND.CAS_OP,
+    category: 'math',
+    group: 'algebra',
+    label: 'Operation',
+    picker: false,
+  },
+  {
     id: NODE_KIND.COMBINE_LIKE,
     category: 'math',
     group: 'algebra',
     label: 'Combine like terms',
+    picker: false,
   },
   {
     id: NODE_KIND.EXPAND,
@@ -322,14 +331,22 @@ export function normalizeNodeKind(kind) {
   return NODE_TYPE_DEFS.some((def) => def.id === kind) ? kind : DEFAULT_NODE_KIND;
 }
 
+function isPickerDef(def) {
+  if (!def || def.picker === false) return false;
+  if (def.category === 'text') return true;
+  return def.group === 'values';
+}
+
 export function typesForCategory(categoryId) {
-  return NODE_TYPE_DEFS.filter((def) => def.category === categoryId);
+  return NODE_TYPE_DEFS.filter((def) => def.category === categoryId && isPickerDef(def));
 }
 
 export function mathTypesByGroup() {
   return MATH_GROUPS.map((group) => ({
     ...group,
-    types: NODE_TYPE_DEFS.filter((def) => def.category === 'math' && def.group === group.id),
+    types: NODE_TYPE_DEFS.filter(
+      (def) => def.category === 'math' && def.group === group.id && isPickerDef(def)
+    ),
   })).filter((group) => group.types.length);
 }
 
@@ -339,6 +356,10 @@ export function fieldsForKind(kind) {
   const fields = { kind: normalised, title: def?.label || 'Text', content: '' };
   if (normalised === NODE_KIND.NUMBER) fields.value = '';
   if (normalised === NODE_KIND.EXPRESSION) fields.expr = '';
+  if (normalised === NODE_KIND.CAS_OP) {
+    fields.method = '';
+    fields.selection = null;
+  }
   if (def?.modes?.length) fields.mode = def.modes[0].id;
   if (def?.field?.key && def.field.key !== 'expr') fields.field = '';
   return fields;

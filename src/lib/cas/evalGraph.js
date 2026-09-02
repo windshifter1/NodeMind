@@ -1,5 +1,5 @@
 import { isMathNode, isNumberNode, NODE_KIND } from '@/lib/nodeTypes';
-import { applyRewrite, astFromNumber, listApplicableOps, parseExpression } from './engine.js';
+import { applyRewrite, applySelectionOp, astFromNumber, listApplicableOps, parseExpression } from './engine.js';
 
 function edgeDirection(edge) {
   return edge.fromType === 'output'
@@ -60,6 +60,16 @@ export function evaluateMathGraph(nodes = [], edges = []) {
 
     if (!inbound) {
       results.set(id, emptyResult('Connect a Math node'));
+      return;
+    }
+
+    if (node.kind === NODE_KIND.CAS_OP) {
+      const applied = applySelectionOp(inbound.ast, node.method, node.selection, node.field);
+      results.set(id, {
+        ...applied,
+        inputAst: inbound.ast,
+        applicableModes: null,
+      });
       return;
     }
 

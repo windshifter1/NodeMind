@@ -202,6 +202,7 @@ function reducer(state, action) {
           y: action.y,
           ...fieldsForKind(action.kind),
           ...(action.mode ? { mode: action.mode } : {}),
+          ...(action.fields || {}),
           color: '#6366f1',
           collapsed: false,
           pinned: false,

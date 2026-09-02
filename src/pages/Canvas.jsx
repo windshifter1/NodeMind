@@ -7,6 +7,7 @@ import WorkspaceEditDialog from '@/components/canvas/WorkspaceEditDialog';
 import TextExportDialog from '@/components/canvas/TextExportDialog';
 import TerminalDialog from '@/components/canvas/TerminalDialog';
 import SettingsDialog from '@/components/canvas/SettingsDialog';
+import SelectionOpMenu from '@/components/canvas/SelectionOpMenu';
 import OnboardingTour from '@/components/onboarding/OnboardingTour';
 import { useWorkspaces } from '@/hooks/useWorkspaces';
 import {
@@ -16,14 +17,14 @@ import {
   autoOrganiseNodes,
   autoOrganiseSelectedNodes,
   connectedNodePositionAtSocket,
+  connectedNodePositionAvoidingOverlap,
   nodeWidthForTitle,
   TOP_BAR_HEIGHT,
   workspaceNodesBounds,
   zoomToFrameBounds,
 } from '@/lib/canvasConstants';
-import { fieldsForKind, isMathNode } from '@/lib/nodeTypes';
+import { fieldsForKind, isMathNode, NODE_KIND } from '@/lib/nodeTypes';
 import { evaluateMathGraph } from '@/lib/cas/evalGraph';
-import { listApplicableOps } from '@/lib/cas/engine';
 import { shouldStartOnboarding } from '@/lib/onboarding';
 import { emitTutorial } from '@/lib/tutorialEvents';
 import { applyDocumentTheme, persistTheme, readStoredTheme } from '@/lib/theme';
@@ -47,6 +48,7 @@ export default function Canvas() {
   const [nodeTheme, setNodeTheme] = useState(() => readStoredTheme());
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [nodePicker, setNodePicker] = useState(null);
+  const [selectionMenu, setSelectionMenu] = useState(null);
   useEffect(() => {
     applyDocumentTheme(nodeTheme);
     persistTheme(nodeTheme);
@@ -221,27 +223,14 @@ export default function Canvas() {
   const addConnectedNode = (x, y, fromNode, fromType, anchor) => {
     const from = active.nodes.find((node) => node.id === fromNode);
     const fromMath = from && isMathNode(from);
-    const sourceResult = fromMath ? mathResults.get(fromNode) : null;
-    const sourceAst = sourceResult && !sourceResult.error ? sourceResult.ast : null;
-    let allowedMathKinds = null;
-    let preferredModes = null;
     let initialCategory = 'text';
-    let hideValueSources = false;
     let valuesOnly = false;
 
-    if (fromMath && fromType === 'output') {
-      initialCategory = 'math';
-      hideValueSources = true;
-      if (sourceAst != null && sourceAst !== '') {
-        const listed = listApplicableOps(sourceAst);
-        allowedMathKinds = listed.kinds;
-        preferredModes = listed.modesByKind;
-      } else {
-        allowedMathKinds = [];
-      }
-    } else if (fromMath && fromType === 'input') {
+    if (fromMath && fromType === 'input') {
       initialCategory = 'math';
       valuesOnly = true;
+    } else if (fromMath && fromType === 'output') {
+      initialCategory = 'math';
     }
 
     openNodePicker({
@@ -254,13 +243,61 @@ export default function Canvas() {
       worldY: anchor?.worldY,
       clientX: anchor?.clientX ?? window.innerWidth / 2,
       clientY: anchor?.clientY ?? window.innerHeight / 2,
-      allowedMathKinds,
-      preferredModes,
       initialCategory,
-      hideValueSources,
       valuesOnly,
     });
   };
+
+  const closeSelectionMenu = useCallback(() => setSelectionMenu(null), []);
+
+  const handleSelectionMenu = useCallback((nodeId, payload) => {
+    if (!payload || !payload.ops) {
+      setSelectionMenu(null);
+      return;
+    }
+    setSelectionMenu({ nodeId, ...payload });
+  }, []);
+
+  const pickSelectionOp = useCallback(
+    (op, field) => {
+      if (!selectionMenu || !op?.method) return;
+      const sourceNode = active.nodes.find((node) => node.id === selectionMenu.nodeId);
+      if (!sourceNode) {
+        setSelectionMenu(null);
+        return;
+      }
+      const extra = { ...(op.extra || {}) };
+      delete extra.needsField;
+      delete extra.fieldPlaceholder;
+      const pos = connectedNodePositionAvoidingOverlap(
+        active.nodes,
+        sourceNode,
+        'output',
+        active.orientation,
+        { kind: NODE_KIND.CAS_OP, title: op.label }
+      );
+      dispatch({
+        type: 'ADD_CONNECTED_NODE',
+        x: pos.x,
+        y: pos.y,
+        fromNode: sourceNode.id,
+        fromType: 'output',
+        kind: NODE_KIND.CAS_OP,
+        fields: {
+          title: op.label,
+          method: op.method,
+          selection: {
+            path: selectionMenu.selection?.path || [],
+            issel: selectionMenu.selection?.issel || null,
+            ...extra,
+          },
+          field: field || '',
+        },
+      });
+      setSelectionMenu(null);
+    },
+    [active.nodes, active.orientation, dispatch, selectionMenu]
+  );
 
   const createWorkspace = (workspace) => dispatch({ type: 'ADD_WORKSPACE', workspace });
   const selectWorkspace = (id) => dispatch({ type: 'SET_ACTIVE', id });
@@ -320,6 +357,7 @@ export default function Canvas() {
     setSelectedNodeIds([]);
     setSelectionArmed(false);
     setNodePicker(null);
+    setSelectionMenu(null);
   }, [state.activeId]);
 
   useEffect(() => {
@@ -476,6 +514,15 @@ export default function Canvas() {
         onPickerClose={closeNodePicker}
         onPickerSelect={pickNodeType}
         mathResults={mathResults}
+        onSelectionMenu={handleSelectionMenu}
+      />
+      <SelectionOpMenu
+        open={!!selectionMenu}
+        x={selectionMenu?.clientX ?? 0}
+        y={selectionMenu?.clientY ?? 0}
+        ops={selectionMenu?.ops || []}
+        onClose={closeSelectionMenu}
+        onPick={pickSelectionOp}
       />
 
       <Toolbar

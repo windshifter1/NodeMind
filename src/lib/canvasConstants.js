@@ -1,5 +1,5 @@
 import { autoOrganiseGraph } from './layout/index.js';
-import { MATH_NODE_BODY_HEIGHT, NUMBER_NODE_BODY_HEIGHT, isMathNode, isNumberNode, normalizeNodeKind } from './nodeTypes.js';
+import { MATH_NODE_BODY_HEIGHT, NUMBER_NODE_BODY_HEIGHT, displayNodeTitle, isMathNode, isNumberNode, normalizeNodeKind } from './nodeTypes.js';
 
 export const NODE_WIDTH = 180; // default (empty title) width
 export const TOP_BAR_HEIGHT = 44;
@@ -85,7 +85,7 @@ export function normalizeLayoutSettings(settings = {}) {
 }
 
 export function nodeWidthForTitle(title) {
-  const t = title && title.length ? title : 'Untitled';
+  const t = title && title.length ? title : displayNodeTitle('note');
   return Math.max(180, Math.min(460, t.length * 7.5 + 96));
 }
 

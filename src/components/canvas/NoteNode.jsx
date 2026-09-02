@@ -2,7 +2,7 @@ import React, { useRef, useEffect, useState } from 'react';
 import { ChevronDown, ChevronUp, Pencil, Pin, X } from 'lucide-react';
 import { nodeWidthForTitle, TOP_BAR_HEIGHT, SOCKET_RADIUS } from '@/lib/canvasConstants';
 import { emitTutorial } from '@/lib/tutorialEvents';
-import { isMathNode } from '@/lib/nodeTypes';
+import { displayNodeTitle, isMathNode } from '@/lib/nodeTypes';
 import MathNodeBody from './MathNodeBody';
 
 const DOUBLE_TAP_MS = 450;
@@ -101,7 +101,7 @@ export default function NoteNode({
   const titleInputRef = useRef(null);
   const lastTitleTapRef = useRef(0);
   const [editingTitle, setEditingTitle] = useState(false);
-  const [titleDraft, setTitleDraft] = useState(node.title || '');
+  const [titleDraft, setTitleDraft] = useState(() => displayNodeTitle(node));
 
   const autoResize = () => {
     const ta = textareaRef.current;
@@ -114,8 +114,8 @@ export default function NoteNode({
   useEffect(autoResize, [node.content, node.collapsed]);
 
   useEffect(() => {
-    if (!editingTitle) setTitleDraft(node.title || '');
-  }, [node.title, editingTitle]);
+    if (!editingTitle) setTitleDraft(displayNodeTitle(node));
+  }, [node.title, node.kind, editingTitle]);
 
   useEffect(() => {
     if (!editingTitle) return undefined;
@@ -127,7 +127,7 @@ export default function NoteNode({
   }, [editingTitle]);
 
   const cancelTitleEdit = () => {
-    setTitleDraft(node.title || '');
+    setTitleDraft(displayNodeTitle(node));
     setEditingTitle(false);
   };
 
@@ -135,14 +135,14 @@ export default function NoteNode({
     if (!editingTitle) return;
     const next = titleDraft.trim();
     setEditingTitle(false);
-    if (next !== (node.title || '')) onUpdate({ title: next });
+    if (next !== (node.title || '').trim()) onUpdate({ title: next });
     emitTutorial('node.rename');
   };
 
   const beginTitleEdit = () => {
     lastTitleTapRef.current = 0;
     onCancelNodeDrag?.();
-    setTitleDraft(node.title || '');
+    setTitleDraft(displayNodeTitle(node));
     setEditingTitle(true);
   };
 
@@ -180,7 +180,10 @@ export default function NoteNode({
       style={{
         left: node.x,
         top: node.y,
-        width: nodeWidthForTitle(editingTitle ? titleDraft : node.title),
+        width: Math.max(
+          nodeWidthForTitle(editingTitle ? titleDraft : displayNodeTitle(node)),
+          isMathNode(node) ? 260 : 0
+        ),
         zIndex: node.z,
         borderWidth: selected ? 3 : 2,
         borderStyle: 'solid',
@@ -250,7 +253,7 @@ export default function NoteNode({
                 }
               }}
               onPointerDown={(e) => e.stopPropagation()}
-              placeholder="Untitled"
+              placeholder={displayNodeTitle(node)}
               className={`relative z-[21] flex-1 min-w-0 rounded border bg-white/90 px-1.5 py-0.5 text-sm font-medium outline-none dark:bg-black/20 ${darkNodes ? 'text-zinc-100 placeholder:text-zinc-500' : 'text-slate-800 placeholder:text-slate-400'}`}
               style={{ fontSize: 14, borderColor: node.color }}
             />
@@ -275,7 +278,7 @@ export default function NoteNode({
             onPointerDown={handleTitlePointerDown}
             onDoubleClick={handleTitleDoubleClick}
           >
-            {node.title || 'Untitled'}
+            {displayNodeTitle(node)}
           </span>
         )}
 
@@ -303,7 +306,13 @@ export default function NoteNode({
       </div>
 
       {!node.collapsed && isMathNode(node) && (
-        <MathNodeBody node={node} darkNodes={darkNodes} result={mathResult} onUpdate={onUpdate} />
+        <MathNodeBody
+          node={node}
+          darkNodes={darkNodes}
+          result={mathResult}
+          onUpdate={onUpdate}
+          applicableModes={mathResult?.applicableModes}
+        />
       )}
 
       {!node.collapsed && !isMathNode(node) && (

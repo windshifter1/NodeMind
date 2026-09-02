@@ -395,4 +395,156 @@ export function astFromNumber(value) {
   return parseExpression(text);
 }
 
-export { printflat, printlatex, deepCopy, simplifyAst };
+function treeHas(node, pred) {
+  if (pred(node)) return true;
+  if (!Array.isArray(node)) return false;
+  for (let i = 1; i < node.length; i++) {
+    if (treeHas(node[i], pred)) return true;
+  }
+  return false;
+}
+
+function checkMethod(eq, method, node) {
+  const fn = eq[method];
+  if (typeof fn !== 'function') return false;
+  try {
+    const before = deepCopy(eq.equation);
+    const result = fn.call(eq, node, true);
+    eq.equation = before;
+    if (typeof result === 'boolean') return result;
+    if (Array.isArray(result)) return result.length > 0;
+    if (result === false) return false;
+    if (result == null) return false;
+    return true;
+  } catch {
+    try {
+      eq.equation = deepCopy(eq.equation);
+    } catch {
+      /* ignore */
+    }
+    return false;
+  }
+}
+
+function structuralModeCheck(eq, kind, mode, node) {
+  if (kind === 'expand' && mode === 'fraction') {
+    return Array.isArray(node) && node[0] === '/' && Array.isArray(node[1]) && node[1][0] === '+';
+  }
+  if (kind === 'factor' && mode === 'polynomial') {
+    return Array.isArray(node) && node[0] === '+' && typeof eq.factorpolynomialcheckif === 'function' && eq.factorpolynomialcheckif(node);
+  }
+  if (kind === 'powers' && mode === 'negative') return true;
+  if (kind === 'multByOne') {
+    if (mode === 'conjugate') {
+      return Array.isArray(node) && node[0] === '/' && eq.countcond(node, (p, i) => p[i] === 'i') > 0;
+    }
+    if (mode === 'fracOverFrac') return checkMethod(eq, 'mult1fracoverfrac', node);
+    if (mode === 'e2piik' || mode === 'negi2') return true;
+    if (mode === 'powpow') return checkMethod(eq, 'mult1powpow', node);
+  }
+  if (kind === 'evaluate' && mode === 'decimal') {
+    return treeHas(node, (n) => n === 'e' || n === 'π' || (typeof n === 'string' && n !== '' && !Number.isNaN(Number(n))));
+  }
+  if (kind === 'convert') {
+    if (mode === 'factors') {
+      if (typeof node === 'string') {
+        const num = Number(node);
+        return !Number.isNaN(num) && num % 1 === 0 && num >= 4;
+      }
+      return findIntegerFactorIndex(node) != null;
+    }
+    if (mode === 'fraction') return findDecimalIndex(node) != null;
+    if (mode === 'decimal') {
+      if (!Array.isArray(node) || node[0] !== '/') return false;
+      const numeric = (part) =>
+        typeof part === 'string' && part !== '' && !Number.isNaN(Number(part));
+      return numeric(node[1]) && numeric(node[2]);
+    }
+  }
+  if (kind === 'complex') {
+    if (mode === 'simplifyI') {
+      return treeHas(node, (n) => Array.isArray(n) && n[0] === '^' && n[1] === 'i');
+    }
+    if (mode === 'conj') return treeHas(node, (n) => Array.isArray(n) && n[0] === 'conj') || treeHas(node, (n) => n === 'i');
+    if (mode === 'polarToCart' || mode === 'cartToPolar') return treeHas(node, (n) => n === 'i');
+  }
+  if (kind === 'collect') {
+    return Array.isArray(node) && node[0] === '+';
+  }
+  if (kind === 'solve') {
+    return Array.isArray(node) && node[0] === '=';
+  }
+  if (kind === 'applyBoth' || kind === 'substitute') return true;
+  return null;
+}
+
+/** Whether a rewrite kind/mode can apply to this AST (whole expression selected). */
+export function isOpApplicable(ast, kind, mode) {
+  if (ast === '' || ast == null) return false;
+  if (kind === 'number' || kind === 'expression' || kind === 'note') return false;
+
+  const structural = structuralModeCheck(createHeadlessEquation(cloneAst(ast)), kind, mode, ast);
+  if (structural === true) return true;
+  if (structural === false) return false;
+
+  const entry = OP_DISPATCH[kind];
+  if (!entry) return kind === 'applyBoth' || kind === 'substitute' || kind === 'solve' || kind === 'collect';
+
+  const spec = entry.method ? entry : entry[mode];
+  if (!spec?.method) {
+    return kind === 'applyBoth' || kind === 'substitute' || kind === 'solve' || kind === 'collect';
+  }
+
+  const eq = createHeadlessEquation(cloneAst(ast));
+  const checked = checkMethod(eq, spec.method, eq.equation);
+  if (checked) return true;
+
+  // Methods without a reliable check mode: keep common always-useful ops visible.
+  if (kind === 'applyBoth' || kind === 'substitute') return true;
+  if (kind === 'solve') return Array.isArray(ast) && ast[0] === '=';
+  if (kind === 'collect') return Array.isArray(ast) && ast[0] === '+';
+  if (kind === 'trigIdentity' || kind === 'logRewrite' || kind === 'expRewrite' || kind === 'complex') {
+    return false;
+  }
+  return false;
+}
+
+/**
+ * List Math kinds/modes applicable to an AST (for the filtered add-node picker).
+ * Returns { kinds: string[], modesByKind: Record<string, string[]> }.
+ */
+export function listApplicableOps(ast) {
+  const kinds = [];
+  const modesByKind = {};
+  if (ast === '' || ast == null) {
+    return { kinds, modesByKind };
+  }
+
+  const always = ['applyBoth', 'substitute'];
+  always.forEach((kind) => {
+    kinds.push(kind);
+  });
+
+  Object.keys(OP_DISPATCH).forEach((kind) => {
+    const entry = OP_DISPATCH[kind];
+    if (entry.method) {
+      if (isOpApplicable(ast, kind, null)) {
+        if (!kinds.includes(kind)) kinds.push(kind);
+      }
+      return;
+    }
+    const modes = Object.keys(entry).filter((mode) => isOpApplicable(ast, kind, mode));
+    if (modes.length) {
+      if (!kinds.includes(kind)) kinds.push(kind);
+      modesByKind[kind] = modes;
+    }
+  });
+
+  ['collect', 'solve'].forEach((kind) => {
+    if (isOpApplicable(ast, kind, null) && !kinds.includes(kind)) kinds.push(kind);
+  });
+
+  return { kinds, modesByKind };
+}
+
+export { printflat, printlatex, deepCopy, simplifyAst, OP_DISPATCH };

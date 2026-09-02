@@ -21,8 +21,9 @@ import {
   workspaceNodesBounds,
   zoomToFrameBounds,
 } from '@/lib/canvasConstants';
-import { fieldsForKind } from '@/lib/nodeTypes';
+import { fieldsForKind, isMathNode } from '@/lib/nodeTypes';
 import { evaluateMathGraph } from '@/lib/cas/evalGraph';
+import { listApplicableOps } from '@/lib/cas/engine';
 import { shouldStartOnboarding } from '@/lib/onboarding';
 import { emitTutorial } from '@/lib/tutorialEvents';
 import { applyDocumentTheme, persistTheme, readStoredTheme } from '@/lib/theme';
@@ -150,6 +151,11 @@ export default function Canvas() {
     setTerminalOpen(false);
   }, []);
 
+  const mathResults = useMemo(
+    () => evaluateMathGraph(active.nodes, active.edges),
+    [active.nodes, active.edges]
+  );
+
   const closeNodePicker = useCallback(() => setNodePicker(null), []);
 
   const openNodePicker = useCallback((request) => {
@@ -159,7 +165,8 @@ export default function Canvas() {
   const pickNodeType = useCallback(
     (kind) => {
       if (!nodePicker) return;
-      const { source, x, y, fromNode, fromType, worldX, worldY } = nodePicker;
+      const { source, x, y, fromNode, fromType, worldX, worldY, preferredModes } = nodePicker;
+      const preferredMode = preferredModes?.[kind]?.[0];
       if (source === 'connected') {
         const dropX = Number.isFinite(worldX) ? worldX : x;
         const dropY = Number.isFinite(worldY) ? worldY : y;
@@ -167,12 +174,20 @@ export default function Canvas() {
           { x: dropX, y: dropY },
           fromType,
           active.orientation,
-          { ...fieldsForKind(kind), title: '' }
+          fieldsForKind(kind)
         );
-        dispatch({ type: 'ADD_CONNECTED_NODE', x: pos.x, y: pos.y, fromNode, fromType, kind });
+        dispatch({
+          type: 'ADD_CONNECTED_NODE',
+          x: pos.x,
+          y: pos.y,
+          fromNode,
+          fromType,
+          kind,
+          mode: preferredMode,
+        });
         emitTutorial('canvas.node.create-connected');
       } else {
-        dispatch({ type: 'ADD_NODE', x, y, kind });
+        dispatch({ type: 'ADD_NODE', x, y, kind, mode: preferredMode });
         emitTutorial(source === 'toolbar' ? 'toolbar.node.create' : 'canvas.node.create-click');
       }
       setNodePicker(null);
@@ -201,7 +216,32 @@ export default function Canvas() {
     dispatch({ type: 'ADD_EDGE', fromNode, fromType, toNode, toType });
   const deleteEdge = (id) => dispatch({ type: 'DELETE_EDGE', id });
   const bringToFront = (id) => dispatch({ type: 'BRING_TO_FRONT', id });
-  const addConnectedNode = (x, y, fromNode, fromType, anchor) =>
+  const addConnectedNode = (x, y, fromNode, fromType, anchor) => {
+    const from = active.nodes.find((node) => node.id === fromNode);
+    const fromMath = from && isMathNode(from);
+    const sourceResult = fromMath ? mathResults.get(fromNode) : null;
+    const sourceAst = sourceResult && !sourceResult.error ? sourceResult.ast : null;
+    let allowedMathKinds = null;
+    let preferredModes = null;
+    let initialCategory = 'text';
+    let hideValueSources = false;
+    let valuesOnly = false;
+
+    if (fromMath && fromType === 'output') {
+      initialCategory = 'math';
+      hideValueSources = true;
+      if (sourceAst != null && sourceAst !== '') {
+        const listed = listApplicableOps(sourceAst);
+        allowedMathKinds = listed.kinds;
+        preferredModes = listed.modesByKind;
+      } else {
+        allowedMathKinds = [];
+      }
+    } else if (fromMath && fromType === 'input') {
+      initialCategory = 'math';
+      valuesOnly = true;
+    }
+
     openNodePicker({
       source: 'connected',
       x,
@@ -212,7 +252,13 @@ export default function Canvas() {
       worldY: anchor?.worldY,
       clientX: anchor?.clientX ?? window.innerWidth / 2,
       clientY: anchor?.clientY ?? window.innerHeight / 2,
+      allowedMathKinds,
+      preferredModes,
+      initialCategory,
+      hideValueSources,
+      valuesOnly,
     });
+  };
 
   const createWorkspace = (workspace) => dispatch({ type: 'ADD_WORKSPACE', workspace });
   const selectWorkspace = (id) => dispatch({ type: 'SET_ACTIVE', id });
@@ -387,11 +433,6 @@ export default function Canvas() {
       fitZoom
     );
   }, [active.nodes, animateCamera]);
-
-  const mathResults = useMemo(
-    () => evaluateMathGraph(active.nodes, active.edges),
-    [active.nodes, active.edges]
-  );
 
   const editingNode = active.nodes.find((n) => n.id === editingNodeId) || null;
 

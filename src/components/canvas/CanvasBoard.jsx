@@ -1310,6 +1310,10 @@ export default function CanvasBoard({
           y={nodePicker?.worldY ?? 0}
           onClose={onPickerClose}
           onSelect={onPickerSelect}
+          allowedMathKinds={nodePicker?.allowedMathKinds ?? null}
+          initialCategory={nodePicker?.initialCategory ?? 'text'}
+          hideValueSources={!!nodePicker?.hideValueSources}
+          valuesOnly={!!nodePicker?.valuesOnly}
         />
       </div>
 

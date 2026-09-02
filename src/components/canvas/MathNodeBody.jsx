@@ -1,5 +1,6 @@
 import React from 'react';
 import { defForKind, fieldVisibleForNode, isNumberNode, NODE_KIND } from '@/lib/nodeTypes';
+import MathPreview from './MathPreview';
 
 function inputClass(darkNodes, color) {
   return {
@@ -12,13 +13,25 @@ function inputClass(darkNodes, color) {
   };
 }
 
-export default function MathNodeBody({ node, darkNodes, result, onUpdate }) {
+export default function MathNodeBody({ node, darkNodes, result, onUpdate, applicableModes = null }) {
   const def = defForKind(node.kind);
   const fieldLooks = inputClass(darkNodes, node.color);
-  const preview = result?.flat || '';
-  const emptyHint = !preview && (result?.error === 'Empty number' || result?.error === 'Empty expression' || result?.error === 'Connect a Math node' || !result);
+  const emptyHint =
+    !result?.flat &&
+    (result?.error === 'Empty number' ||
+      result?.error === 'Empty expression' ||
+      result?.error === 'Connect a Math node' ||
+      !result);
   const isError = Boolean(result?.error) && !emptyHint;
   const showField = fieldVisibleForNode(def, node);
+
+  const modes = (() => {
+    if (!def?.modes?.length) return [];
+    if (!applicableModes?.length) return def.modes;
+    const allowed = new Set(applicableModes);
+    const filtered = def.modes.filter((mode) => allowed.has(mode.id));
+    return filtered.length ? filtered : def.modes;
+  })();
 
   return (
     <div className="px-3 pt-2 pb-3" onPointerDown={(e) => e.stopPropagation()}>
@@ -44,14 +57,14 @@ export default function MathNodeBody({ node, darkNodes, result, onUpdate }) {
         />
       )}
 
-      {def?.modes?.length > 0 && (
+      {modes.length > 0 && (
         <select
-          value={node.mode || def.modes[0].id}
+          value={modes.some((mode) => mode.id === node.mode) ? node.mode : modes[0].id}
           onChange={(e) => onUpdate({ mode: e.target.value })}
           className={`${fieldLooks.className} ${node.kind === NODE_KIND.EXPRESSION || isNumberNode(node) ? 'mt-2' : ''}`}
           style={fieldLooks.style}
         >
-          {def.modes.map((mode) => (
+          {modes.map((mode) => (
             <option key={mode.id} value={mode.id}>
               {mode.label}
             </option>
@@ -70,13 +83,12 @@ export default function MathNodeBody({ node, darkNodes, result, onUpdate }) {
         />
       )}
 
-      <div
-        className={`mt-2 min-h-[2.25rem] break-all text-center font-semibold tracking-tight ${
-          isError ? 'text-sm text-rose-400' : 'text-2xl tabular-nums text-gray-500'
-        }`}
-      >
-        {isError ? result.error : preview || '\u00a0'}
-      </div>
+      <MathPreview
+        latex={result?.latex}
+        flat={result?.flat}
+        error={isError ? result.error : null}
+        empty={emptyHint || (!result?.flat && !result?.latex)}
+      />
     </div>
   );
 }

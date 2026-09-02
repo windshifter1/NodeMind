@@ -1,5 +1,5 @@
 import { isMathNode, isNumberNode, NODE_KIND } from '@/lib/nodeTypes';
-import { applyRewrite, astFromNumber, parseExpression } from './engine.js';
+import { applyRewrite, astFromNumber, listApplicableOps, parseExpression } from './engine.js';
 
 function edgeDirection(edge) {
   return edge.fromType === 'output'
@@ -8,7 +8,7 @@ function edgeDirection(edge) {
 }
 
 function emptyResult(error = null) {
-  return { ast: '', flat: '', latex: '', error };
+  return { ast: '', flat: '', latex: '', error, inputAst: null, applicableModes: null };
 }
 
 export function evaluateMathGraph(nodes = [], edges = []) {
@@ -49,12 +49,12 @@ export function evaluateMathGraph(nodes = [], edges = []) {
     const inbound = sources.map((src) => results.get(src)).find((item) => item && !item.error && item.ast !== '' && item.ast != null);
 
     if (isNumberNode(node)) {
-      results.set(id, astFromNumber(node.value));
+      results.set(id, { ...astFromNumber(node.value), inputAst: null, applicableModes: null });
       return;
     }
 
     if (node.kind === NODE_KIND.EXPRESSION) {
-      results.set(id, parseExpression(node.expr));
+      results.set(id, { ...parseExpression(node.expr), inputAst: null, applicableModes: null });
       return;
     }
 
@@ -63,7 +63,13 @@ export function evaluateMathGraph(nodes = [], edges = []) {
       return;
     }
 
-    results.set(id, applyRewrite(inbound.ast, node.kind, node.mode, node.field));
+    const applied = applyRewrite(inbound.ast, node.kind, node.mode, node.field);
+    const { modesByKind } = listApplicableOps(inbound.ast);
+    results.set(id, {
+      ...applied,
+      inputAst: inbound.ast,
+      applicableModes: modesByKind[node.kind] || null,
+    });
   });
 
   return results;

@@ -45,7 +45,7 @@ export const MATH_GROUPS = [
 ];
 
 export const NODE_TYPE_DEFS = [
-  { id: NODE_KIND.NOTE, category: 'text', label: 'Note' },
+  { id: NODE_KIND.NOTE, category: 'text', label: 'Text' },
   {
     id: NODE_KIND.NUMBER,
     category: 'math',
@@ -336,7 +336,7 @@ export function mathTypesByGroup() {
 export function fieldsForKind(kind) {
   const normalised = normalizeNodeKind(kind);
   const def = defForKind(normalised);
-  const fields = { kind: normalised, title: '', content: '' };
+  const fields = { kind: normalised, title: def?.label || 'Text', content: '' };
   if (normalised === NODE_KIND.NUMBER) fields.value = '';
   if (normalised === NODE_KIND.EXPRESSION) fields.expr = '';
   if (def?.modes?.length) fields.mode = def.modes[0].id;
@@ -346,7 +346,18 @@ export function fieldsForKind(kind) {
 
 export function nodeTypeLabel(kind) {
   const def = defForKind(normalizeNodeKind(kind));
-  return def ? def.label : 'Note';
+  return def ? def.label : 'Text';
+}
+
+/** Display title: stored title, else type name (never a blank “Untitled”). */
+export function displayNodeTitle(nodeOrKind, title) {
+  const stored =
+    typeof nodeOrKind === 'object' && nodeOrKind
+      ? (nodeOrKind.title || '').trim()
+      : (title || '').trim();
+  if (stored && stored.toLowerCase() !== 'untitled') return stored;
+  const kind = typeof nodeOrKind === 'object' ? nodeOrKind?.kind : nodeOrKind;
+  return nodeTypeLabel(kind);
 }
 
 export function isNumberNode(nodeOrKind) {

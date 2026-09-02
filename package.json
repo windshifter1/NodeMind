@@ -18,6 +18,7 @@
     "prepare": "node scripts/install-hooks.mjs"
   },
   "dependencies": {
+    "katex": "^0.18.5",
     "lucide-react": "^0.475.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"

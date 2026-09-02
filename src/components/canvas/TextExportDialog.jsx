@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Copy, X, ListTree, AlignLeft } from 'lucide-react';
-import { isMathNode, isNumberNode } from '@/lib/nodeTypes';
+import { displayNodeTitle, isMathNode, isNumberNode } from '@/lib/nodeTypes';
 
 export default function TextExportDialog({ open, onClose, workspaceName, nodes, edges }) {
   const [expanded, setExpanded] = useState(false);
@@ -10,7 +10,7 @@ export default function TextExportDialog({ open, onClose, workspaceName, nodes, 
     if (!open) return '';
     const titleOf = (id) => {
       const n = nodes.find((n) => n.id === id);
-      return n && n.title && n.title.trim() ? n.title.trim() : 'Untitled';
+      return n ? displayNodeTitle(n) : displayNodeTitle('note');
     };
     const dir = (e) =>
       e.fromType === 'output'
@@ -25,7 +25,7 @@ export default function TextExportDialog({ open, onClose, workspaceName, nodes, 
       return lines.join('\n');
     }
     nodes.forEach((n, i) => {
-      const t = n.title && n.title.trim() ? n.title.trim() : 'Untitled';
+      const t = displayNodeTitle(n);
       const out = edges.filter((e) => dir(e).src === n.id).map((e) => titleOf(dir(e).dst));
       const inc = edges.filter((e) => dir(e).dst === n.id).map((e) => titleOf(dir(e).src));
       lines.push(`${i + 1}. ${t}`);

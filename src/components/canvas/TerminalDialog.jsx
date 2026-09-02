@@ -14,7 +14,7 @@ import {
 } from '@/lib/appVersion';
 import { isDesktopPlatform } from '@/lib/onboarding';
 import { normalizeTerminal } from '@/hooks/useWorkspaces';
-import { fieldsForKind, isMathNode, isNumberNode, nodeTypeLabel } from '@/lib/nodeTypes';
+import { displayNodeTitle, fieldsForKind, isMathNode, isNumberNode, nodeTypeLabel } from '@/lib/nodeTypes';
 import { COMMAND_NAMES, HELP_ALL, helpFor } from '@/lib/terminal/help';
 import { commandMatchesStep, getTerminalTutorialSteps } from '@/lib/terminal/tutorial';
 import TerminalTutorial from './TerminalTutorial';
@@ -59,8 +59,9 @@ function quoteAwareSplit(input) {
   return out;
 }
 
-function normaliseTitle(value) {
-  return (value || '').trim() || 'Untitled';
+function normaliseTitle(nodeOrTitle) {
+  if (typeof nodeOrTitle === 'object' && nodeOrTitle) return displayNodeTitle(nodeOrTitle);
+  return displayNodeTitle('note', nodeOrTitle);
 }
 
 function displayId(_nodes, id) {
@@ -79,7 +80,7 @@ function matchNodeId(nodes, token) {
   }
   const exact = nodes.find((node) => node.id === token);
   if (exact) return exact.id;
-  const titled = nodes.find((node) => normaliseTitle(node.title).toLowerCase() === token.toLowerCase());
+  const titled = nodes.find((node) => normaliseTitle(node).toLowerCase() === token.toLowerCase());
   return titled ? titled.id : null;
 }
 
@@ -110,7 +111,7 @@ function nodePath(nodes, nodeId) {
   const seen = new Set();
   while (cur && !seen.has(cur.id)) {
     seen.add(cur.id);
-    parts.unshift(normaliseTitle(cur.title));
+    parts.unshift(normaliseTitle(cur));
     cur = byId.get(cur.parentId);
   }
   return parts;
@@ -129,7 +130,7 @@ function resolvePath(nodes, cwdId, rawPath) {
       continue;
     }
     const next = childrenOf(nodes, current).find(
-      (node) => normaliseTitle(node.title).toLowerCase() === part.toLowerCase()
+      (node) => normaliseTitle(node).toLowerCase() === part.toLowerCase()
     );
     if (!next) return undefined;
     current = next.id;
@@ -175,7 +176,7 @@ function commandKey(token) {
 function formatNode(nodes, node) {
   const id = displayId(nodes, node.id);
   const lines = [
-    `Title: ${normaliseTitle(node.title)}`,
+    `Title: ${normaliseTitle(node)}`,
     `ID: ${id}`,
     `Type: ${nodeTypeLabel(node.kind)}`,
     `Path: \\${nodePath(nodes, node.id).join('\\')}`,
@@ -632,7 +633,7 @@ export default function TerminalDialog({
       }
       case 'dir': {
         const kids = childrenOf(nodes, cwdId);
-        write(kids.length ? kids.map((node) => `${displayId(nodes, node.id)} ${normaliseTitle(node.title)}`) : '(no child nodes)');
+        write(kids.length ? kids.map((node) => `${displayId(nodes, node.id)} ${normaliseTitle(node)}`) : '(no child nodes)');
         break;
       }
       case 'cd':
@@ -650,7 +651,7 @@ export default function TerminalDialog({
           write(nodes.length ? nodes.flatMap((node) => [...formatNode(nodes, node), '']) : 'No nodes.');
         } else if (flag === '/title') {
           const query = args.slice(1).join(' ').toLowerCase();
-          const matches = nodes.filter((node) => normaliseTitle(node.title).toLowerCase().includes(query));
+          const matches = nodes.filter((node) => normaliseTitle(node).toLowerCase().includes(query));
           write(matches.length ? matches.flatMap((node) => [...formatNode(nodes, node), '']) : 'No matches.');
         } else if (flag === '/id') {
           const id = matchNodeId(nodes, args[1]);
@@ -667,13 +668,13 @@ export default function TerminalDialog({
         const flag = args[0]?.startsWith('/') ? args[0].toLowerCase() : null;
         const query = (flag ? args.slice(1) : args).join(' ').toLowerCase();
         const matches = nodes.filter((node) => {
-          if (flag === '/title') return normaliseTitle(node.title).toLowerCase().includes(query);
+          if (flag === '/title') return normaliseTitle(node).toLowerCase().includes(query);
           if (flag === '/desc' || flag === '/description') return (node.content || '').toLowerCase().includes(query);
           if (flag === '/id') return node.id.includes(query) || displayId(nodes, node.id) === query;
           if (flag === '/date') return matchesDateQuery(node, query);
           return `${node.title || ''} ${node.content || ''} ${node.id}`.toLowerCase().includes(query);
         });
-        write(matches.length ? matches.map((node) => `${displayId(nodes, node.id)} ${normaliseTitle(node.title)}`) : 'No matches.');
+        write(matches.length ? matches.map((node) => `${displayId(nodes, node.id)} ${normaliseTitle(node)}`) : 'No matches.');
         break;
       }
       case 'title':
@@ -733,7 +734,7 @@ export default function TerminalDialog({
           handled = false;
           break;
         }
-        const title = unquote(rest) || 'Untitled';
+        const title = unquote(rest) || nodeTypeLabel('note');
         const pos = nextChildGraphPosition(nodes, cwdId, title, graphOrientation);
         const now = new Date().toISOString();
         const node = {
@@ -853,8 +854,8 @@ export default function TerminalDialog({
         }
         const outgoing = workspace.edges.filter((edge) => edge.fromNode === current.id).map((edge) => nodes.find((n) => n.id === edge.toNode));
         const incoming = workspace.edges.filter((edge) => edge.toNode === current.id).map((edge) => nodes.find((n) => n.id === edge.fromNode));
-        const outgoingLines = outgoing.filter(Boolean).map((node) => `  ${displayId(nodes, node.id)} ${normaliseTitle(node.title)}`);
-        const incomingLines = incoming.filter(Boolean).map((node) => `  ${displayId(nodes, node.id)} ${normaliseTitle(node.title)}`);
+        const outgoingLines = outgoing.filter(Boolean).map((node) => `  ${displayId(nodes, node.id)} ${normaliseTitle(node)}`);
+        const incomingLines = incoming.filter(Boolean).map((node) => `  ${displayId(nodes, node.id)} ${normaliseTitle(node)}`);
         write([
           'Outgoing:',
           ...(outgoingLines.length ? outgoingLines : ['  (none)']),

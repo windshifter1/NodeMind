@@ -24,7 +24,13 @@ import {
   workspaceNodesBounds,
   zoomToFrameBounds,
 } from '@/lib/canvasConstants';
-import { fieldsForKind, isMathNode, isSelectionOpNode, NODE_KIND } from '@/lib/nodeTypes';
+import {
+  allowsMultipleInputs,
+  fieldsForKind,
+  isMathNode,
+  isSelectionOpNode,
+  NODE_KIND,
+} from '@/lib/nodeTypes';
 import { evaluateMathGraph } from '@/lib/cas/evalGraph';
 import { connectionInputTarget, hasInboundEdge } from '@/lib/graphEdges';
 import { shouldStartOnboarding } from '@/lib/onboarding';
@@ -32,7 +38,7 @@ import { readMathsCreditSeen, setMathsCreditSeen } from '@/lib/mathsCredit';
 import { emitTutorial } from '@/lib/tutorialEvents';
 import { applyDocumentTheme, persistTheme, readStoredTheme } from '@/lib/theme';
 
-const MATH_SINGLE_INPUT_MESSAGE = 'Math nodes accept only one input';
+const MATH_SINGLE_INPUT_MESSAGE = 'This node accepts only one input';
 
 function isCreditOpNode(node) {
   return node?.kind === NODE_KIND.MANIPULATION || node?.kind === NODE_KIND.EQUATION_OP;
@@ -67,7 +73,7 @@ export default function Canvas() {
     persistTheme(nodeTheme);
   }, [nodeTheme]);
 
-  // One-time credit popup after the first Manipulation / Equation operation node is added.
+  // One-time credit popup after the first Manipulation / Solve node is added.
   // Scan every workspace so switching boards (or loading existing graphs) never retriggers it.
   useEffect(() => {
     const hasOp = (state.workspaces || []).some((ws) => (ws.nodes || []).some(isCreditOpNode));
@@ -107,7 +113,11 @@ export default function Canvas() {
   const mathInputBlockedIds = useMemo(() => {
     const blocked = new Set();
     (active.nodes || []).forEach((node) => {
-      if (isMathNode(node) && hasInboundEdge(active.edges, node.id)) {
+      if (
+        isMathNode(node) &&
+        !allowsMultipleInputs(node) &&
+        hasInboundEdge(active.edges, node.id)
+      ) {
         blocked.add(node.id);
       }
     });
@@ -307,7 +317,12 @@ export default function Canvas() {
     const targetNode = inputTarget
       ? active.nodes.find((node) => node.id === inputTarget)
       : null;
-    if (targetNode && isMathNode(targetNode) && hasInboundEdge(active.edges, inputTarget)) {
+    if (
+      targetNode &&
+      isMathNode(targetNode) &&
+      !allowsMultipleInputs(targetNode) &&
+      hasInboundEdge(active.edges, inputTarget)
+    ) {
       showSocketHint(inputTarget);
       return;
     }
@@ -318,7 +333,12 @@ export default function Canvas() {
   const addConnectedNode = (x, y, fromNode, fromType, anchor) => {
     const from = active.nodes.find((node) => node.id === fromNode);
     const fromMath = from && isMathNode(from);
-    if (fromMath && fromType === 'input' && hasInboundEdge(active.edges, fromNode)) {
+    if (
+      fromMath &&
+      fromType === 'input' &&
+      !allowsMultipleInputs(from) &&
+      hasInboundEdge(active.edges, fromNode)
+    ) {
       showSocketHint(fromNode);
       return;
     }
@@ -386,7 +406,7 @@ export default function Canvas() {
       delete extra.fieldPlaceholder;
       const isEquation = op.method === 'solveui';
       const kind = isEquation ? NODE_KIND.EQUATION_OP : NODE_KIND.MANIPULATION;
-      const title = isEquation ? 'Equation operation' : 'Manipulation';
+      const title = isEquation ? 'Solve' : 'Manipulation';
       const opId = op.id || `${op.method}:${op.label}`;
       const pos = connectedNodePositionAvoidingOverlap(
         active.nodes,

@@ -92,6 +92,67 @@ export function parseExpression(text) {
   }
 }
 
+/** Expression node: any parseable math text except an equals sign. */
+export function parseExpressionNode(text) {
+  const raw = String(text ?? '');
+  if (!raw.replace(/\s+/g, '')) {
+    return { ast: '', errors: '', applyOp: '', flat: '', latex: '', error: 'Empty expression' };
+  }
+  if (raw.includes('=')) {
+    return {
+      ast: '',
+      errors: '',
+      applyOp: '',
+      flat: '',
+      latex: '',
+      error: 'Expression cannot contain =',
+    };
+  }
+  return parseExpression(raw);
+}
+
+/** Equation node: parseable math text that must include `=`. */
+export function parseEquationNode(text) {
+  const raw = String(text ?? '');
+  if (!raw.replace(/\s+/g, '')) {
+    return { ast: '', errors: '', applyOp: '', flat: '', latex: '', error: 'Empty equation' };
+  }
+  if (!raw.includes('=')) {
+    return {
+      ast: '',
+      errors: '',
+      applyOp: '',
+      flat: '',
+      latex: '',
+      error: 'Equation must contain =',
+    };
+  }
+  return parseExpression(raw);
+}
+
+const BASIC_OP_SYMBOLS = new Set(['+', '-', '*', '/']);
+
+/** Left-fold ASTs with + − × ÷: ((a⊕b)⊕c)… */
+export function combineBasicOperation(asts, mode = '+') {
+  const op = BASIC_OP_SYMBOLS.has(mode) ? mode : '+';
+  const parts = (asts || []).filter((ast) => ast !== '' && ast != null);
+  if (!parts.length) {
+    return { ast: '', flat: '', latex: '', error: 'Not enough inputs' };
+  }
+  if (parts.length === 1) {
+    return { ...formatResult(cloneAst(parts[0])), error: 'Not enough inputs' };
+  }
+  try {
+    let acc = cloneAst(parts[0]);
+    for (let i = 1; i < parts.length; i++) {
+      acc = [op, acc, cloneAst(parts[i])];
+    }
+    return formatResult(simplifyAst(acc));
+  } catch (err) {
+    return { ast: '', flat: '', latex: '', error: err?.message || String(err) };
+  }
+}
+
 function parseField(text) {
   const parsed = parseExpression(text);
   if (parsed.error) return parsed;
@@ -390,9 +451,7 @@ export function applyRewrite(ast, kind, mode, field) {
 }
 
 export function astFromNumber(value) {
-  const text = String(value ?? '').trim();
-  if (!text) return { ast: '', flat: '', latex: '', error: 'Empty number' };
-  return parseExpression(text);
+  return parseExpressionNode(value);
 }
 
 function treeHas(node, pred) {
@@ -481,7 +540,15 @@ function structuralModeCheck(eq, kind, mode, node) {
 /** Whether a rewrite kind/mode can apply to this AST (whole expression selected). */
 export function isOpApplicable(ast, kind, mode) {
   if (ast === '' || ast == null) return false;
-  if (kind === 'number' || kind === 'expression' || kind === 'note') return false;
+  if (
+    kind === 'note' ||
+    kind === 'expression' ||
+    kind === 'equation' ||
+    kind === 'basicOperation' ||
+    kind === 'number'
+  ) {
+    return false;
+  }
 
   const structural = structuralModeCheck(createHeadlessEquation(cloneAst(ast)), kind, mode, ast);
   if (structural === true) return true;

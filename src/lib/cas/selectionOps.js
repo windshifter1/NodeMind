@@ -51,8 +51,8 @@ export function collectVariables(ast, out = new Set()) {
 export function listEquationOpsForAst(ast) {
   if (ast === '' || ast == null) return [];
   return [...collectVariables(ast)].sort().map((v) => ({
-    id: `solveui:Solve equation for ${v}`,
-    label: `Solve equation for ${v}`,
+    id: `solveui:${v}`,
+    label: v,
     method: 'solveui',
     extra: { arg: v, callStyle: 'solve' },
     selection: {
@@ -184,8 +184,11 @@ export function isSelectionOpApplicable(ast, method, selection = null, field = '
   }
 }
 
-/** Soft status when a Manipulation / Equation op no longer matches its input. */
+/** Soft status when a Manipulation / Solve op no longer matches its input. */
 export const OPERATION_IGNORED_ERROR = 'Operation not applicable';
+
+/** Soft status when a Basic operation does not have at least two inputs. */
+export const NOT_ENOUGH_INPUTS_ERROR = 'Not enough inputs';
 
 /** Human label for a stored selection op (`opId` is usually `method:Label`). */
 export function selectionOpDisplayLabel(nodeOrOp) {
@@ -203,6 +206,7 @@ export function selectionOpDisplayLabel(nodeOrOp) {
     title &&
     title !== 'Manipulation' &&
     title !== 'Equation operation' &&
+    title !== 'Solve' &&
     title !== 'Operation' &&
     title.toLowerCase() !== 'ignored'
   ) {

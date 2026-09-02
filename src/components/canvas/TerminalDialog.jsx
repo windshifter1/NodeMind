@@ -14,7 +14,7 @@ import {
 } from '@/lib/appVersion';
 import { isDesktopPlatform } from '@/lib/onboarding';
 import { normalizeTerminal } from '@/hooks/useWorkspaces';
-import { displayNodeTitle, fieldsForKind, isMathNode, isNumberNode, nodeTypeLabel } from '@/lib/nodeTypes';
+import { displayNodeTitle, fieldsForKind, isMathNode, isExpressionNode, nodeTypeLabel } from '@/lib/nodeTypes';
 import { COMMAND_NAMES, HELP_ALL, helpFor } from '@/lib/terminal/help';
 import { commandMatchesStep, getTerminalTutorialSteps } from '@/lib/terminal/tutorial';
 import TerminalTutorial from './TerminalTutorial';
@@ -182,10 +182,10 @@ function formatNode(nodes, node) {
     `Path: \\${nodePath(nodes, node.id).join('\\')}`,
     `Colour: ${node.color || '#6366f1'}`,
   ];
-  if (isNumberNode(node)) {
-    lines.push(node.value === '' || node.value == null ? 'Value: (empty)' : `Value: ${node.value}`);
-  } else if (isMathNode(node)) {
-    if (node.expr) lines.push(`Expression: ${node.expr}`);
+  if (isMathNode(node)) {
+    if (node.expr) {
+      lines.push(`${isExpressionNode(node) ? 'Expression' : node.kind === 'equation' ? 'Equation' : 'Expr'}: ${node.expr}`);
+    }
     if (node.mode) lines.push(`Mode: ${node.mode}`);
     if (node.field) lines.push(`Field: ${node.field}`);
     if (!node.expr && !node.mode && !node.field) lines.push('Math: (empty)');

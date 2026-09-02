@@ -2,12 +2,14 @@ import React, { useMemo } from 'react';
 import {
   defForKind,
   fieldVisibleForNode,
-  isEquationOpNode,
-  isNumberNode,
+  isBasicOperationNode,
+  isEquationNode,
+  isExpressionNode,
   isSelectionOpNode,
-  NODE_KIND,
+  isSolveNode,
 } from '@/lib/nodeTypes';
 import {
+  NOT_ENOUGH_INPUTS_ERROR,
   OPERATION_IGNORED_ERROR,
   operationIgnoredMessage,
   selectionOpDisplayLabel,
@@ -53,17 +55,22 @@ export default function MathNodeBody({
   const fieldLooks = inputClass(darkNodes, node.color);
   const hasInput = result?.inputAst != null && result?.inputAst !== '';
   const isIgnored =
-    Boolean(result?.ignored) || result?.error === OPERATION_IGNORED_ERROR;
-  const ignoredMessage = useMemo(
-    () => operationIgnoredMessage(selectionOpDisplayLabel(node)),
-    [node]
-  );
+    Boolean(result?.ignored) ||
+    result?.error === OPERATION_IGNORED_ERROR ||
+    result?.error === NOT_ENOUGH_INPUTS_ERROR;
+  const ignoredMessage = useMemo(() => {
+    if (result?.error === NOT_ENOUGH_INPUTS_ERROR) return NOT_ENOUGH_INPUTS_ERROR;
+    if (isBasicOperationNode(node)) return NOT_ENOUGH_INPUTS_ERROR;
+    return operationIgnoredMessage(selectionOpDisplayLabel(node));
+  }, [node, result?.error]);
   const emptyHint =
     !result?.flat &&
-    (result?.error === 'Empty number' ||
-      result?.error === 'Empty expression' ||
+    (result?.error === 'Empty expression' ||
+      result?.error === 'Empty equation' ||
+      result?.error === 'Empty number' ||
       result?.error === 'Connect a Math node' ||
       result?.error === 'Select an operation' ||
+      result?.error === 'Select a variable' ||
       result?.error === 'Select an equation operation' ||
       result?.error === 'No operation selected' ||
       !result);
@@ -79,7 +86,7 @@ export default function MathNodeBody({
   })();
 
   const selectionOps = useMemo(() => {
-    if (!isSelectionOpNode(node)) return [];
+    if (!isSelectionOpNode(node) && !isSolveNode(node)) return [];
     return applicableSelectionOps || [];
   }, [node, applicableSelectionOps]);
 
@@ -89,23 +96,25 @@ export default function MathNodeBody({
     const match = selectionOps.find(
       (op) =>
         op.method === node.method &&
-        (op.extra?.arg ?? op.selection?.arg) === (node.selection?.arg) &&
-        (op.extra?.callStyle ?? op.selection?.callStyle) === (node.selection?.callStyle)
+        (op.extra?.arg ?? op.selection?.arg) === node.selection?.arg &&
+        (op.extra?.callStyle ?? op.selection?.callStyle) === node.selection?.callStyle
     );
     return match ? match.id || selectionOpKey(match) : selectionOpKey(node);
   }, [node, selectionOps]);
 
+  const solveVariable = String(node.selection?.arg ?? node.field ?? '').trim();
   const showSelectionField =
-    isSelectionOpNode(node) &&
-    (methodNeedsField(node.method) || (isEquationOpNode(node) && hasInput && !selectionOps.length));
+    isSelectionOpNode(node) && methodNeedsField(node.method);
 
   const ignoredSelectValue = '__ignored__';
   const selectValue = isIgnored && node.method ? ignoredSelectValue : currentOpKey;
+  const solveSelectValue =
+    isIgnored && solveVariable ? ignoredSelectValue : solveVariable;
 
   const pickSelectionOp = (opId) => {
     if (opId === ignoredSelectValue) return;
     if (!opId) {
-      onUpdate({ method: '', selection: null, opId: '', field: isEquationOpNode(node) ? node.field : '' });
+      onUpdate({ method: '', selection: null, opId: '', field: '' });
       return;
     }
     const op = selectionOps.find((item) => (item.id || selectionOpKey(item)) === opId);
@@ -113,11 +122,7 @@ export default function MathNodeBody({
     const extra = { ...(op.extra || {}) };
     delete extra.needsField;
     delete extra.fieldPlaceholder;
-    const nextField = methodNeedsField(op.method)
-      ? node.field || ''
-      : isEquationOpNode(node)
-        ? String(extra.arg ?? node.field ?? '')
-        : '';
+    const nextField = methodNeedsField(op.method) ? node.field || '' : '';
     onUpdate({
       method: op.method,
       opId: op.id || selectionOpKey(op),
@@ -129,28 +134,75 @@ export default function MathNodeBody({
     });
   };
 
+  const pickSolveVariable = (variable) => {
+    if (variable === ignoredSelectValue) return;
+    if (!variable) {
+      onUpdate({ method: '', selection: null, opId: '', field: '' });
+      return;
+    }
+    onUpdate({
+      method: 'solveui',
+      opId: `solveui:${variable}`,
+      field: variable,
+      selection: {
+        path: [],
+        issel: null,
+        arg: variable,
+        callStyle: 'solve',
+      },
+    });
+  };
+
   return (
     <div className="px-3 pt-2 pb-3" onPointerDown={(e) => e.stopPropagation()}>
-      {isNumberNode(node) && (
-        <input
-          type="number"
-          step="any"
-          value={node.value ?? ''}
-          onChange={(e) => onUpdate({ value: e.target.value })}
-          placeholder="0"
-          {...fieldLooks}
-        />
-      )}
-
-      {node.kind === NODE_KIND.EXPRESSION && (
+      {(isExpressionNode(node) || isEquationNode(node)) && (
         <textarea
           value={node.expr ?? ''}
           onChange={(e) => onUpdate({ expr: e.target.value })}
-          placeholder={def?.field?.placeholder || 'x^2+1'}
+          placeholder={
+            def?.field?.placeholder ||
+            (isEquationNode(node) ? 'x^2+2*x+1=0' : 'x^2+2*x+1')
+          }
           rows={2}
           className={`${fieldLooks.className} resize-none leading-relaxed`}
           style={fieldLooks.style}
         />
+      )}
+
+      {isSolveNode(node) && (
+        <select
+          value={solveSelectValue}
+          disabled={!hasInput && result?.error !== 'Connect an Equation node'}
+          onFocus={() => onSelectNode?.(node.id)}
+          onPointerDown={() => onSelectNode?.(node.id)}
+          onChange={(e) => pickSolveVariable(e.target.value)}
+          className={`${fieldLooks.className} ${
+            !hasInput && result?.error !== 'Select a variable' ? 'opacity-60 cursor-not-allowed' : ''
+          }`}
+          style={fieldLooks.style}
+          title={hasInput ? 'Choose variable' : 'Connect an Equation to choose a variable'}
+        >
+          <option value="">
+            {hasInput
+              ? selectionOps.length || isIgnored
+                ? 'Select variable…'
+                : 'No variables found'
+              : result?.error === 'Connect an Equation node'
+                ? 'Connect an Equation…'
+                : 'Connect an Equation…'}
+          </option>
+          {isIgnored && solveVariable && (
+            <option value={ignoredSelectValue}>Ignored</option>
+          )}
+          {selectionOps.map((op) => {
+            const key = String(op.extra?.arg ?? op.label ?? op.id);
+            return (
+              <option key={key} value={key}>
+                {op.label || key}
+              </option>
+            );
+          })}
+        </select>
       )}
 
       {isSelectionOpNode(node) && (
@@ -185,11 +237,13 @@ export default function MathNodeBody({
         </select>
       )}
 
-      {modes.length > 0 && !isSelectionOpNode(node) && (
+      {modes.length > 0 && !isSelectionOpNode(node) && !isSolveNode(node) && (
         <select
           value={modes.some((mode) => mode.id === node.mode) ? node.mode : modes[0].id}
           onChange={(e) => onUpdate({ mode: e.target.value })}
-          className={`${fieldLooks.className} ${node.kind === NODE_KIND.EXPRESSION || isNumberNode(node) ? 'mt-2' : ''}`}
+          className={`${fieldLooks.className} ${
+            isExpressionNode(node) || isEquationNode(node) ? 'mt-2' : ''
+          }`}
           style={fieldLooks.style}
         >
           {modes.map((mode) => (
@@ -204,46 +258,26 @@ export default function MathNodeBody({
         <input
           type="text"
           value={node.field ?? ''}
-          onChange={(e) => {
-            const field = e.target.value;
-            if (isEquationOpNode(node)) {
-              onUpdate({
-                field,
-                method: 'solveui',
-                opId: field ? `solveui:Solve equation for ${field}` : '',
-                selection: {
-                  path: [],
-                  issel: null,
-                  arg: field,
-                  callStyle: 'solve',
-                },
-              });
-              return;
-            }
-            onUpdate({ field });
-          }}
-          placeholder={
-            isEquationOpNode(node)
-              ? 'Variable'
-              : node.method === 'intsplitlimits'
-                ? '0'
-                : 'x'
-          }
+          onChange={(e) => onUpdate({ field: e.target.value })}
+          placeholder={node.method === 'intsplitlimits' ? '0' : 'x'}
           className={`${fieldLooks.className} mt-2`}
           style={fieldLooks.style}
         />
       )}
 
-      {showField && def.field.key !== 'expr' && !isSelectionOpNode(node) && (
-        <input
-          type="text"
-          value={node.field ?? ''}
-          onChange={(e) => onUpdate({ field: e.target.value })}
-          placeholder={def.field.placeholder || def.field.label}
-          className={`${fieldLooks.className} mt-2`}
-          style={fieldLooks.style}
-        />
-      )}
+      {showField &&
+        def.field.key !== 'expr' &&
+        !isSelectionOpNode(node) &&
+        !isSolveNode(node) && (
+          <input
+            type="text"
+            value={node.field ?? ''}
+            onChange={(e) => onUpdate({ field: e.target.value })}
+            placeholder={def.field.placeholder || def.field.label}
+            className={`${fieldLooks.className} mt-2`}
+            style={fieldLooks.style}
+          />
+        )}
 
       {isIgnored && (
         <div

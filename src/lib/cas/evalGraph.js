@@ -1,9 +1,25 @@
-import { isMathNode, isNumberNode, isSelectionOpNode, NODE_KIND } from '@/lib/nodeTypes';
-import { applyRewrite, applySelectionOp, astFromNumber, listApplicableOps, parseExpression } from './engine.js';
 import {
-  isEquationSelectionMethod,
+  isBasicOperationNode,
+  isEquationNode,
+  isExpressionNode,
+  isMathNode,
+  isSelectionOpNode,
+  isSolveNode,
+} from '@/lib/nodeTypes';
+import {
+  applyRewrite,
+  applySelectionOp,
+  combineBasicOperation,
+  listApplicableOps,
+  parseEquationNode,
+  parseExpressionNode,
+} from './engine.js';
+import {
+  collectVariables,
   isSelectionOpApplicable,
   listApplicableOpsForAst,
+  listEquationOpsForAst,
+  NOT_ENOUGH_INPUTS_ERROR,
   OPERATION_IGNORED_ERROR,
   selectionOpDisplayLabel,
   selectionOpKey,
@@ -26,10 +42,6 @@ function emptyResult(error = null) {
     applicableModes: null,
     applicableSelectionOps: null,
   };
-}
-
-function selectionOpCategory(kind) {
-  return kind === NODE_KIND.EQUATION_OP ? 'equation' : 'manipulation';
 }
 
 function ensureCurrentOpListed(ops, node) {
@@ -63,6 +75,12 @@ function isCurrentOpListed(ops, node) {
     const nodeArg = node.selection?.arg;
     return opArg === nodeArg || (opArg == null && (nodeArg == null || nodeArg === ''));
   });
+}
+
+function isUsableResult(item) {
+  if (!item || item.ast === '' || item.ast == null) return false;
+  if (item.ignored) return true;
+  return !item.error;
 }
 
 export function evaluateMathGraph(nodes = [], edges = []) {
@@ -100,18 +118,15 @@ export function evaluateMathGraph(nodes = [], edges = []) {
   order.forEach((id) => {
     const node = byId.get(id);
     const sources = incoming.get(id) || [];
-    const inbound = sources
-      .map((src) => results.get(src))
-      .find((item) => {
-        if (!item || item.ast === '' || item.ast == null) return false;
-        // Ignored Manipulation / Equation ops pass their input through unchanged.
-        if (item.ignored) return true;
-        return !item.error;
-      });
+    const inboundList = sources
+      .map((src) => ({ sourceId: src, result: results.get(src) }))
+      .filter((item) => isUsableResult(item.result));
+    const inbound = inboundList[0]?.result || null;
+    const inboundSourceId = inboundList[0]?.sourceId || null;
 
-    if (isNumberNode(node)) {
+    if (isExpressionNode(node)) {
       results.set(id, {
-        ...astFromNumber(node.value),
+        ...parseExpressionNode(node.expr),
         inputAst: null,
         applicableModes: null,
         applicableSelectionOps: null,
@@ -119,10 +134,39 @@ export function evaluateMathGraph(nodes = [], edges = []) {
       return;
     }
 
-    if (node.kind === NODE_KIND.EXPRESSION) {
+    if (isEquationNode(node)) {
       results.set(id, {
-        ...parseExpression(node.expr),
+        ...parseEquationNode(node.expr),
         inputAst: null,
+        applicableModes: null,
+        applicableSelectionOps: null,
+      });
+      return;
+    }
+
+    if (isBasicOperationNode(node)) {
+      if (inboundList.length < 2) {
+        const first = inboundList[0]?.result;
+        results.set(id, {
+          ast: first?.ast ?? '',
+          flat: first?.flat ?? '',
+          latex: first?.latex ?? '',
+          error: NOT_ENOUGH_INPUTS_ERROR,
+          ignored: true,
+          inputAst: first?.ast ?? null,
+          applicableModes: null,
+          applicableSelectionOps: null,
+        });
+        return;
+      }
+      const combined = combineBasicOperation(
+        inboundList.map((item) => item.result.ast),
+        node.mode || '+'
+      );
+      results.set(id, {
+        ...combined,
+        ignored: false,
+        inputAst: inboundList[0].result.ast,
         applicableModes: null,
         applicableSelectionOps: null,
       });
@@ -134,21 +178,62 @@ export function evaluateMathGraph(nodes = [], edges = []) {
       return;
     }
 
-    if (isSelectionOpNode(node)) {
-      const category = selectionOpCategory(node.kind);
-      const listedOps = listApplicableOpsForAst(inbound.ast, category);
-      if (!node.method) {
+    if (isSolveNode(node)) {
+      const sourceNode = inboundSourceId ? byId.get(inboundSourceId) : null;
+      if (!sourceNode || !isEquationNode(sourceNode)) {
         results.set(id, {
-          ...emptyResult('Select an operation'),
+          ...emptyResult('Connect an Equation node'),
+          inputAst: null,
+          applicableSelectionOps: [],
+        });
+        return;
+      }
+      const listedOps = listEquationOpsForAst(inbound.ast);
+      const variable = String(node.selection?.arg ?? node.field ?? '').trim();
+      if (!variable) {
+        results.set(id, {
+          ...emptyResult('Select a variable'),
           inputAst: inbound.ast,
           applicableSelectionOps: listedOps,
         });
         return;
       }
-      // Guard: equation nodes should only run solve-style methods.
-      if (node.kind === NODE_KIND.EQUATION_OP && !isEquationSelectionMethod(node.method)) {
+      const vars = collectVariables(inbound.ast);
+      if (!vars.has(variable)) {
         results.set(id, {
-          ...emptyResult('Select an equation operation'),
+          ast: inbound.ast,
+          flat: inbound.flat ?? '',
+          latex: inbound.latex ?? '',
+          error: OPERATION_IGNORED_ERROR,
+          ignored: true,
+          inputAst: inbound.ast,
+          applicableModes: null,
+          applicableSelectionOps: listedOps,
+        });
+        return;
+      }
+      const selection = {
+        path: node.selection?.path || [],
+        issel: node.selection?.issel ?? null,
+        arg: variable,
+        callStyle: 'solve',
+      };
+      const applied = applySelectionOp(inbound.ast, 'solveui', selection, variable);
+      results.set(id, {
+        ...applied,
+        ignored: false,
+        inputAst: inbound.ast,
+        applicableModes: null,
+        applicableSelectionOps: listedOps,
+      });
+      return;
+    }
+
+    if (isSelectionOpNode(node)) {
+      const listedOps = listApplicableOpsForAst(inbound.ast, 'manipulation');
+      if (!node.method) {
+        results.set(id, {
+          ...emptyResult('Select an operation'),
           inputAst: inbound.ast,
           applicableSelectionOps: listedOps,
         });
@@ -161,20 +246,12 @@ export function evaluateMathGraph(nodes = [], edges = []) {
         node.selection,
         node.field
       );
-      // Listed ops win (some menu entries are shown without a check-mode pass).
-      // Otherwise keep the stored selection if it still dry-runs successfully.
       if (!listedMatch && !selectionOk) {
-        const passThrough =
-          node.kind === NODE_KIND.MANIPULATION || node.kind === NODE_KIND.EQUATION_OP;
         results.set(id, {
-          ...(passThrough
-            ? {
-                ast: inbound.ast,
-                flat: inbound.flat ?? '',
-                latex: inbound.latex ?? '',
-                error: OPERATION_IGNORED_ERROR,
-              }
-            : emptyResult(OPERATION_IGNORED_ERROR)),
+          ast: inbound.ast,
+          flat: inbound.flat ?? '',
+          latex: inbound.latex ?? '',
+          error: OPERATION_IGNORED_ERROR,
           ignored: true,
           inputAst: inbound.ast,
           applicableModes: null,
@@ -187,7 +264,7 @@ export function evaluateMathGraph(nodes = [], edges = []) {
         return (
           (op.id || selectionOpKey(op)) === key ||
           (op.method === node.method &&
-            (op.extra?.arg ?? op.selection?.arg) === (node.selection?.arg))
+            (op.extra?.arg ?? op.selection?.arg) === node.selection?.arg)
         );
       });
       const selection =

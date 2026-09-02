@@ -1,8 +1,12 @@
 export const NODE_KIND = {
   NOTE: 'note',
-  NUMBER: 'number',
+  /** Algebraic expression without `=` (formerly Number). */
   EXPRESSION: 'expression',
+  /** Equation text that must include `=` (formerly Expression). */
+  EQUATION: 'equation',
+  BASIC_OPERATION: 'basicOperation',
   MANIPULATION: 'manipulation',
+  /** Core Solve node (variable dropdown). Stored id kept for compatibility. */
   EQUATION_OP: 'equationOp',
   /** @deprecated Prefer MANIPULATION; kept so older graphs still evaluate. */
   CAS_OP: 'casOp',
@@ -27,6 +31,7 @@ export const NODE_KIND = {
   EVALUATE: 'evaluate',
   CONVERT: 'convert',
   SUBSTITUTE: 'substitute',
+  /** @deprecated Rewrite-style solve; hidden from picker in favour of EQUATION_OP. */
   SOLVE: 'solve',
 };
 
@@ -51,17 +56,30 @@ export const MATH_GROUPS = [
 export const NODE_TYPE_DEFS = [
   { id: NODE_KIND.NOTE, category: 'text', label: 'Text' },
   {
-    id: NODE_KIND.NUMBER,
-    category: 'math',
-    group: 'values',
-    label: 'Number',
-  },
-  {
     id: NODE_KIND.EXPRESSION,
     category: 'math',
     group: 'values',
     label: 'Expression',
     field: { key: 'expr', label: 'Expression', placeholder: 'x^2+2*x+1' },
+  },
+  {
+    id: NODE_KIND.EQUATION,
+    category: 'math',
+    group: 'values',
+    label: 'Equation',
+    field: { key: 'expr', label: 'Equation', placeholder: 'x^2+2*x+1=0' },
+  },
+  {
+    id: NODE_KIND.BASIC_OPERATION,
+    category: 'math',
+    group: 'values',
+    label: 'Basic operation',
+    modes: [
+      { id: '+', label: 'Plus' },
+      { id: '-', label: 'Minus' },
+      { id: '*', label: 'Times' },
+      { id: '/', label: 'Divide' },
+    ],
   },
   {
     id: NODE_KIND.MANIPULATION,
@@ -73,7 +91,7 @@ export const NODE_TYPE_DEFS = [
     id: NODE_KIND.EQUATION_OP,
     category: 'math',
     group: 'values',
-    label: 'Equation operation',
+    label: 'Solve',
     field: { key: 'field', label: 'Variable', placeholder: 'x' },
   },
   {
@@ -331,12 +349,15 @@ export const NODE_TYPE_DEFS = [
     id: NODE_KIND.SOLVE,
     category: 'math',
     group: 'solve',
-    label: 'Solve',
+    label: 'Solve (rewrite)',
+    picker: false,
     field: { key: 'field', label: 'Variable', placeholder: 'x' },
   },
 ];
 
-export const NUMBER_NODE_BODY_HEIGHT = 120;
+export const EXPRESSION_NODE_BODY_HEIGHT = 120;
+/** @deprecated Use EXPRESSION_NODE_BODY_HEIGHT */
+export const NUMBER_NODE_BODY_HEIGHT = EXPRESSION_NODE_BODY_HEIGHT;
 export const MATH_NODE_BODY_HEIGHT = 168;
 
 export function defForKind(kind) {
@@ -370,8 +391,9 @@ export function fieldsForKind(kind) {
   const normalised = normalizeNodeKind(kind);
   const def = defForKind(normalised);
   const fields = { kind: normalised, title: def?.label || 'Text', content: '' };
-  if (normalised === NODE_KIND.NUMBER) fields.value = '';
-  if (normalised === NODE_KIND.EXPRESSION) fields.expr = '';
+  if (normalised === NODE_KIND.EXPRESSION || normalised === NODE_KIND.EQUATION) {
+    fields.expr = '';
+  }
   if (
     normalised === NODE_KIND.CAS_OP ||
     normalised === NODE_KIND.MANIPULATION ||
@@ -402,32 +424,53 @@ export function displayNodeTitle(nodeOrKind, title) {
   return nodeTypeLabel(kind);
 }
 
-export function isNumberNode(nodeOrKind) {
+export function isExpressionNode(nodeOrKind) {
   const kind = typeof nodeOrKind === 'object' ? nodeOrKind?.kind : nodeOrKind;
-  return normalizeNodeKind(kind) === NODE_KIND.NUMBER;
+  return normalizeNodeKind(kind) === NODE_KIND.EXPRESSION;
 }
 
-/** Number / Expression — valid sources when filling a Math input socket. */
+/** @deprecated Use isExpressionNode */
+export function isNumberNode(nodeOrKind) {
+  return isExpressionNode(nodeOrKind);
+}
+
+export function isEquationNode(nodeOrKind) {
+  const kind = typeof nodeOrKind === 'object' ? nodeOrKind?.kind : nodeOrKind;
+  return normalizeNodeKind(kind) === NODE_KIND.EQUATION;
+}
+
+/** Expression / Equation — valid sources when filling a Math input socket. */
 export function isValueSourceKind(nodeOrKind) {
   const kind = typeof nodeOrKind === 'object' ? nodeOrKind?.kind : nodeOrKind;
   const normalised = normalizeNodeKind(kind);
-  return normalised === NODE_KIND.NUMBER || normalised === NODE_KIND.EXPRESSION;
+  return normalised === NODE_KIND.EXPRESSION || normalised === NODE_KIND.EQUATION;
 }
 
-/** Selection-menu driven Math nodes with a method/op picker. */
+export function isBasicOperationNode(nodeOrKind) {
+  const kind = typeof nodeOrKind === 'object' ? nodeOrKind?.kind : nodeOrKind;
+  return normalizeNodeKind(kind) === NODE_KIND.BASIC_OPERATION;
+}
+
+/** Math nodes that may accept more than one inbound edge. */
+export function allowsMultipleInputs(nodeOrKind) {
+  return isBasicOperationNode(nodeOrKind);
+}
+
+/** Selection-menu driven Math nodes with a method/op picker (Manipulation). */
 export function isSelectionOpNode(nodeOrKind) {
   const kind = typeof nodeOrKind === 'object' ? nodeOrKind?.kind : nodeOrKind;
   const normalised = normalizeNodeKind(kind);
-  return (
-    normalised === NODE_KIND.MANIPULATION ||
-    normalised === NODE_KIND.EQUATION_OP ||
-    normalised === NODE_KIND.CAS_OP
-  );
+  return normalised === NODE_KIND.MANIPULATION || normalised === NODE_KIND.CAS_OP;
 }
 
+/** Core Solve node (variable dropdown). */
 export function isEquationOpNode(nodeOrKind) {
   const kind = typeof nodeOrKind === 'object' ? nodeOrKind?.kind : nodeOrKind;
   return normalizeNodeKind(kind) === NODE_KIND.EQUATION_OP;
+}
+
+export function isSolveNode(nodeOrKind) {
+  return isEquationOpNode(nodeOrKind);
 }
 
 export function isMathNode(nodeOrKind) {

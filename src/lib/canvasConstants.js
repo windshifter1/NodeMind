@@ -1,5 +1,12 @@
 import { autoOrganiseGraph } from './layout/index.js';
-import { MATH_NODE_BODY_HEIGHT, NUMBER_NODE_BODY_HEIGHT, displayNodeTitle, isMathNode, isNumberNode, normalizeNodeKind } from './nodeTypes.js';
+import {
+  EXPRESSION_NODE_BODY_HEIGHT,
+  MATH_NODE_BODY_HEIGHT,
+  displayNodeTitle,
+  isExpressionNode,
+  isMathNode,
+  normalizeNodeKind,
+} from './nodeTypes.js';
 
 export const NODE_WIDTH = 180; // default (empty title) width
 /** Typical Math node width; nodes grow with the equation up to 2× this. */
@@ -99,8 +106,8 @@ export function nodeWidthForTitle(title) {
 export function nodeHeightForLayout(nodeOrTitle = '') {
   const collapsed = typeof nodeOrTitle === 'object' && nodeOrTitle?.collapsed;
   if (collapsed) return TOP_BAR_HEIGHT;
-  if (typeof nodeOrTitle === 'object' && isNumberNode(nodeOrTitle)) {
-    return TOP_BAR_HEIGHT + NUMBER_NODE_BODY_HEIGHT;
+  if (typeof nodeOrTitle === 'object' && isExpressionNode(nodeOrTitle)) {
+    return TOP_BAR_HEIGHT + EXPRESSION_NODE_BODY_HEIGHT;
   }
   if (typeof nodeOrTitle === 'object' && isMathNode(nodeOrTitle)) {
     return TOP_BAR_HEIGHT + MATH_NODE_BODY_HEIGHT;
@@ -488,8 +495,7 @@ export function migrateWorkspaceNodeIds(workspace) {
     list.map((node) => {
       const kind = normalizeNodeKind(node.kind);
       const next = { ...node, kind };
-      if (kind === 'number' && node.value == null) next.value = '';
-      if (kind === 'expression' && node.expr == null) next.expr = '';
+      if ((kind === 'expression' || kind === 'equation') && node.expr == null) next.expr = '';
       if (node.mode == null && node.field == null) return next;
       return next;
     });

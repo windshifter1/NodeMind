@@ -285,20 +285,16 @@ export default function Canvas() {
       const extra = { ...(op.extra || {}) };
       delete extra.needsField;
       delete extra.fieldPlaceholder;
-      const multByOne = new Set([
-        'mult1conj',
-        'mult1negi2',
-        'mult1e2piik',
-        'mult1fracoverfrac',
-        'mult1powpow',
-      ]);
-      const title = multByOne.has(op.method) ? 'Multiply by one' : op.label;
+      const isEquation = op.method === 'solveui';
+      const kind = isEquation ? NODE_KIND.EQUATION_OP : NODE_KIND.MANIPULATION;
+      const title = isEquation ? 'Equation operation' : 'Manipulation';
+      const opId = op.id || `${op.method}:${op.label}`;
       const pos = connectedNodePositionAvoidingOverlap(
         active.nodes,
         sourceNode,
         'output',
         active.orientation,
-        { kind: NODE_KIND.CAS_OP, title }
+        { kind, title }
       );
       dispatch({
         type: 'ADD_CONNECTED_NODE',
@@ -306,16 +302,17 @@ export default function Canvas() {
         y: pos.y,
         fromNode: sourceNode.id,
         fromType: 'output',
-        kind: NODE_KIND.CAS_OP,
+        kind,
         fields: {
           title,
           method: op.method,
+          opId,
           selection: {
             path: selectionMenu.selection?.path || [],
             issel: selectionMenu.selection?.issel || null,
             ...extra,
           },
-          field: field || '',
+          field: field || (isEquation && extra.arg != null ? String(extra.arg) : ''),
         },
       });
       try {

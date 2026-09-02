@@ -2,6 +2,9 @@ export const NODE_KIND = {
   NOTE: 'note',
   NUMBER: 'number',
   EXPRESSION: 'expression',
+  MANIPULATION: 'manipulation',
+  EQUATION_OP: 'equationOp',
+  /** @deprecated Prefer MANIPULATION; kept so older graphs still evaluate. */
   CAS_OP: 'casOp',
   COMBINE_LIKE: 'combineLike',
   EXPAND: 'expand',
@@ -35,7 +38,7 @@ export const NODE_CATEGORIES = [
 ];
 
 export const MATH_GROUPS = [
-  { id: 'values', label: 'Values' },
+  { id: 'values', label: 'Core' },
   { id: 'algebra', label: 'Algebra' },
   { id: 'calculus', label: 'Calculus' },
   { id: 'trig', label: 'Trig' },
@@ -59,6 +62,19 @@ export const NODE_TYPE_DEFS = [
     group: 'values',
     label: 'Expression',
     field: { key: 'expr', label: 'Expression', placeholder: 'x^2+2*x+1' },
+  },
+  {
+    id: NODE_KIND.MANIPULATION,
+    category: 'math',
+    group: 'values',
+    label: 'Manipulation',
+  },
+  {
+    id: NODE_KIND.EQUATION_OP,
+    category: 'math',
+    group: 'values',
+    label: 'Equation operation',
+    field: { key: 'field', label: 'Variable', placeholder: 'x' },
   },
   {
     id: NODE_KIND.CAS_OP,
@@ -356,9 +372,14 @@ export function fieldsForKind(kind) {
   const fields = { kind: normalised, title: def?.label || 'Text', content: '' };
   if (normalised === NODE_KIND.NUMBER) fields.value = '';
   if (normalised === NODE_KIND.EXPRESSION) fields.expr = '';
-  if (normalised === NODE_KIND.CAS_OP) {
+  if (
+    normalised === NODE_KIND.CAS_OP ||
+    normalised === NODE_KIND.MANIPULATION ||
+    normalised === NODE_KIND.EQUATION_OP
+  ) {
     fields.method = '';
     fields.selection = null;
+    fields.opId = '';
   }
   if (def?.modes?.length) fields.mode = def.modes[0].id;
   if (def?.field?.key && def.field.key !== 'expr') fields.field = '';
@@ -384,6 +405,29 @@ export function displayNodeTitle(nodeOrKind, title) {
 export function isNumberNode(nodeOrKind) {
   const kind = typeof nodeOrKind === 'object' ? nodeOrKind?.kind : nodeOrKind;
   return normalizeNodeKind(kind) === NODE_KIND.NUMBER;
+}
+
+/** Number / Expression — valid sources when filling a Math input socket. */
+export function isValueSourceKind(nodeOrKind) {
+  const kind = typeof nodeOrKind === 'object' ? nodeOrKind?.kind : nodeOrKind;
+  const normalised = normalizeNodeKind(kind);
+  return normalised === NODE_KIND.NUMBER || normalised === NODE_KIND.EXPRESSION;
+}
+
+/** Selection-menu driven Math nodes with a method/op picker. */
+export function isSelectionOpNode(nodeOrKind) {
+  const kind = typeof nodeOrKind === 'object' ? nodeOrKind?.kind : nodeOrKind;
+  const normalised = normalizeNodeKind(kind);
+  return (
+    normalised === NODE_KIND.MANIPULATION ||
+    normalised === NODE_KIND.EQUATION_OP ||
+    normalised === NODE_KIND.CAS_OP
+  );
+}
+
+export function isEquationOpNode(nodeOrKind) {
+  const kind = typeof nodeOrKind === 'object' ? nodeOrKind?.kind : nodeOrKind;
+  return normalizeNodeKind(kind) === NODE_KIND.EQUATION_OP;
 }
 
 export function isMathNode(nodeOrKind) {

@@ -344,6 +344,7 @@ export default function NoteNode({
           result={mathResult}
           onUpdate={onUpdate}
           applicableModes={mathResult?.applicableModes}
+          applicableSelectionOps={mathResult?.applicableSelectionOps}
           onPreviewMetrics={handleMathPreviewMetrics}
           onSelectionMenu={onSelectionMenu}
         />

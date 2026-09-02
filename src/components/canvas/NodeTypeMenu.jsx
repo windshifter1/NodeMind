@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { X } from 'lucide-react';
-import { NODE_CATEGORIES, mathTypesByGroup, typesForCategory } from '@/lib/nodeTypes';
+import { NODE_CATEGORIES, isValueSourceKind, mathTypesByGroup, typesForCategory } from '@/lib/nodeTypes';
 
 const MENU_WIDTH = 300;
 
@@ -41,7 +41,7 @@ export default function NodeTypeMenu({
       return groups
         .map((group) => ({
           ...group,
-          types: group.types.filter((type) => type.group === 'values'),
+          types: group.types.filter((type) => isValueSourceKind(type.id)),
         }))
         .filter((group) => group.types.length);
     }

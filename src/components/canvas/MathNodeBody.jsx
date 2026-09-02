@@ -1,6 +1,21 @@
-import React from 'react';
-import { defForKind, fieldVisibleForNode, isNumberNode, NODE_KIND } from '@/lib/nodeTypes';
+import React, { useMemo } from 'react';
+import {
+  defForKind,
+  fieldVisibleForNode,
+  isEquationOpNode,
+  isNumberNode,
+  isSelectionOpNode,
+  NODE_KIND,
+} from '@/lib/nodeTypes';
+import { selectionOpKey } from '@/lib/cas/selectionOps';
 import MathPreview from './MathPreview';
+
+const FIELD_METHODS = new Set([
+  'collect',
+  'polynomialdivision',
+  'partialfractions',
+  'intsplitlimits',
+]);
 
 function inputClass(darkNodes, color) {
   return {
@@ -13,22 +28,31 @@ function inputClass(darkNodes, color) {
   };
 }
 
+function methodNeedsField(method) {
+  return FIELD_METHODS.has(method);
+}
+
 export default function MathNodeBody({
   node,
   darkNodes,
   result,
   onUpdate,
   applicableModes = null,
+  applicableSelectionOps = null,
   onPreviewMetrics,
   onSelectionMenu,
 }) {
   const def = defForKind(node.kind);
   const fieldLooks = inputClass(darkNodes, node.color);
+  const hasInput = result?.inputAst != null && result?.inputAst !== '';
   const emptyHint =
     !result?.flat &&
     (result?.error === 'Empty number' ||
       result?.error === 'Empty expression' ||
       result?.error === 'Connect a Math node' ||
+      result?.error === 'Select an operation' ||
+      result?.error === 'Select an equation operation' ||
+      result?.error === 'No operation selected' ||
       !result);
   const isError = Boolean(result?.error) && !emptyHint;
   const showField = fieldVisibleForNode(def, node);
@@ -40,6 +64,53 @@ export default function MathNodeBody({
     const filtered = def.modes.filter((mode) => allowed.has(mode.id));
     return filtered.length ? filtered : def.modes;
   })();
+
+  const selectionOps = useMemo(() => {
+    if (!isSelectionOpNode(node)) return [];
+    return applicableSelectionOps || [];
+  }, [node, applicableSelectionOps]);
+
+  const currentOpKey = useMemo(() => {
+    if (!node.method) return '';
+    if (node.opId) return node.opId;
+    const match = selectionOps.find(
+      (op) =>
+        op.method === node.method &&
+        (op.extra?.arg ?? op.selection?.arg) === (node.selection?.arg) &&
+        (op.extra?.callStyle ?? op.selection?.callStyle) === (node.selection?.callStyle)
+    );
+    return match ? match.id || selectionOpKey(match) : selectionOpKey(node);
+  }, [node, selectionOps]);
+
+  const showSelectionField =
+    isSelectionOpNode(node) &&
+    (methodNeedsField(node.method) || (isEquationOpNode(node) && hasInput && !selectionOps.length));
+
+  const pickSelectionOp = (opId) => {
+    if (!opId) {
+      onUpdate({ method: '', selection: null, opId: '', field: isEquationOpNode(node) ? node.field : '' });
+      return;
+    }
+    const op = selectionOps.find((item) => (item.id || selectionOpKey(item)) === opId);
+    if (!op) return;
+    const extra = { ...(op.extra || {}) };
+    delete extra.needsField;
+    delete extra.fieldPlaceholder;
+    const nextField = methodNeedsField(op.method)
+      ? node.field || ''
+      : isEquationOpNode(node)
+        ? String(extra.arg ?? node.field ?? '')
+        : '';
+    onUpdate({
+      method: op.method,
+      opId: op.id || selectionOpKey(op),
+      selection: {
+        ...(op.selection || { path: [], issel: null }),
+        ...extra,
+      },
+      field: nextField,
+    });
+  };
 
   return (
     <div className="px-3 pt-2 pb-3" onPointerDown={(e) => e.stopPropagation()}>
@@ -65,7 +136,34 @@ export default function MathNodeBody({
         />
       )}
 
-      {modes.length > 0 && node.kind !== NODE_KIND.CAS_OP && (
+      {isSelectionOpNode(node) && (
+        <select
+          value={currentOpKey}
+          disabled={!hasInput}
+          onChange={(e) => pickSelectionOp(e.target.value)}
+          className={`${fieldLooks.className} ${!hasInput ? 'opacity-60 cursor-not-allowed' : ''}`}
+          style={fieldLooks.style}
+          title={hasInput ? 'Choose operation' : 'Connect an input to choose an operation'}
+        >
+          <option value="">
+            {hasInput
+              ? selectionOps.length
+                ? 'Select operation…'
+                : 'No applicable operations'
+              : 'Connect input to select…'}
+          </option>
+          {selectionOps.map((op) => {
+            const key = op.id || selectionOpKey(op);
+            return (
+              <option key={key} value={key}>
+                {op.label}
+              </option>
+            );
+          })}
+        </select>
+      )}
+
+      {modes.length > 0 && !isSelectionOpNode(node) && (
         <select
           value={modes.some((mode) => mode.id === node.mode) ? node.mode : modes[0].id}
           onChange={(e) => onUpdate({ mode: e.target.value })}
@@ -80,7 +178,41 @@ export default function MathNodeBody({
         </select>
       )}
 
-      {showField && def.field.key !== 'expr' && (
+      {showSelectionField && (
+        <input
+          type="text"
+          value={node.field ?? ''}
+          onChange={(e) => {
+            const field = e.target.value;
+            if (isEquationOpNode(node)) {
+              onUpdate({
+                field,
+                method: 'solveui',
+                opId: field ? `solveui:Solve equation for ${field}` : '',
+                selection: {
+                  path: [],
+                  issel: null,
+                  arg: field,
+                  callStyle: 'solve',
+                },
+              });
+              return;
+            }
+            onUpdate({ field });
+          }}
+          placeholder={
+            isEquationOpNode(node)
+              ? 'Variable'
+              : node.method === 'intsplitlimits'
+                ? '0'
+                : 'x'
+          }
+          className={`${fieldLooks.className} mt-2`}
+          style={fieldLooks.style}
+        />
+      )}
+
+      {showField && def.field.key !== 'expr' && !isSelectionOpNode(node) && (
         <input
           type="text"
           value={node.field ?? ''}

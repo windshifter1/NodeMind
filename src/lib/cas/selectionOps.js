@@ -2,7 +2,129 @@
  * Build selection-scoped CAS operations using the same predicates as
  * equation.detectevents() / #opmenu in the original Algebra Backend.
  */
-import { createPreviewEquation, deepCopy } from './engine.js';
+import { createPreviewEquation, deepCopy, printflat, selectAllPreview } from './engine.js';
+
+/** Equation-level selection-menu methods (Solve). Everything else is Manipulation. */
+export function isEquationSelectionMethod(method) {
+  return method === 'solveui';
+}
+
+export function flattenSelectionOps(ops = []) {
+  const out = [];
+  for (const op of ops) {
+    if (op?.submenu?.length) {
+      for (const child of op.submenu) {
+        if (child?.method) out.push(child);
+      }
+    } else if (op?.method) {
+      out.push(op);
+    }
+  }
+  return out;
+}
+
+export function selectionOpKey(opOrNode) {
+  if (!opOrNode) return '';
+  const method = opOrNode.method || '';
+  if (!method) return '';
+  const arg = opOrNode.extra?.arg ?? opOrNode.selection?.arg;
+  const callStyle = opOrNode.extra?.callStyle ?? opOrNode.selection?.callStyle;
+  const id = opOrNode.id || opOrNode.opId || '';
+  if (id) return id;
+  return `${method}:${arg != null ? JSON.stringify(arg) : ''}:${callStyle || ''}`;
+}
+
+const NON_VARIABLE_ATOMS = new Set(['π', 'i', 'e', 'true', 'false']);
+
+/** Collect free variable names from an AST (skips function heads and constants). */
+export function collectVariables(ast, out = new Set()) {
+  if (typeof ast === 'string') {
+    if (ast && Number.isNaN(Number(ast)) && !NON_VARIABLE_ATOMS.has(ast)) out.add(ast);
+    return out;
+  }
+  if (!Array.isArray(ast)) return out;
+  for (let i = 1; i < ast.length; i++) collectVariables(ast[i], out);
+  return out;
+}
+
+/** Equation-operation choices for an upstream AST (Solve for each variable). */
+export function listEquationOpsForAst(ast) {
+  if (ast === '' || ast == null) return [];
+  return [...collectVariables(ast)].sort().map((v) => ({
+    id: `solveui:Solve equation for ${v}`,
+    label: `Solve equation for ${v}`,
+    method: 'solveui',
+    extra: { arg: v, callStyle: 'solve' },
+    selection: {
+      path: [],
+      issel: null,
+      arg: v,
+      callStyle: 'solve',
+    },
+  }));
+}
+
+/**
+ * List selection-menu ops applicable to an AST (whole-expression selection).
+ * `category`: 'manipulation' | 'equation' | 'all'
+ */
+export function listApplicableOpsForAst(ast, category = 'manipulation') {
+  if (ast === '' || ast == null) return [];
+
+  if (category === 'equation') {
+    return listEquationOpsForAst(ast);
+  }
+
+  const canvasId = `cas-ops-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+  let canvas = null;
+  try {
+    canvas = document.createElement('canvas');
+    canvas.id = canvasId;
+    canvas.style.cssText = 'position:fixed;left:-9999px;top:-9999px;opacity:0;pointer-events:none;';
+    document.body.appendChild(canvas);
+
+    const eq = createPreviewEquation(ast, canvasId);
+    if (Array.isArray(eq.equation)) {
+      try {
+        eq.printimage(eq.equation);
+      } catch {
+        /* some leaves have no glyph layout */
+      }
+    }
+    selectAllPreview(eq);
+    const resolved = resolveSelection(eq);
+    if (!resolved) return category === 'all' ? listEquationOpsForAst(ast) : [];
+
+    const ops = flattenSelectionOps(listSelectionOps(eq, { printflat }));
+    const baseSelection = {
+      path: resolved.path || [],
+      issel: resolved.issel || null,
+    };
+
+    const manipulation = ops
+      .filter((op) => !isEquationSelectionMethod(op.method))
+      .map((op) => ({
+        ...op,
+        selection: {
+          ...baseSelection,
+          ...(op.extra || {}),
+        },
+      }));
+
+    if (category === 'all') {
+      return [...manipulation, ...listEquationOpsForAst(ast)];
+    }
+    return manipulation;
+  } catch {
+    return [];
+  } finally {
+    try {
+      canvas?.remove();
+    } catch {
+      /* ignore */
+    }
+  }
+}
 
 function plainLabel(html) {
   return String(html || '')

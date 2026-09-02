@@ -1,5 +1,6 @@
-import { isMathNode, isNumberNode, NODE_KIND } from '@/lib/nodeTypes';
+import { isMathNode, isNumberNode, isSelectionOpNode, NODE_KIND } from '@/lib/nodeTypes';
 import { applyRewrite, applySelectionOp, astFromNumber, listApplicableOps, parseExpression } from './engine.js';
+import { isEquationSelectionMethod, listApplicableOpsForAst, selectionOpKey } from './selectionOps.js';
 
 function edgeDirection(edge) {
   return edge.fromType === 'output'
@@ -8,7 +9,41 @@ function edgeDirection(edge) {
 }
 
 function emptyResult(error = null) {
-  return { ast: '', flat: '', latex: '', error, inputAst: null, applicableModes: null };
+  return {
+    ast: '',
+    flat: '',
+    latex: '',
+    error,
+    inputAst: null,
+    applicableModes: null,
+    applicableSelectionOps: null,
+  };
+}
+
+function selectionOpCategory(kind) {
+  return kind === NODE_KIND.EQUATION_OP ? 'equation' : 'manipulation';
+}
+
+function ensureCurrentOpListed(ops, node) {
+  if (!node?.method) return ops || [];
+  const list = [...(ops || [])];
+  const key = node.opId || selectionOpKey(node);
+  if (list.some((op) => (op.id || selectionOpKey(op)) === key || op.method === node.method)) {
+    return list;
+  }
+  list.unshift({
+    id: key || `${node.method}:current`,
+    label: node.title && node.title !== 'Manipulation' && node.title !== 'Equation operation' && node.title !== 'Operation'
+      ? node.title
+      : node.method,
+    method: node.method,
+    extra: {
+      arg: node.selection?.arg,
+      callStyle: node.selection?.callStyle,
+    },
+    selection: node.selection || null,
+  });
+  return list;
 }
 
 export function evaluateMathGraph(nodes = [], edges = []) {
@@ -46,15 +81,27 @@ export function evaluateMathGraph(nodes = [], edges = []) {
   order.forEach((id) => {
     const node = byId.get(id);
     const sources = incoming.get(id) || [];
-    const inbound = sources.map((src) => results.get(src)).find((item) => item && !item.error && item.ast !== '' && item.ast != null);
+    const inbound = sources
+      .map((src) => results.get(src))
+      .find((item) => item && !item.error && item.ast !== '' && item.ast != null);
 
     if (isNumberNode(node)) {
-      results.set(id, { ...astFromNumber(node.value), inputAst: null, applicableModes: null });
+      results.set(id, {
+        ...astFromNumber(node.value),
+        inputAst: null,
+        applicableModes: null,
+        applicableSelectionOps: null,
+      });
       return;
     }
 
     if (node.kind === NODE_KIND.EXPRESSION) {
-      results.set(id, { ...parseExpression(node.expr), inputAst: null, applicableModes: null });
+      results.set(id, {
+        ...parseExpression(node.expr),
+        inputAst: null,
+        applicableModes: null,
+        applicableSelectionOps: null,
+      });
       return;
     }
 
@@ -63,12 +110,35 @@ export function evaluateMathGraph(nodes = [], edges = []) {
       return;
     }
 
-    if (node.kind === NODE_KIND.CAS_OP) {
+    if (isSelectionOpNode(node)) {
+      const category = selectionOpCategory(node.kind);
+      const applicableSelectionOps = ensureCurrentOpListed(
+        listApplicableOpsForAst(inbound.ast, category),
+        node
+      );
+      if (!node.method) {
+        results.set(id, {
+          ...emptyResult('Select an operation'),
+          inputAst: inbound.ast,
+          applicableSelectionOps,
+        });
+        return;
+      }
+      // Guard: equation nodes should only run solve-style methods.
+      if (node.kind === NODE_KIND.EQUATION_OP && !isEquationSelectionMethod(node.method)) {
+        results.set(id, {
+          ...emptyResult('Select an equation operation'),
+          inputAst: inbound.ast,
+          applicableSelectionOps,
+        });
+        return;
+      }
       const applied = applySelectionOp(inbound.ast, node.method, node.selection, node.field);
       results.set(id, {
         ...applied,
         inputAst: inbound.ast,
         applicableModes: null,
+        applicableSelectionOps,
       });
       return;
     }
@@ -79,6 +149,7 @@ export function evaluateMathGraph(nodes = [], edges = []) {
       ...applied,
       inputAst: inbound.ast,
       applicableModes: modesByKind[node.kind] || null,
+      applicableSelectionOps: null,
     });
   });
 

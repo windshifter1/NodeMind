@@ -81,11 +81,6 @@ export default function GraphPlot({
   const [width, setWidth] = useState(488);
   const [view, setView] = useState(null);
 
-  const homeKey = useMemo(() => {
-    const labels = (plot?.series || []).map((s) => `${s.kind}:${s.label}`).join('|');
-    return `${plot?.xMin ?? ''}:${plot?.xMax ?? ''}:${plot?.yMin ?? ''}:${plot?.yMax ?? ''}:${labels}`;
-  }, [plot]);
-
   const plotBox = useMemo(() => {
     const cssW = Math.max(120, width);
     const cssH = Math.max(120, height);
@@ -97,12 +92,15 @@ export default function GraphPlot({
     };
   }, [width, height]);
 
-  // Fit home view when plot content / size changes.
+  // Initialise the camera once. Never auto pan/zoom again — only wheel, drag,
+  // pinch, or double-click reset may change the view.
   useEffect(() => {
+    if (viewRef.current) return;
+    if (plotBox.plotW < 2 || plotBox.plotH < 2) return;
     const next = viewFromHome(plot, plotBox.plotW, plotBox.plotH);
     viewRef.current = next;
     setView(next);
-  }, [homeKey, plotBox.plotW, plotBox.plotH, plot]);
+  }, [plot, plotBox.plotW, plotBox.plotH]);
 
   useEffect(() => {
     const el = wrapRef.current;

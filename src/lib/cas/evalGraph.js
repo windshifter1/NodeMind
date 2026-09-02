@@ -5,6 +5,7 @@ import {
   isSelectionOpApplicable,
   listApplicableOpsForAst,
   OPERATION_IGNORED_ERROR,
+  selectionOpDisplayLabel,
   selectionOpKey,
 } from './selectionOps.js';
 
@@ -40,9 +41,7 @@ function ensureCurrentOpListed(ops, node) {
   }
   list.unshift({
     id: key || `${node.method}:current`,
-    label: node.title && node.title !== 'Manipulation' && node.title !== 'Equation operation' && node.title !== 'Operation'
-      ? node.title
-      : node.method,
+    label: selectionOpDisplayLabel(node) || node.method,
     method: node.method,
     extra: {
       arg: node.selection?.arg,

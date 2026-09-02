@@ -187,8 +187,37 @@ export function isSelectionOpApplicable(ast, method, selection = null, field = '
 /** Soft status when a Manipulation / Equation op no longer matches its input. */
 export const OPERATION_IGNORED_ERROR = 'Operation not applicable';
 
-export const OPERATION_IGNORED_MESSAGE =
-  'Operation not applicable. This node is ignored until applicable.';
+/** Human label for a stored selection op (`opId` is usually `method:Label`). */
+export function selectionOpDisplayLabel(nodeOrOp) {
+  if (!nodeOrOp) return '';
+  if (typeof nodeOrOp.label === 'string' && nodeOrOp.label.trim()) {
+    return nodeOrOp.label.trim();
+  }
+  const opId = nodeOrOp.opId || nodeOrOp.id || '';
+  if (typeof opId === 'string' && opId.includes(':')) {
+    const label = opId.slice(opId.indexOf(':') + 1).trim();
+    if (label && label !== 'current') return label;
+  }
+  const title = typeof nodeOrOp.title === 'string' ? nodeOrOp.title.trim() : '';
+  if (
+    title &&
+    title !== 'Manipulation' &&
+    title !== 'Equation operation' &&
+    title !== 'Operation' &&
+    title.toLowerCase() !== 'ignored'
+  ) {
+    return title;
+  }
+  return '';
+}
+
+export function operationIgnoredMessage(label) {
+  const name = String(label || '').trim();
+  if (!name) {
+    return 'Operation not applicable. This node is ignored until applicable.';
+  }
+  return `${name} operation not applicable. This node is ignored until applicable.`;
+}
 
 function plainLabel(html) {
   return String(html || '')

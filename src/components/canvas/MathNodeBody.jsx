@@ -9,7 +9,8 @@ import {
 } from '@/lib/nodeTypes';
 import {
   OPERATION_IGNORED_ERROR,
-  OPERATION_IGNORED_MESSAGE,
+  operationIgnoredMessage,
+  selectionOpDisplayLabel,
   selectionOpKey,
 } from '@/lib/cas/selectionOps';
 import MathPreview from './MathPreview';
@@ -53,6 +54,10 @@ export default function MathNodeBody({
   const hasInput = result?.inputAst != null && result?.inputAst !== '';
   const isIgnored =
     Boolean(result?.ignored) || result?.error === OPERATION_IGNORED_ERROR;
+  const ignoredMessage = useMemo(
+    () => operationIgnoredMessage(selectionOpDisplayLabel(node)),
+    [node]
+  );
   const emptyHint =
     isIgnored ||
     (!result?.flat &&
@@ -252,7 +257,7 @@ export default function MathNodeBody({
           }`}
           role="status"
         >
-          {OPERATION_IGNORED_MESSAGE}
+          {ignoredMessage}
         </div>
       )}
 

@@ -52,6 +52,19 @@ function ensureCurrentOpListed(ops, node) {
   return list;
 }
 
+/** True when the node's current op matches an entry from the live applicable list. */
+function isCurrentOpListed(ops, node) {
+  if (!node?.method || !ops?.length) return false;
+  const key = node.opId || selectionOpKey(node);
+  return ops.some((op) => {
+    if ((op.id || selectionOpKey(op)) === key) return true;
+    if (op.method !== node.method) return false;
+    const opArg = op.extra?.arg ?? op.selection?.arg;
+    const nodeArg = node.selection?.arg;
+    return opArg === nodeArg || (opArg == null && (nodeArg == null || nodeArg === ''));
+  });
+}
+
 export function evaluateMathGraph(nodes = [], edges = []) {
   const byId = new Map(nodes.map((node) => [node.id, node]));
   const mathIds = nodes.filter(isMathNode).map((node) => node.id);
@@ -121,15 +134,12 @@ export function evaluateMathGraph(nodes = [], edges = []) {
 
     if (isSelectionOpNode(node)) {
       const category = selectionOpCategory(node.kind);
-      const applicableSelectionOps = ensureCurrentOpListed(
-        listApplicableOpsForAst(inbound.ast, category),
-        node
-      );
+      const listedOps = listApplicableOpsForAst(inbound.ast, category);
       if (!node.method) {
         results.set(id, {
           ...emptyResult('Select an operation'),
           inputAst: inbound.ast,
-          applicableSelectionOps,
+          applicableSelectionOps: listedOps,
         });
         return;
       }
@@ -138,26 +148,45 @@ export function evaluateMathGraph(nodes = [], edges = []) {
         results.set(id, {
           ...emptyResult('Select an equation operation'),
           inputAst: inbound.ast,
-          applicableSelectionOps,
+          applicableSelectionOps: listedOps,
         });
         return;
       }
-      if (!isSelectionOpApplicable(inbound.ast, node.method, node.selection, node.field)) {
+      const listedMatch = isCurrentOpListed(listedOps, node);
+      const selectionOk = isSelectionOpApplicable(
+        inbound.ast,
+        node.method,
+        node.selection,
+        node.field
+      );
+      // Listed ops win (some menu entries are shown without a check-mode pass).
+      // Otherwise keep the stored selection if it still dry-runs successfully.
+      if (!listedMatch && !selectionOk) {
         results.set(id, {
           ...emptyResult(OPERATION_IGNORED_ERROR),
           ignored: true,
           inputAst: inbound.ast,
-          applicableSelectionOps,
+          applicableSelectionOps: listedOps,
         });
         return;
       }
-      const applied = applySelectionOp(inbound.ast, node.method, node.selection, node.field);
+      const listedOp = listedOps.find((op) => {
+        const key = node.opId || selectionOpKey(node);
+        return (
+          (op.id || selectionOpKey(op)) === key ||
+          (op.method === node.method &&
+            (op.extra?.arg ?? op.selection?.arg) === (node.selection?.arg))
+        );
+      });
+      const selection =
+        selectionOk || !listedOp?.selection ? node.selection : listedOp.selection;
+      const applied = applySelectionOp(inbound.ast, node.method, selection, node.field);
       results.set(id, {
         ...applied,
         ignored: false,
         inputAst: inbound.ast,
         applicableModes: null,
-        applicableSelectionOps,
+        applicableSelectionOps: ensureCurrentOpListed(listedOps, node),
       });
       return;
     }

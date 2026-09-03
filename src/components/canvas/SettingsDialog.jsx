@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Layers, Moon, RotateCcw, Sparkles, Sun, X } from 'lucide-react';
+import { Beaker, Layers, Moon, RotateCcw, Sparkles, Sun, X } from 'lucide-react';
 import OptionHelpRow from './OptionHelpRow';
 import {
   readOnboardingReplayPending,
@@ -45,8 +45,14 @@ export default function SettingsDialog({
     {
       value: UI_STYLE.MODERN,
       label: 'Modern',
-      hint: 'Liquid glass — frosted chrome, gel buttons, and a black/grey canvas.',
+      hint: 'Frosted glass chrome on a black/grey canvas.',
       icon: Sparkles,
+    },
+    {
+      value: UI_STYLE.PROTOTYPE,
+      label: 'Prototype',
+      hint: 'Experimental liquid glass — refractive frost, specular light, gel controls.',
+      icon: Beaker,
     },
   ];
 
@@ -149,7 +155,7 @@ export default function SettingsDialog({
                 <div data-onboarding="settings-theme">
                   <h3 className="text-sm font-semibold text-nm-text">Theme</h3>
                   <p className="mt-1 text-xs text-nm-text-muted">
-                    Light or dark colour palette (works with either interface style).
+                    Light or dark colour palette (works with any interface style).
                   </p>
                   <div className="mt-4 grid gap-2">
                     {themeOptions.map(({ value, label, icon: Icon }) => {

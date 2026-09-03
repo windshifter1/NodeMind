@@ -1220,33 +1220,43 @@ export default function CanvasBoard({
     spacePanCursor ||
     (marqueeRect ? 'crosshair' : panState.current.panning ? 'grabbing' : 'grab');
   const modernUi = uiStyle === 'modern';
+  const prototypeUi = uiStyle === 'prototype';
   const dotSize = `${24 * zoom}px ${24 * zoom}px`;
-  const boardBackground = modernUi
+  const boardBackground = prototypeUi
     ? {
         backgroundColor: 'var(--nm-canvas)',
         backgroundImage: [
-          // Black / grey wash only — no accent hues.
-          'radial-gradient(1200px 700px at 50% -10%, var(--nm-canvas-glow-a), transparent 60%)',
-          'radial-gradient(900px 600px at 100% 100%, var(--nm-canvas-glow-b), transparent 55%)',
-          'radial-gradient(800px 500px at 0% 80%, var(--nm-canvas-glow-c), transparent 50%)',
           'radial-gradient(circle, var(--nm-canvas-dot) 1px, transparent 1px)',
         ].join(', '),
-        backgroundSize: `auto, auto, auto, ${dotSize}`,
-        backgroundPosition: `0 0, 0 0, 0 0, ${pan.x}px ${pan.y}px`,
-      }
-    : {
-        backgroundColor: 'var(--nm-canvas)',
-        backgroundImage: 'radial-gradient(circle, var(--nm-canvas-dot) 1px, transparent 1px)',
         backgroundSize: dotSize,
         backgroundPosition: `${pan.x}px ${pan.y}px`,
-      };
+      }
+    : modernUi
+      ? {
+          backgroundColor: 'var(--nm-canvas)',
+          backgroundImage: [
+            // Black / grey wash only — no accent hues.
+            'radial-gradient(1200px 700px at 50% -10%, var(--nm-canvas-glow-a), transparent 60%)',
+            'radial-gradient(900px 600px at 100% 100%, var(--nm-canvas-glow-b), transparent 55%)',
+            'radial-gradient(800px 500px at 0% 80%, var(--nm-canvas-glow-c), transparent 50%)',
+            'radial-gradient(circle, var(--nm-canvas-dot) 1px, transparent 1px)',
+          ].join(', '),
+          backgroundSize: `auto, auto, auto, ${dotSize}`,
+          backgroundPosition: `0 0, 0 0, 0 0, ${pan.x}px ${pan.y}px`,
+        }
+      : {
+          backgroundColor: 'var(--nm-canvas)',
+          backgroundImage: 'radial-gradient(circle, var(--nm-canvas-dot) 1px, transparent 1px)',
+          backgroundSize: dotSize,
+          backgroundPosition: `${pan.x}px ${pan.y}px`,
+        };
 
   return (
     <div
       ref={boardRef}
       data-canvas-board
       data-onboarding="canvas"
-      className="absolute inset-0 overflow-hidden"
+      className={`absolute inset-0 overflow-hidden ${prototypeUi ? 'nm-proto-board' : ''}`}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}

@@ -47,8 +47,10 @@ import {
   applyDocumentUiStyle,
   persistUiStyle,
   readStoredUiStyle,
+  usesLiquidMotion,
 } from '@/lib/uiStyle';
 import { attachLiquidButtons } from '@/lib/liquidButtons';
+import { attachPrototypeLight } from '@/lib/prototypeLight';
 
 const MATH_SINGLE_INPUT_MESSAGE = 'This node accepts only one input';
 
@@ -96,11 +98,16 @@ export default function Canvas() {
   }, [uiStyle]);
 
   useEffect(() => {
-    if (uiStyle !== 'modern') return undefined;
+    if (!usesLiquidMotion(uiStyle)) return undefined;
     return attachLiquidButtons();
   }, [uiStyle]);
 
-  // Modern only: plop animation + subtle ripples when nodes appear.
+  useEffect(() => {
+    if (uiStyle !== 'prototype') return undefined;
+    return attachPrototypeLight();
+  }, [uiStyle]);
+
+  // Liquid styles: plop animation + subtle ripples when nodes appear.
   useEffect(() => {
     const ids = (active.nodes || []).map((n) => n.id);
     const next = new Set(ids);
@@ -111,7 +118,7 @@ export default function Canvas() {
     }
     const added = ids.filter((id) => !tracked.ids.has(id));
     knownNodeIdsRef.current = { workspaceId: state.activeId, ids: next };
-    if (!added.length || uiStyle !== 'modern' || added.length > 12) return;
+    if (!added.length || !usesLiquidMotion(uiStyle) || added.length > 12) return;
 
     setSpawnNodeIds((prev) => {
       const merged = new Set(prev);

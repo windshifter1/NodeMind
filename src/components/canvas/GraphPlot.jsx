@@ -267,7 +267,8 @@ export default function GraphPlot({
     canvas.style.height = `${cssH}px`;
 
     const modernUi = uiStyle === 'modern';
-    // Keep alpha enabled so Modern glass plot backgrounds can be translucent.
+    const prototypeUi = uiStyle === 'prototype';
+    // Keep alpha enabled so glass plot backgrounds can be translucent.
     const ctx = canvas.getContext('2d', { alpha: true });
     if (!ctx) return;
     ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
@@ -276,13 +277,17 @@ export default function GraphPlot({
     const snap = (v) => Math.round(v * pixelRatio) / pixelRatio;
     const strokeWidth = (cssPx) => Math.max(hairline, Math.round(cssPx * pixelRatio) / pixelRatio);
 
-    const bg = modernUi
+    const bg = prototypeUi
       ? darkNodes
-        ? 'rgba(15, 25, 40, 0.45)'
-        : 'rgba(255, 255, 255, 0.45)'
-      : darkNodes
-        ? '#1f2226'
-        : '#f8fafc';
+        ? 'rgba(12, 18, 32, 0.28)'
+        : 'rgba(255, 255, 255, 0.32)'
+      : modernUi
+        ? darkNodes
+          ? 'rgba(15, 25, 40, 0.45)'
+          : 'rgba(255, 255, 255, 0.45)'
+        : darkNodes
+          ? '#1f2226'
+          : '#f8fafc';
     const grid = darkNodes ? 'rgba(255,255,255,0.08)' : 'rgba(15,23,42,0.08)';
     const axis = darkNodes ? 'rgba(255,255,255,0.5)' : 'rgba(15,23,42,0.5)';
     const labelCol = darkNodes ? 'rgba(255,255,255,0.72)' : 'rgba(15,23,42,0.72)';

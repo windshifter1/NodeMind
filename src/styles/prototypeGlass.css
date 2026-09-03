@@ -1,0 +1,440 @@
+/*
+ * Prototype — liquid glass material system (opt-in UI style).
+ * Built as a layered optical stack: lens blur, specular sheet, frost grain,
+ * refractive rim, and soft caustic scene lighting. Independent of Modern.
+ */
+
+html[data-ui-style='prototype'] {
+  --proto-lx: 22%;
+  --proto-ly: 12%;
+  --proto-lx-n: 0.22;
+  --proto-ly-n: 0.12;
+  --proto-radius: 1.45rem;
+  --proto-radius-sm: 1rem;
+  --proto-blur: 52px;
+  --proto-saturate: 2.35;
+  --proto-frost: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E");
+}
+
+/* ——— Scene tokens ——— */
+html[data-ui-style='prototype'][data-theme='dark'] {
+  --nm-page: #050608;
+  --nm-canvas: #07090d;
+  --nm-canvas-dot: rgba(210, 225, 255, 0.055);
+  --nm-panel: rgba(255, 255, 255, 0.055);
+  --nm-chrome: rgba(255, 255, 255, 0.055);
+  --nm-header: rgba(255, 255, 255, 0.04);
+  --nm-sidebar: rgba(255, 255, 255, 0.03);
+  --nm-hover: rgba(255, 255, 255, 0.1);
+  --nm-hover-strong: rgba(255, 255, 255, 0.16);
+  --nm-border: rgba(255, 255, 255, 0.28);
+  --nm-border-strong: rgba(255, 255, 255, 0.42);
+  --nm-divider: rgba(255, 255, 255, 0.12);
+  --nm-overlay: rgba(2, 4, 10, 0.55);
+  --nm-edge: rgba(186, 210, 255, 0.4);
+  --nm-input: rgba(255, 255, 255, 0.07);
+  --nm-option: rgba(255, 255, 255, 0.05);
+  --nm-tooltip: rgba(12, 18, 32, 0.55);
+  --nm-bin: rgba(255, 255, 255, 0.06);
+  --nm-shadow: 0 20px 60px rgba(0, 0, 0, 0.55);
+  --nm-node-bg: rgba(255, 255, 255, 0.05);
+  --nm-node-bar: rgba(255, 255, 255, 0.04);
+  --nm-canvas-glow-a: rgba(170, 210, 255, 0.32);
+  --nm-canvas-glow-b: rgba(120, 160, 255, 0.18);
+  --nm-canvas-glow-c: rgba(255, 255, 255, 0.1);
+  --proto-fill: rgba(255, 255, 255, 0.03);
+  --proto-fill-strong: rgba(255, 255, 255, 0.055);
+  --proto-rim-hi: rgba(255, 255, 255, 0.7);
+  --proto-rim-lo: rgba(0, 0, 0, 0.5);
+  --proto-specular: rgba(255, 255, 255, 0.58);
+  --proto-specular-soft: rgba(190, 220, 255, 0.32);
+  --proto-grain: 0.1;
+  --proto-depth:
+    0 18px 50px rgba(0, 0, 0, 0.45),
+    0 4px 14px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 var(--proto-rim-hi),
+    inset 0 -1px 0 var(--proto-rim-lo),
+    inset 0 0 48px rgba(255, 255, 255, 0.04),
+    inset 0 0 1px rgba(255, 255, 255, 0.25);
+}
+
+html[data-ui-style='prototype'][data-theme='light'] {
+  --nm-page: #dce3ee;
+  --nm-canvas: #e4eaf3;
+  --nm-canvas-dot: rgba(30, 50, 90, 0.09);
+  --nm-panel: rgba(255, 255, 255, 0.38);
+  --nm-chrome: rgba(255, 255, 255, 0.38);
+  --nm-header: rgba(255, 255, 255, 0.28);
+  --nm-sidebar: rgba(255, 255, 255, 0.22);
+  --nm-hover: rgba(20, 35, 70, 0.06);
+  --nm-hover-strong: rgba(20, 35, 70, 0.1);
+  --nm-border: rgba(255, 255, 255, 0.72);
+  --nm-border-strong: rgba(40, 55, 90, 0.16);
+  --nm-divider: rgba(40, 55, 90, 0.08);
+  --nm-overlay: rgba(30, 45, 80, 0.28);
+  --nm-edge: rgba(70, 95, 140, 0.45);
+  --nm-input: rgba(255, 255, 255, 0.5);
+  --nm-option: rgba(255, 255, 255, 0.4);
+  --nm-tooltip: rgba(255, 255, 255, 0.62);
+  --nm-bin: rgba(255, 255, 255, 0.4);
+  --nm-shadow: 0 18px 48px rgba(40, 60, 100, 0.16);
+  --nm-node-bg: rgba(255, 255, 255, 0.36);
+  --nm-node-bar: rgba(255, 255, 255, 0.28);
+  --nm-canvas-glow-a: rgba(255, 255, 255, 0.7);
+  --nm-canvas-glow-b: rgba(140, 170, 220, 0.28);
+  --nm-canvas-glow-c: rgba(255, 255, 255, 0.35);
+  --proto-fill: rgba(255, 255, 255, 0.32);
+  --proto-fill-strong: rgba(255, 255, 255, 0.48);
+  --proto-rim-hi: rgba(255, 255, 255, 0.95);
+  --proto-rim-lo: rgba(40, 60, 100, 0.12);
+  --proto-specular: rgba(255, 255, 255, 0.75);
+  --proto-specular-soft: rgba(200, 220, 255, 0.35);
+  --proto-grain: 0.045;
+  --proto-depth:
+    0 16px 44px rgba(40, 60, 100, 0.14),
+    0 3px 10px rgba(40, 60, 100, 0.08),
+    inset 0 1px 0 var(--proto-rim-hi),
+    inset 0 -1px 0 var(--proto-rim-lo),
+    inset 0 0 40px rgba(255, 255, 255, 0.35),
+    inset 0 0 1px rgba(255, 255, 255, 0.65);
+}
+
+/* ——— Shared glass optical stack ——— */
+html[data-ui-style='prototype'] .bg-nm-chrome,
+html[data-ui-style='prototype'] .bg-nm-panel,
+html[data-ui-style='prototype'] .bg-nm-bin,
+html[data-ui-style='prototype'] .bg-nm-tooltip,
+html[data-ui-style='prototype'] .nm-proto-node {
+  /* Do not set position here — chrome bars/nodes already use absolute. */
+  isolation: isolate;
+  background-color: var(--proto-fill);
+  background-image:
+    radial-gradient(
+      140% 100% at var(--proto-lx) var(--proto-ly),
+      var(--proto-specular) 0%,
+      transparent 46%
+    ),
+    linear-gradient(
+      155deg,
+      rgba(255, 255, 255, 0.34) 0%,
+      rgba(255, 255, 255, 0.08) 32%,
+      rgba(255, 255, 255, 0) 58%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.06),
+      rgba(255, 255, 255, 0.01) 45%,
+      rgba(0, 0, 0, 0.08)
+    );
+  backdrop-filter:
+    blur(var(--proto-blur)) saturate(var(--proto-saturate)) brightness(1.14) contrast(1.08);
+  -webkit-backdrop-filter:
+    blur(var(--proto-blur)) saturate(var(--proto-saturate)) brightness(1.14) contrast(1.08);
+  border: 1px solid var(--nm-border);
+  box-shadow: var(--proto-depth);
+}
+
+/* Specular sheet + refractive rim */
+html[data-ui-style='prototype'] .bg-nm-chrome::before,
+html[data-ui-style='prototype'] .bg-nm-panel::before,
+html[data-ui-style='prototype'] .bg-nm-bin::before,
+html[data-ui-style='prototype'] .bg-nm-tooltip::before,
+html[data-ui-style='prototype'] .nm-proto-node::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(
+      90% 70% at var(--proto-lx) var(--proto-ly),
+      var(--proto-specular-soft),
+      transparent 55%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.18) 0%,
+      transparent 38%
+    );
+  mix-blend-mode: soft-light;
+  opacity: 0.95;
+}
+
+/* Frost grain + edge caustic ring */
+html[data-ui-style='prototype'] .bg-nm-chrome::after,
+html[data-ui-style='prototype'] .bg-nm-panel::after,
+html[data-ui-style='prototype'] .bg-nm-bin::after,
+html[data-ui-style='prototype'] .bg-nm-tooltip::after,
+html[data-ui-style='prototype'] .nm-proto-node::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 0;
+  opacity: var(--proto-grain);
+  background-image: var(--proto-frost);
+  background-size: 180px 180px;
+  mix-blend-mode: overlay;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08),
+    inset 0 0 24px rgba(255, 255, 255, 0.04);
+}
+
+/* Keep interactive content above optical layers (don't override absolute children). */
+html[data-ui-style='prototype'] .bg-nm-chrome > *:not(.absolute),
+html[data-ui-style='prototype'] .bg-nm-panel > *:not(.absolute),
+html[data-ui-style='prototype'] .bg-nm-bin > *:not(.absolute),
+html[data-ui-style='prototype'] .bg-nm-tooltip > *:not(.absolute),
+html[data-ui-style='prototype'] .nm-proto-node > *:not(.absolute) {
+  position: relative;
+  z-index: 1;
+}
+
+html[data-ui-style='prototype'] .bg-nm-chrome > .absolute,
+html[data-ui-style='prototype'] .bg-nm-panel > .absolute,
+html[data-ui-style='prototype'] .nm-proto-node > .absolute {
+  z-index: 2;
+}
+
+html[data-ui-style='prototype'] .shadow-xl,
+html[data-ui-style='prototype'] .shadow-2xl {
+  box-shadow: var(--proto-depth) !important;
+}
+
+/* Soft continuous chrome shapes */
+html[data-ui-style='prototype'] [data-onboarding='toolbar'],
+html[data-ui-style='prototype'] [data-onboarding='workspace-bar'] {
+  border-radius: calc(var(--proto-radius) + 0.15rem);
+  background-color: var(--proto-fill-strong);
+}
+
+html[data-ui-style='prototype'] .bg-nm-panel {
+  border-radius: var(--proto-radius);
+}
+
+/* ——— Canvas caustic scene ——— */
+html[data-ui-style='prototype'] [data-canvas-board].nm-proto-board::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(1100px 640px at var(--proto-lx) var(--proto-ly), var(--nm-canvas-glow-a), transparent 60%),
+    radial-gradient(820px 520px at 82% 18%, rgba(200, 230, 255, 0.16), transparent 55%),
+    radial-gradient(700px 480px at 85% 80%, var(--nm-canvas-glow-b), transparent 55%),
+    radial-gradient(600px 420px at 10% 90%, var(--nm-canvas-glow-c), transparent 50%),
+    radial-gradient(500px 280px at 50% 0%, rgba(255, 255, 255, 0.12), transparent 65%);
+  animation: nm-proto-caustic 14s ease-in-out infinite alternate;
+  opacity: 1;
+}
+
+@keyframes nm-proto-caustic {
+  0% {
+    filter: hue-rotate(0deg) brightness(1);
+    transform: scale(1);
+  }
+  100% {
+    filter: hue-rotate(12deg) brightness(1.08);
+    transform: scale(1.03);
+  }
+}
+
+/* ——— Prototype nodes ——— */
+html[data-ui-style='prototype'] .nm-proto-node {
+  border-radius: var(--proto-radius);
+  background-color: color-mix(in srgb, var(--node-tint, #ffffff) 8%, var(--proto-fill));
+}
+
+html[data-ui-style='prototype'] .nm-proto-node[data-selected='1'] {
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--node-tint, #818cf8) 70%, white),
+    0 0 28px color-mix(in srgb, var(--node-tint, #818cf8) 45%, transparent),
+    var(--proto-depth);
+}
+
+html[data-ui-style='prototype'] .nm-proto-node-bar {
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--node-tint, #818cf8) 34%, transparent),
+      color-mix(in srgb, var(--node-tint, #818cf8) 16%, transparent)
+    );
+  border-bottom: 1px solid color-mix(in srgb, var(--node-tint, #ffffff) 22%, transparent);
+  backdrop-filter: blur(12px) saturate(1.6);
+  -webkit-backdrop-filter: blur(12px) saturate(1.6);
+}
+
+/* ——— Gel controls (Prototype) ——— */
+html[data-ui-style='prototype'] button:not(:disabled):not(.nm-workspace-icon-btn),
+html[data-ui-style='prototype'] [role='button']:not([aria-disabled='true']):not(.nm-workspace-icon-btn) {
+  --liquid-x: 0px;
+  --liquid-y: 0px;
+  --liquid-sx: 1;
+  --liquid-sy: 1;
+  --proto-shine-x: 50%;
+  --proto-shine-y: 30%;
+  isolation: isolate;
+  transform-origin: center center;
+  transform: translate(var(--liquid-x), var(--liquid-y)) scale(var(--liquid-sx), var(--liquid-sy));
+  transition:
+    transform 0.55s cubic-bezier(0.22, 1.6, 0.36, 1),
+    border-radius 0.45s cubic-bezier(0.22, 1.45, 0.36, 1),
+    filter 0.3s ease,
+    box-shadow 0.35s ease,
+    background-color 0.25s ease,
+    color 0.2s ease,
+    opacity 0.2s ease;
+  background-image:
+    radial-gradient(
+      120% 100% at var(--proto-shine-x) var(--proto-shine-y),
+      rgba(255, 255, 255, 0.28),
+      transparent 46%
+    );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.12);
+}
+
+html[data-ui-style='prototype'] button:not(:disabled):not(.nm-workspace-icon-btn):hover,
+html[data-ui-style='prototype'] [role='button']:not([aria-disabled='true']):not(.nm-workspace-icon-btn):hover {
+  --liquid-sx: 1.055;
+  --liquid-sy: 1.055;
+  filter: brightness(1.1) saturate(1.05);
+}
+
+html[data-ui-style='prototype'] button:not(:disabled):not(.nm-workspace-icon-btn):active,
+html[data-ui-style='prototype'] [role='button']:not([aria-disabled='true']):not(.nm-workspace-icon-btn):active,
+html[data-ui-style='prototype'] button.nm-liquid-held,
+html[data-ui-style='prototype'] [role='button'].nm-liquid-held {
+  --liquid-sx: 0.9;
+  --liquid-sy: 0.8;
+  border-radius: 46% 52% 48% 54% / 52% 46% 56% 48% !important;
+  filter: brightness(0.97) saturate(1.1);
+  transition-duration: 0.09s, 0.1s, 0.1s, 0.1s, 0.1s, 0.1s, 0.1s;
+  box-shadow:
+    inset 0 2px 8px rgba(0, 0, 0, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+@keyframes nm-proto-jiggle {
+  0% {
+    transform: scale(0.9, 0.8);
+  }
+  26% {
+    transform: scale(1.1, 0.88);
+  }
+  48% {
+    transform: scale(0.94, 1.1);
+  }
+  70% {
+    transform: scale(1.04, 0.97);
+  }
+  100% {
+    transform: scale(1, 1);
+  }
+}
+
+html[data-ui-style='prototype'] button.nm-liquid-jiggle,
+html[data-ui-style='prototype'] [role='button'].nm-liquid-jiggle {
+  animation: nm-proto-jiggle 0.52s cubic-bezier(0.22, 1.5, 0.36, 1) both;
+}
+
+html[data-ui-style='prototype'] .nm-workspace-icon-btn:hover {
+  filter: brightness(1.1);
+}
+
+html[data-ui-style='prototype'] .nm-workspace-icon-btn:active {
+  border-radius: 46% 52% 48% 54% / 52% 46% 56% 48% !important;
+  filter: brightness(0.96);
+}
+
+html[data-ui-style='prototype'] [data-onboarding='toolbar']:active,
+html[data-ui-style='prototype'] [data-onboarding='workspace-bar']:active {
+  transform: none;
+  filter: none;
+}
+
+/* ——— Node spawn: heavier liquid plop + soft ripples ——— */
+@keyframes nm-proto-plop {
+  0% {
+    transform: scale(0.12, 0.08);
+    opacity: 0;
+    filter: blur(10px) saturate(1.4);
+  }
+  32% {
+    transform: scale(1.14, 0.84);
+    opacity: 1;
+    filter: blur(0) saturate(1.7);
+  }
+  50% {
+    transform: scale(0.9, 1.12);
+  }
+  66% {
+    transform: scale(1.06, 0.94);
+  }
+  82% {
+    transform: scale(0.98, 1.03);
+  }
+  100% {
+    transform: scale(1, 1);
+    opacity: 1;
+    filter: none;
+  }
+}
+
+html[data-ui-style='prototype'] [data-note-node][data-liquid-spawn='1'] {
+  animation: nm-proto-plop 0.78s cubic-bezier(0.22, 1.4, 0.36, 1) both;
+  transform-origin: 50% 42%;
+}
+
+@keyframes nm-proto-ripple {
+  0% {
+    transform: translate(-50%, -50%) scale(0.18);
+    opacity: 0.22;
+    border-width: 2px;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(2.8);
+    opacity: 0;
+    border-width: 0.5px;
+  }
+}
+
+html[data-ui-style='prototype'] .nm-liquid-ripple {
+  position: absolute;
+  z-index: 1;
+  width: 84px;
+  height: 84px;
+  margin: 0;
+  pointer-events: none;
+  border-radius: 50%;
+  border: 1.5px solid rgba(200, 220, 255, 0.28);
+  box-shadow:
+    0 0 16px rgba(180, 210, 255, 0.12),
+    inset 0 0 12px rgba(255, 255, 255, 0.08);
+  animation: nm-proto-ripple 1.05s ease-out forwards;
+  backdrop-filter: blur(2px);
+}
+
+html[data-ui-style='prototype'][data-theme='light'] .nm-liquid-ripple {
+  border-color: rgba(40, 60, 110, 0.18);
+  box-shadow:
+    0 0 14px rgba(40, 60, 110, 0.08),
+    inset 0 0 10px rgba(255, 255, 255, 0.25);
+}
+
+html[data-ui-style='prototype'] .nm-liquid-ripple--delay {
+  animation-delay: 0.12s;
+  width: 62px;
+  height: 62px;
+}
+
+/* Dialog overlay: thicker air glass */
+html[data-ui-style='prototype'] .bg-nm-overlay,
+html[data-ui-style='prototype'] [class*='bg-nm-overlay'] {
+  backdrop-filter: blur(18px) saturate(1.4);
+  -webkit-backdrop-filter: blur(18px) saturate(1.4);
+}

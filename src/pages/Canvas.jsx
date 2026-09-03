@@ -43,14 +43,8 @@ import { shouldStartOnboarding } from '@/lib/onboarding';
 import { readMathsCreditSeen, setMathsCreditSeen } from '@/lib/mathsCredit';
 import { emitTutorial } from '@/lib/tutorialEvents';
 import { applyDocumentTheme, persistTheme, readStoredTheme } from '@/lib/theme';
-import {
-  applyDocumentUiStyle,
-  persistUiStyle,
-  readStoredUiStyle,
-  usesLiquidMotion,
-} from '@/lib/uiStyle';
+import { applyDocumentUiStyle } from '@/lib/uiStyle';
 import { attachLiquidButtons } from '@/lib/liquidButtons';
-import { attachPrototypeLight } from '@/lib/prototypeLight';
 
 const MATH_SINGLE_INPUT_MESSAGE = 'This node accepts only one input';
 
@@ -75,7 +69,6 @@ export default function Canvas() {
   const [selectedNodeIds, setSelectedNodeIds] = useState([]);
   const [selectionArmed, setSelectionArmed] = useState(false);
   const [nodeTheme, setNodeTheme] = useState(() => readStoredTheme());
-  const [uiStyle, setUiStyle] = useState(() => readStoredUiStyle());
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [mathsCreditOpen, setMathsCreditOpen] = useState(false);
   const [nodePicker, setNodePicker] = useState(null);
@@ -93,21 +86,12 @@ export default function Canvas() {
   }, [nodeTheme]);
 
   useEffect(() => {
-    applyDocumentUiStyle(uiStyle);
-    persistUiStyle(uiStyle);
-  }, [uiStyle]);
+    applyDocumentUiStyle();
+  }, []);
 
-  useEffect(() => {
-    if (!usesLiquidMotion(uiStyle)) return undefined;
-    return attachLiquidButtons();
-  }, [uiStyle]);
+  useEffect(() => attachLiquidButtons(), []);
 
-  useEffect(() => {
-    if (uiStyle !== 'prototype') return undefined;
-    return attachPrototypeLight();
-  }, [uiStyle]);
-
-  // Liquid styles: plop animation + subtle ripples when nodes appear.
+  // Plop animation + subtle ripples when nodes appear.
   useEffect(() => {
     const ids = (active.nodes || []).map((n) => n.id);
     const next = new Set(ids);
@@ -118,7 +102,7 @@ export default function Canvas() {
     }
     const added = ids.filter((id) => !tracked.ids.has(id));
     knownNodeIdsRef.current = { workspaceId: state.activeId, ids: next };
-    if (!added.length || !usesLiquidMotion(uiStyle) || added.length > 12) return;
+    if (!added.length || added.length > 12) return;
 
     setSpawnNodeIds((prev) => {
       const merged = new Set(prev);
@@ -148,7 +132,7 @@ export default function Canvas() {
       });
     }, 820);
     spawnTimerRef.current.push(t);
-  }, [active.nodes, uiStyle, state.activeId]);
+  }, [active.nodes, state.activeId]);
 
   useEffect(() => {
     const timers = spawnTimerRef.current;
@@ -745,7 +729,6 @@ export default function Canvas() {
         selectionArmed={selectionArmed}
         onSelectionArmConsumed={() => setSelectionArmed(false)}
         darkNodes={nodeTheme === 'dark'}
-        uiStyle={uiStyle}
         spawnNodeIds={spawnNodeIds}
         spawnRipples={spawnRipples}
         onSpawnRippleEnd={clearSpawnRipple}
@@ -868,8 +851,6 @@ export default function Canvas() {
         onClose={() => setSettingsOpen(false)}
         nodeTheme={nodeTheme}
         onThemeChange={setNodeTheme}
-        uiStyle={uiStyle}
-        onUiStyleChange={setUiStyle}
       />
 
       <OnboardingTour open={onboardingOpen} onClose={finishOnboarding} />

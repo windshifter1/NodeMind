@@ -1,0 +1,486 @@
+/* Static liquid-glass mockups — design explorations only (not live app chrome). */
+
+.nm-mock {
+  position: relative;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  color: var(--mk-text);
+  background: var(--mk-canvas);
+}
+
+.nm-mock__badge {
+  position: absolute;
+  z-index: 40;
+  left: 50%;
+  top: 0.65rem;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  border-radius: 999px;
+  border: 1px solid var(--mk-badge-border);
+  background: var(--mk-badge-bg);
+  backdrop-filter: blur(20px) saturate(1.7);
+  -webkit-backdrop-filter: blur(20px) saturate(1.7);
+  box-shadow: var(--mk-badge-shadow);
+  color: var(--mk-text);
+}
+
+.nm-mock__badge a {
+  color: inherit;
+  opacity: 0.75;
+  text-decoration: none;
+}
+
+.nm-mock__badge a:hover {
+  opacity: 1;
+}
+
+.nm-mock__badge-sep {
+  opacity: 0.35;
+}
+
+.nm-mock__scene {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.nm-mock__dots {
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle, var(--mk-dot) 1px, transparent 1px);
+  background-size: 24px 24px;
+  opacity: 0.9;
+}
+
+.nm-mock__glow {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(48px);
+  opacity: 0.9;
+}
+
+.nm-mock__chrome {
+  position: absolute;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  isolation: isolate;
+  border: 1px solid var(--mk-rim);
+  background: var(--mk-glass);
+  color: var(--mk-text);
+  box-shadow: var(--mk-depth);
+  backdrop-filter: var(--mk-blur);
+  -webkit-backdrop-filter: var(--mk-blur);
+  overflow: hidden;
+}
+
+.nm-mock__chrome::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 0;
+  background: var(--mk-specular);
+  opacity: 0.95;
+}
+
+.nm-mock__chrome > * {
+  position: relative;
+  z-index: 1;
+}
+
+.nm-mock__toolbar {
+  top: calc(1rem + var(--safe-top, 0px));
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0.5rem 0.6rem;
+  border-radius: var(--mk-radius-bar);
+}
+
+.nm-mock__workspaces {
+  bottom: calc(1rem + var(--safe-bottom, 0px));
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0.45rem 0.55rem;
+  border-radius: var(--mk-radius-bar);
+  gap: 0.45rem;
+}
+
+.nm-mock__btn {
+  display: inline-flex;
+  height: 2.2rem;
+  width: 2.2rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--mk-radius-btn);
+  color: var(--mk-muted);
+  background: var(--mk-btn);
+  border: 1px solid transparent;
+  box-shadow: var(--mk-btn-shadow);
+  font-size: 0.85rem;
+}
+
+.nm-mock__btn--active {
+  color: #e0e7ff;
+  background: rgba(99, 102, 241, 0.38);
+  border-color: rgba(165, 180, 252, 0.5);
+  box-shadow: 0 0 18px rgba(99, 102, 241, 0.4);
+}
+
+.nm-mock__tab {
+  height: 2.25rem;
+  width: 2.25rem;
+  border-radius: var(--mk-radius-btn);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+.nm-mock__tab--on {
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.4),
+    0 0 14px currentColor;
+}
+
+.nm-mock__bin {
+  position: absolute;
+  z-index: 20;
+  right: calc(1rem + var(--safe-right, 0px));
+  bottom: calc(1rem + var(--safe-bottom, 0px));
+  height: 3.1rem;
+  width: 3.1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  isolation: isolate;
+  overflow: hidden;
+  border-radius: var(--mk-radius-btn);
+  border: 1px solid var(--mk-rim);
+  background: var(--mk-glass);
+  color: var(--mk-muted);
+  box-shadow: var(--mk-depth);
+  backdrop-filter: var(--mk-blur);
+  -webkit-backdrop-filter: var(--mk-blur);
+  font-size: 1.05rem;
+}
+
+.nm-mock__bin::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: var(--mk-specular);
+}
+
+.nm-mock__node {
+  position: absolute;
+  z-index: 10;
+  width: min(248px, 44vw);
+  overflow: hidden;
+  isolation: isolate;
+  border-radius: var(--mk-radius-node);
+  border: 1px solid var(--mk-rim);
+  background: var(--mk-node);
+  box-shadow: var(--mk-depth);
+  backdrop-filter: var(--mk-blur);
+  -webkit-backdrop-filter: var(--mk-blur);
+  color: var(--mk-text);
+}
+
+.nm-mock__node::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 0;
+  background: var(--mk-specular);
+  opacity: 0.85;
+}
+
+.nm-mock__node > * {
+  position: relative;
+  z-index: 1;
+}
+
+.nm-mock__node-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  height: 2.65rem;
+  padding: 0 0.75rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  border-bottom: 1px solid var(--mk-divider);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--mk-accent) 38%, transparent),
+    color-mix(in srgb, var(--mk-accent) 14%, transparent)
+  );
+}
+
+.nm-mock__socket {
+  position: absolute;
+  z-index: 3;
+  top: 1.3rem;
+  height: 0.72rem;
+  width: 0.72rem;
+  border-radius: 999px;
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  background: var(--mk-accent);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--mk-accent) 55%, transparent);
+}
+
+.nm-mock__socket--in {
+  left: -0.4rem;
+}
+
+.nm-mock__socket--out {
+  right: -0.4rem;
+}
+
+.nm-mock__node-body {
+  padding: 0.8rem 0.9rem 0.95rem;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--mk-muted);
+}
+
+.nm-mock__edge {
+  position: absolute;
+  z-index: 5;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.nm-mock__panel {
+  position: absolute;
+  z-index: 25;
+  right: calc(1.25rem + var(--safe-right, 0px));
+  top: calc(4.25rem + var(--safe-top, 0px));
+  width: min(220px, 42vw);
+  padding: 0.85rem 0.95rem;
+  border-radius: var(--mk-radius-panel);
+  border: 1px solid var(--mk-rim);
+  background: var(--mk-panel, var(--mk-glass));
+  box-shadow: var(--mk-depth);
+  backdrop-filter: var(--mk-blur);
+  -webkit-backdrop-filter: var(--mk-blur);
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.nm-mock__panel::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: var(--mk-specular);
+  opacity: 0.8;
+}
+
+.nm-mock__panel > * {
+  position: relative;
+  z-index: 1;
+}
+
+.nm-mock__panel-title {
+  margin: 0 0 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 650;
+}
+
+.nm-mock__panel-body {
+  margin: 0;
+  font-size: 0.68rem;
+  line-height: 1.4;
+  color: var(--mk-muted);
+}
+
+.nm-mock__blurb {
+  position: absolute;
+  z-index: 30;
+  left: 50%;
+  bottom: 5.6rem;
+  transform: translateX(-50%);
+  margin: 0;
+  max-width: 26rem;
+  padding: 0.5rem 0.95rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  text-align: center;
+  color: var(--mk-muted);
+  background: var(--mk-badge-bg);
+  border: 1px solid var(--mk-badge-border);
+  backdrop-filter: blur(18px) saturate(1.5);
+  -webkit-backdrop-filter: blur(18px) saturate(1.5);
+  box-shadow: var(--mk-badge-shadow);
+}
+
+/* ——— 1. Apple-like lens ——— */
+.nm-mock--lens {
+  --mk-canvas: #04060a;
+  --mk-text: #f5f8ff;
+  --mk-muted: rgba(220, 232, 255, 0.74);
+  --mk-dot: rgba(190, 215, 255, 0.07);
+  --mk-glass: rgba(255, 255, 255, 0.045);
+  --mk-panel: rgba(255, 255, 255, 0.055);
+  --mk-node: rgba(255, 255, 255, 0.04);
+  --mk-btn: rgba(255, 255, 255, 0.06);
+  --mk-rim: rgba(255, 255, 255, 0.38);
+  --mk-divider: rgba(255, 255, 255, 0.14);
+  --mk-blur: blur(52px) saturate(2.4) brightness(1.16) contrast(1.1);
+  --mk-radius-bar: 1.65rem;
+  --mk-radius-btn: 1.05rem;
+  --mk-radius-node: 1.45rem;
+  --mk-radius-panel: 1.35rem;
+  --mk-badge-bg: rgba(255, 255, 255, 0.07);
+  --mk-badge-border: rgba(255, 255, 255, 0.32);
+  --mk-badge-shadow: 0 10px 32px rgba(0, 0, 0, 0.4);
+  --mk-btn-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  --mk-specular:
+    radial-gradient(120% 90% at 20% 0%, rgba(255, 255, 255, 0.55), transparent 42%),
+    linear-gradient(160deg, rgba(255, 255, 255, 0.28), rgba(255, 255, 255, 0.02) 40%, transparent 68%);
+  --mk-depth:
+    0 20px 55px rgba(0, 0, 0, 0.5),
+    0 2px 8px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.4),
+    inset 0 0 42px rgba(170, 210, 255, 0.07);
+}
+
+.nm-mock--lens .nm-mock__scene::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(900px 520px at 18% 10%, rgba(170, 210, 255, 0.22), transparent 58%),
+    radial-gradient(700px 460px at 85% 75%, rgba(120, 170, 255, 0.12), transparent 55%),
+    radial-gradient(500px 300px at 50% 0%, rgba(255, 255, 255, 0.1), transparent 60%);
+}
+
+/* ——— 2. Frosted acrylic / vibrancy ——— */
+.nm-mock--acrylic {
+  --mk-canvas: #12151e;
+  --mk-text: #eef2ff;
+  --mk-muted: rgba(210, 220, 245, 0.8);
+  --mk-dot: rgba(150, 175, 220, 0.11);
+  --mk-glass: rgba(48, 58, 88, 0.62);
+  --mk-panel: rgba(42, 52, 82, 0.72);
+  --mk-node: rgba(40, 50, 78, 0.68);
+  --mk-btn: rgba(255, 255, 255, 0.1);
+  --mk-rim: rgba(170, 195, 245, 0.24);
+  --mk-divider: rgba(170, 195, 245, 0.16);
+  --mk-blur: blur(32px) saturate(1.55) brightness(1.04);
+  --mk-radius-bar: 1rem;
+  --mk-radius-btn: 0.7rem;
+  --mk-radius-node: 0.95rem;
+  --mk-radius-panel: 1rem;
+  --mk-badge-bg: rgba(55, 65, 100, 0.78);
+  --mk-badge-border: rgba(170, 195, 245, 0.28);
+  --mk-badge-shadow: 0 12px 34px rgba(0, 0, 0, 0.38);
+  --mk-btn-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  --mk-specular:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.03) 42%, transparent),
+    linear-gradient(100deg, rgba(120, 150, 255, 0.12), rgba(56, 189, 248, 0.08));
+  --mk-depth:
+    0 14px 40px rgba(0, 0, 0, 0.42),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.28);
+}
+
+.nm-mock--acrylic .nm-mock__scene::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(760px 460px at 18% 12%, rgba(99, 102, 241, 0.34), transparent 58%),
+    radial-gradient(640px 420px at 82% 68%, rgba(14, 165, 233, 0.26), transparent 55%),
+    radial-gradient(520px 340px at 48% 100%, rgba(168, 85, 247, 0.18), transparent 50%);
+}
+
+.nm-mock--acrylic .nm-mock__node-bar {
+  background: color-mix(in srgb, var(--mk-accent) 42%, rgba(30, 40, 70, 0.55));
+}
+
+/* ——— 3. Soft gel / organic liquid ——— */
+.nm-mock--gel {
+  --mk-canvas: #0c0914;
+  --mk-text: #faf5ff;
+  --mk-muted: rgba(235, 225, 255, 0.76);
+  --mk-dot: rgba(220, 185, 255, 0.09);
+  --mk-glass: rgba(255, 255, 255, 0.09);
+  --mk-panel: rgba(255, 255, 255, 0.1);
+  --mk-node: rgba(255, 255, 255, 0.08);
+  --mk-btn: rgba(255, 255, 255, 0.1);
+  --mk-rim: rgba(255, 210, 255, 0.3);
+  --mk-divider: rgba(255, 210, 255, 0.15);
+  --mk-blur: blur(42px) saturate(2) brightness(1.1);
+  --mk-radius-bar: 2.1rem 1.5rem 2.05rem 1.7rem / 1.7rem 2.1rem 1.5rem 2.05rem;
+  --mk-radius-btn: 1.4rem 1.05rem 1.45rem 1.15rem / 1.15rem 1.4rem 1.05rem 1.45rem;
+  --mk-radius-node: 1.85rem 1.4rem 1.75rem 1.5rem / 1.55rem 1.8rem 1.4rem 1.7rem;
+  --mk-radius-panel: 1.7rem 1.35rem 1.8rem 1.45rem / 1.5rem 1.7rem 1.35rem 1.75rem;
+  --mk-badge-bg: rgba(255, 255, 255, 0.11);
+  --mk-badge-border: rgba(255, 200, 255, 0.34);
+  --mk-badge-shadow: 0 12px 32px rgba(70, 20, 110, 0.4);
+  --mk-btn-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.45),
+    0 5px 14px rgba(130, 60, 190, 0.22);
+  --mk-specular:
+    radial-gradient(95% 75% at 28% 0%, rgba(255, 255, 255, 0.45), transparent 50%),
+    radial-gradient(85% 65% at 85% 100%, rgba(192, 132, 252, 0.22), transparent 55%);
+  --mk-depth:
+    0 18px 48px rgba(45, 10, 80, 0.5),
+    0 4px 14px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.55),
+    inset 0 -2px 12px rgba(170, 90, 230, 0.14);
+}
+
+.nm-mock--gel .nm-mock__scene::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(700px 440px at 22% 18%, rgba(192, 132, 252, 0.28), transparent 58%),
+    radial-gradient(620px 400px at 78% 70%, rgba(244, 114, 182, 0.18), transparent 55%),
+    radial-gradient(480px 320px at 50% 100%, rgba(129, 140, 248, 0.14), transparent 52%);
+}
+
+.nm-mock--gel .nm-mock__btn,
+.nm-mock--gel .nm-mock__tab {
+  transition:
+    transform 0.4s cubic-bezier(0.22, 1.55, 0.36, 1),
+    border-radius 0.4s cubic-bezier(0.22, 1.4, 0.36, 1);
+}
+
+.nm-mock--gel .nm-mock__btn:hover,
+.nm-mock--gel .nm-mock__tab:hover {
+  transform: scale(1.1);
+  border-radius: 44% 50% 46% 52% / 50% 44% 54% 48%;
+}
+
+.nm-mock--gel .nm-mock__node:nth-of-type(1) {
+  --mk-radius-node: 1.95rem 1.35rem 1.8rem 1.55rem / 1.6rem 1.9rem 1.35rem 1.75rem;
+}
+
+.nm-mock--gel .nm-mock__node:nth-of-type(2) {
+  --mk-radius-node: 1.45rem 1.9rem 1.55rem 1.85rem / 1.75rem 1.5rem 1.85rem 1.4rem;
+}
+
+.nm-mock--gel .nm-mock__node:nth-of-type(3) {
+  --mk-radius-node: 1.75rem 1.6rem 1.95rem 1.4rem / 1.45rem 1.8rem 1.5rem 1.9rem;
+}

@@ -1,12 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { Beaker, Layers, Moon, RotateCcw, Sparkles, Sun, X } from 'lucide-react';
+import { Moon, RotateCcw, Sun, X } from 'lucide-react';
 import OptionHelpRow from './OptionHelpRow';
 import {
   readOnboardingReplayPending,
   setOnboardingCompleted,
   setOnboardingReplayPending,
 } from '@/lib/onboarding';
-import { UI_STYLE } from '@/lib/uiStyle';
 import { emitTutorial } from '@/lib/tutorialEvents';
 
 const REPLAY_HELP =
@@ -17,8 +16,6 @@ export default function SettingsDialog({
   onClose,
   nodeTheme,
   onThemeChange,
-  uiStyle,
-  onUiStyleChange,
 }) {
   const [section, setSection] = useState('style');
   const [replayPending, setReplayPending] = useState(() => readOnboardingReplayPending());
@@ -33,27 +30,6 @@ export default function SettingsDialog({
   const themeOptions = [
     { value: 'light', label: 'Light Theme', icon: Sun },
     { value: 'dark', label: 'Dark Theme', icon: Moon },
-  ];
-
-  const styleOptions = [
-    {
-      value: UI_STYLE.ORIGINAL,
-      label: 'Original',
-      hint: 'Solid panels and the classic canvas look.',
-      icon: Layers,
-    },
-    {
-      value: UI_STYLE.MODERN,
-      label: 'Modern',
-      hint: 'Frosted glass chrome on a black/grey canvas.',
-      icon: Sparkles,
-    },
-    {
-      value: UI_STYLE.PROTOTYPE,
-      label: 'Prototype',
-      hint: 'Experimental liquid glass — refractive frost, specular light, gel controls.',
-      icon: Beaker,
-    },
   ];
 
   const setReplay = (enabled) => {
@@ -118,44 +94,10 @@ export default function SettingsDialog({
           <section className="overflow-auto p-4">
             {section === 'style' && (
               <div className="space-y-6">
-                <div data-onboarding="settings-ui-style">
-                  <h3 className="text-sm font-semibold text-nm-text">Interface style</h3>
-                  <p className="mt-1 text-xs text-nm-text-muted">
-                    Choose the overall look of NodeMind chrome and notes.
-                  </p>
-                  <div className="mt-4 grid gap-2">
-                    {styleOptions.map(({ value, label, hint, icon: Icon }) => {
-                      const selected = uiStyle === value;
-                      return (
-                        <button
-                          key={value}
-                          type="button"
-                          onClick={() => {
-                            if (value !== uiStyle) emitTutorial('settings.ui-style');
-                            onUiStyleChange?.(value);
-                          }}
-                          className="flex items-start gap-3 rounded-xl border px-3 py-3 text-left transition hover:bg-nm-hover"
-                          style={{
-                            backgroundColor: selected ? 'rgba(99,102,241,0.18)' : 'var(--nm-option)',
-                            borderColor: selected ? '#818cf8' : 'var(--nm-border)',
-                            color: selected ? 'var(--nm-text)' : 'var(--nm-option-text)',
-                          }}
-                        >
-                          <Icon size={18} className="mt-0.5 shrink-0" />
-                          <span>
-                            <span className="block text-sm font-medium">{label}</span>
-                            <span className="mt-0.5 block text-[11px] opacity-70">{hint}</span>
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
                 <div data-onboarding="settings-theme">
                   <h3 className="text-sm font-semibold text-nm-text">Theme</h3>
                   <p className="mt-1 text-xs text-nm-text-muted">
-                    Light or dark colour palette (works with any interface style).
+                    Light or dark colour palette for the Modern glass UI.
                   </p>
                   <div className="mt-4 grid gap-2">
                     {themeOptions.map(({ value, label, icon: Icon }) => {

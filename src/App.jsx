@@ -1,12 +1,21 @@
 import { useEffect, useState } from 'react';
 import Canvas from '@/pages/Canvas';
+import MockupShell from '@/pages/mockups/MockupShell';
+import { getAppPath, matchMockupPath } from '@/lib/appPath';
 import { lockMobileViewport } from '@/lib/lockMobileViewport';
 
 export default function App() {
   const [offline, setOffline] = useState(() => typeof navigator !== 'undefined' && !navigator.onLine);
+  const [path, setPath] = useState(() => getAppPath());
 
   useEffect(() => {
     return lockMobileViewport();
+  }, []);
+
+  useEffect(() => {
+    const sync = () => setPath(getAppPath());
+    window.addEventListener('popstate', sync);
+    return () => window.removeEventListener('popstate', sync);
   }, []);
 
   useEffect(() => {
@@ -18,6 +27,11 @@ export default function App() {
       window.removeEventListener('offline', update);
     };
   }, []);
+
+  const mockupN = matchMockupPath(path);
+  if (mockupN) {
+    return <MockupShell n={mockupN} />;
+  }
 
   return (
     <div className="relative h-full w-full overflow-hidden bg-nm-canvas">

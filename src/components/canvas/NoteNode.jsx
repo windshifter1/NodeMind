@@ -138,7 +138,6 @@ export default function NoteNode({
   pending,
   orientation,
   darkNodes,
-  uiStyle = 'modern',
   liquidSpawn = false,
   selected,
   ghost,
@@ -280,25 +279,15 @@ export default function NoteNode({
     onStartNodeDrag(node.id, e);
   };
 
-  const modernUi = uiStyle === 'modern';
-  const prototypeUi = uiStyle === 'prototype';
-  const glassUi = modernUi || prototypeUi;
-  const nodeRadius = prototypeUi ? '1.45rem' : modernUi ? '1.1rem' : '0.75rem';
-  const borderW = selected ? 3 : glassUi ? 1 : 2;
+  const nodeRadius = '1.1rem';
+  const borderW = selected ? 3 : 1;
   const innerRadius = `calc(${nodeRadius} - ${borderW}px)`;
 
   return (
     <div
       data-note-node={node.id}
       data-liquid-spawn={liquidSpawn ? '1' : undefined}
-      data-selected={selected ? '1' : undefined}
-      className={`absolute select-none ${
-        prototypeUi
-          ? 'nm-proto-node'
-          : modernUi
-            ? 'rounded-[1.1rem]'
-            : 'rounded-xl shadow-2xl'
-      }`}
+      className="absolute select-none rounded-[1.1rem]"
       style={{
         left: node.x,
         top: node.y,
@@ -306,25 +295,12 @@ export default function NoteNode({
         zIndex: node.z,
         borderWidth: borderW,
         borderStyle: 'solid',
-        borderColor: glassUi && !selected ? 'var(--nm-border)' : node.color,
-        backgroundColor: prototypeUi
-          ? undefined
-          : modernUi
-            ? 'var(--nm-node-bg)'
-            : darkNodes
-              ? '#424448'
-              : '#f8fafc',
+        borderColor: selected ? node.color : 'var(--nm-border)',
+        backgroundColor: 'var(--nm-node-bg)',
         opacity: ghost ? 0.3 : 1,
-        boxShadow: selected
-          ? prototypeUi
-            ? undefined
-            : selectionGlow(node.color)
-          : modernUi
-            ? 'var(--nm-glass-shadow)'
-            : undefined,
-        backdropFilter: modernUi ? 'blur(28px) saturate(1.75) brightness(1.05)' : undefined,
-        WebkitBackdropFilter: modernUi ? 'blur(28px) saturate(1.75) brightness(1.05)' : undefined,
-        '--node-tint': node.color,
+        boxShadow: selected ? selectionGlow(node.color) : 'var(--nm-glass-shadow)',
+        backdropFilter: 'blur(28px) saturate(1.75) brightness(1.05)',
+        WebkitBackdropFilter: 'blur(28px) saturate(1.75) brightness(1.05)',
         transition:
           'left 250ms ease, top 250ms ease, opacity 180ms ease, width 250ms ease, box-shadow 180ms ease, border-color 180ms ease, border-width 180ms ease',
       }}
@@ -388,22 +364,12 @@ export default function NoteNode({
       )}
 
       <div
-        className={`relative flex items-center gap-1 px-2 ${prototypeUi ? 'nm-proto-node-bar' : ''}`}
+        className="relative flex items-center gap-1 px-2"
         style={{
           height: TOP_BAR_HEIGHT,
           cursor: editingTitle ? 'text' : 'grab',
-          backgroundColor: prototypeUi
-            ? undefined
-            : glassUi
-              ? `${node.color}33`
-              : node.color + '22',
-          borderBottom: bodyCollapsed
-            ? 'none'
-            : prototypeUi
-              ? undefined
-              : glassUi
-                ? '1px solid var(--nm-border)'
-                : `1px solid ${node.color}33`,
+          backgroundColor: `${node.color}33`,
+          borderBottom: bodyCollapsed ? 'none' : '1px solid var(--nm-border)',
           // Match the card radius so the bar doesn’t square-poke rounded corners.
           borderTopLeftRadius: innerRadius,
           borderTopRightRadius: innerRadius,
@@ -533,7 +499,6 @@ export default function NoteNode({
           ghostSelection={ghostSelection}
           onSelectNode={onSelectNode}
           zoom={zoom}
-          uiStyle={uiStyle}
           bodySlots={bodySlots}
           basicView={mathView === MATH_VIEW.BASIC}
         />

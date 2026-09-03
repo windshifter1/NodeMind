@@ -90,7 +90,6 @@ function GraphNodeBody({
   bodySlots,
   basicView,
   zoom,
-  uiStyle = 'modern',
   fieldLooks,
 }) {
   const plotH = basicView
@@ -369,7 +368,6 @@ function GraphNodeBody({
         darkNodes={darkNodes}
         height={plotH}
         zoom={zoom}
-        uiStyle={uiStyle}
       />
       {!basicView && softErrors.length > 0 && (
         <div
@@ -399,7 +397,6 @@ export default function MathNodeBody({
   ghostSelection = null,
   onSelectNode,
   zoom = 1,
-  uiStyle = 'modern',
   bodySlots = [],
   basicView = false,
 }) {
@@ -525,7 +522,6 @@ export default function MathNodeBody({
         bodySlots={bodySlots}
         basicView={basicView}
         zoom={zoom}
-        uiStyle={uiStyle}
         fieldLooks={fieldLooks}
       />
     );

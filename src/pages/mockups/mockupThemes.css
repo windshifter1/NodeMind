@@ -1,11 +1,11 @@
-/* Static liquid-glass mockups — design explorations only (not live app chrome). */
+/* Static UI mockups — design explorations only (not live app chrome). */
 
 .nm-mock {
   position: relative;
   height: 100%;
   width: 100%;
   overflow: hidden;
-  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--mk-font, ui-sans-serif, system-ui, sans-serif);
   color: var(--mk-text);
   background: var(--mk-canvas);
 }
@@ -18,17 +18,21 @@
   transform: translateX(-50%);
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.35rem 0.75rem;
-  font-size: 0.7rem;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.5rem;
+  max-width: min(96vw, 54rem);
+  padding: 0.4rem 0.8rem;
+  font-size: 0.68rem;
   font-weight: 600;
   letter-spacing: 0.02em;
-  white-space: nowrap;
+  white-space: normal;
+  text-align: center;
   border-radius: 999px;
   border: 1px solid var(--mk-badge-border);
   background: var(--mk-badge-bg);
-  backdrop-filter: blur(20px) saturate(1.7);
-  -webkit-backdrop-filter: blur(20px) saturate(1.7);
+  backdrop-filter: var(--mk-badge-blur, blur(20px) saturate(1.7));
+  -webkit-backdrop-filter: var(--mk-badge-blur, blur(20px) saturate(1.7));
   box-shadow: var(--mk-badge-shadow);
   color: var(--mk-text);
 }
@@ -66,6 +70,24 @@
   border-radius: 50%;
   filter: blur(48px);
   opacity: 0.9;
+  background: var(--mk-glow, rgba(99, 102, 241, 0.22));
+}
+
+.nm-mock__glow--a {
+  background: var(--mk-glow-a, rgba(99, 102, 241, 0.24));
+}
+
+.nm-mock__glow--b {
+  background: var(--mk-glow-b, rgba(56, 189, 248, 0.18));
+}
+
+.nm-mock__glow--c {
+  background: var(--mk-glow-c, rgba(244, 114, 182, 0.14));
+}
+
+.nm-mock__edge-path {
+  stroke: var(--mk-edge, rgba(186, 200, 230, 0.42));
+  stroke-dasharray: var(--mk-edge-dash, none);
 }
 
 .nm-mock__chrome {
@@ -142,8 +164,9 @@
   height: 2.25rem;
   width: 2.25rem;
   border-radius: var(--mk-radius-btn);
-  border: 1px solid rgba(255, 255, 255, 0.22);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  border: 1px solid var(--mk-tab-rim, rgba(255, 255, 255, 0.22));
+  background: color-mix(in srgb, var(--mk-tab, #888) 20%, transparent);
+  box-shadow: var(--mk-tab-shadow, inset 0 1px 0 rgba(255, 255, 255, 0.35));
 }
 
 .nm-mock__tab--on {
@@ -483,4 +506,386 @@
 
 .nm-mock--gel .nm-mock__node:nth-of-type(3) {
   --mk-radius-node: 1.75rem 1.6rem 1.95rem 1.4rem / 1.45rem 1.8rem 1.5rem 1.9rem;
+}
+
+/* ——— 4. Soft claymorphism ——— */
+.nm-mock--clay-soft {
+  --mk-font: ui-rounded, "Nunito", "Segoe UI", system-ui, sans-serif;
+  --mk-canvas: #e8e4f0;
+  --mk-text: #3d3554;
+  --mk-muted: rgba(61, 53, 84, 0.68);
+  --mk-dot: rgba(90, 70, 130, 0.1);
+  --mk-glass: #efeaf8;
+  --mk-panel: #f3effa;
+  --mk-node: #f6f2fc;
+  --mk-btn: #ebe4f6;
+  --mk-rim: rgba(255, 255, 255, 0.85);
+  --mk-divider: rgba(120, 100, 160, 0.12);
+  --mk-blur: none;
+  --mk-badge-blur: none;
+  --mk-radius-bar: 1.75rem;
+  --mk-radius-btn: 1.15rem;
+  --mk-radius-node: 1.55rem;
+  --mk-radius-panel: 1.45rem;
+  --mk-badge-bg: #efeaf8;
+  --mk-badge-border: rgba(255, 255, 255, 0.9);
+  --mk-badge-shadow:
+    8px 8px 18px rgba(140, 120, 180, 0.22),
+    -6px -6px 16px rgba(255, 255, 255, 0.9);
+  --mk-btn-shadow:
+    5px 5px 12px rgba(140, 120, 180, 0.2),
+    -4px -4px 10px rgba(255, 255, 255, 0.95);
+  --mk-specular: none;
+  --mk-depth:
+    10px 10px 22px rgba(140, 120, 180, 0.28),
+    -8px -8px 20px rgba(255, 255, 255, 0.95),
+    inset 1px 1px 0 rgba(255, 255, 255, 0.7);
+  --mk-edge: rgba(120, 100, 170, 0.35);
+  --mk-tab-rim: rgba(255, 255, 255, 0.9);
+  --mk-tab-shadow:
+    5px 5px 12px rgba(140, 120, 180, 0.22),
+    -4px -4px 10px rgba(255, 255, 255, 0.95);
+  --mk-glow-a: rgba(186, 170, 230, 0.45);
+  --mk-glow-b: rgba(160, 210, 230, 0.35);
+  --mk-glow-c: rgba(240, 180, 210, 0.35);
+}
+
+.nm-mock--clay-soft .nm-mock__chrome::before,
+.nm-mock--clay-soft .nm-mock__node::before,
+.nm-mock--clay-soft .nm-mock__panel::before,
+.nm-mock--clay-soft .nm-mock__bin::before {
+  display: none;
+}
+
+.nm-mock--clay-soft .nm-mock__btn--active {
+  color: #4c1d95;
+  background: #ddd2f5;
+  border-color: rgba(255, 255, 255, 0.95);
+  box-shadow:
+    inset 4px 4px 10px rgba(140, 120, 180, 0.25),
+    inset -3px -3px 8px rgba(255, 255, 255, 0.85);
+}
+
+.nm-mock--clay-soft .nm-mock__node-bar {
+  background: color-mix(in srgb, var(--mk-accent) 28%, #f6f2fc);
+  color: #3d3554;
+}
+
+.nm-mock--clay-soft .nm-mock__socket {
+  border-color: #fff;
+  box-shadow:
+    3px 3px 8px rgba(140, 120, 180, 0.3),
+    -2px -2px 6px rgba(255, 255, 255, 0.9);
+}
+
+/* ——— 5. Vivid claymorphism ——— */
+.nm-mock--clay-vivid {
+  --mk-font: ui-rounded, "Nunito", "Segoe UI", system-ui, sans-serif;
+  --mk-canvas: #d9f4ff;
+  --mk-text: #1e293b;
+  --mk-muted: rgba(30, 41, 59, 0.7);
+  --mk-dot: rgba(14, 116, 144, 0.12);
+  --mk-glass: #fff7ed;
+  --mk-panel: #fef3c7;
+  --mk-node: #ffffff;
+  --mk-btn: #ffe4e6;
+  --mk-rim: rgba(255, 255, 255, 1);
+  --mk-divider: rgba(15, 23, 42, 0.08);
+  --mk-blur: none;
+  --mk-badge-blur: none;
+  --mk-radius-bar: 2rem;
+  --mk-radius-btn: 1.25rem;
+  --mk-radius-node: 1.7rem;
+  --mk-radius-panel: 1.6rem;
+  --mk-badge-bg: #fef9c3;
+  --mk-badge-border: #fff;
+  --mk-badge-shadow:
+    10px 10px 0 rgba(15, 23, 42, 0.08),
+    14px 14px 28px rgba(14, 116, 144, 0.18),
+    -8px -8px 22px rgba(255, 255, 255, 0.95);
+  --mk-btn-shadow:
+    6px 6px 0 rgba(15, 23, 42, 0.06),
+    8px 8px 16px rgba(244, 63, 94, 0.15),
+    -5px -5px 14px rgba(255, 255, 255, 0.95);
+  --mk-specular: none;
+  --mk-depth:
+    12px 12px 0 rgba(15, 23, 42, 0.07),
+    16px 16px 30px rgba(14, 116, 144, 0.2),
+    -10px -10px 24px rgba(255, 255, 255, 1);
+  --mk-edge: rgba(15, 23, 42, 0.28);
+  --mk-tab-rim: #fff;
+  --mk-tab-shadow:
+    6px 6px 0 rgba(15, 23, 42, 0.06),
+    8px 8px 16px rgba(14, 116, 144, 0.16),
+    -5px -5px 12px #fff;
+  --mk-glow-a: rgba(125, 211, 252, 0.55);
+  --mk-glow-b: rgba(253, 224, 71, 0.45);
+  --mk-glow-c: rgba(251, 113, 133, 0.4);
+}
+
+.nm-mock--clay-vivid .nm-mock__chrome::before,
+.nm-mock--clay-vivid .nm-mock__node::before,
+.nm-mock--clay-vivid .nm-mock__panel::before,
+.nm-mock--clay-vivid .nm-mock__bin::before {
+  display: none;
+}
+
+.nm-mock--clay-vivid .nm-mock__btn--active {
+  color: #fff;
+  background: #6366f1;
+  border-color: #fff;
+  box-shadow:
+    6px 6px 0 rgba(15, 23, 42, 0.12),
+    0 10px 22px rgba(99, 102, 241, 0.35);
+}
+
+.nm-mock--clay-vivid .nm-mock__node-bar {
+  background: color-mix(in srgb, var(--mk-accent) 55%, #fff);
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.nm-mock--clay-vivid .nm-mock__toolbar {
+  background: #fff1f2;
+}
+
+.nm-mock--clay-vivid .nm-mock__workspaces {
+  background: #ecfeff;
+}
+
+/* ——— 6. Sketched / hand-drawn ——— */
+.nm-mock--sketch {
+  --mk-font: "Segoe Print", "Comic Sans MS", "Chalkboard SE", "Marker Felt", cursive;
+  --mk-canvas: #f4efe6;
+  --mk-text: #1c1917;
+  --mk-muted: rgba(41, 37, 36, 0.72);
+  --mk-dot: rgba(68, 64, 60, 0.14);
+  --mk-glass: #fffdf8;
+  --mk-panel: #fffaf0;
+  --mk-node: #fffef9;
+  --mk-btn: #fffdf8;
+  --mk-rim: #1c1917;
+  --mk-divider: rgba(28, 25, 23, 0.35);
+  --mk-blur: none;
+  --mk-badge-blur: none;
+  --mk-radius-bar: 0.35rem 1.1rem 0.45rem 0.95rem / 0.9rem 0.4rem 1rem 0.5rem;
+  --mk-radius-btn: 0.45rem 0.85rem 0.55rem 0.75rem / 0.7rem 0.5rem 0.85rem 0.4rem;
+  --mk-radius-node: 0.55rem 1.2rem 0.65rem 1rem / 1.05rem 0.5rem 1.15rem 0.6rem;
+  --mk-radius-panel: 0.5rem 1.1rem 0.7rem 0.9rem / 0.95rem 0.55rem 1.05rem 0.6rem;
+  --mk-badge-bg: #fffdf8;
+  --mk-badge-border: #1c1917;
+  --mk-badge-shadow: 3px 3px 0 rgba(28, 25, 23, 0.15);
+  --mk-btn-shadow: 2px 2px 0 rgba(28, 25, 23, 0.2);
+  --mk-specular: none;
+  --mk-depth: 4px 4px 0 rgba(28, 25, 23, 0.12);
+  --mk-edge: #1c1917;
+  --mk-edge-dash: 7 5;
+  --mk-tab-rim: #1c1917;
+  --mk-tab-shadow: 2px 2px 0 rgba(28, 25, 23, 0.18);
+  --mk-glow-a: rgba(120, 113, 108, 0.08);
+  --mk-glow-b: rgba(120, 113, 108, 0.06);
+  --mk-glow-c: rgba(120, 113, 108, 0.05);
+}
+
+.nm-mock--sketch .nm-mock__chrome,
+.nm-mock--sketch .nm-mock__node,
+.nm-mock--sketch .nm-mock__panel,
+.nm-mock--sketch .nm-mock__bin,
+.nm-mock--sketch .nm-mock__badge,
+.nm-mock--sketch .nm-mock__blurb {
+  border-width: 2px;
+  border-style: solid;
+  background-image:
+    repeating-linear-gradient(
+      -12deg,
+      transparent,
+      transparent 10px,
+      rgba(28, 25, 23, 0.015) 10px,
+      rgba(28, 25, 23, 0.015) 11px
+    );
+}
+
+.nm-mock--sketch .nm-mock__chrome::before,
+.nm-mock--sketch .nm-mock__node::before,
+.nm-mock--sketch .nm-mock__panel::before,
+.nm-mock--sketch .nm-mock__bin::before {
+  display: none;
+}
+
+.nm-mock--sketch .nm-mock__dots {
+  background-image: radial-gradient(circle, var(--mk-dot) 1.2px, transparent 1.2px);
+  background-size: 28px 28px;
+  opacity: 0.55;
+}
+
+.nm-mock--sketch .nm-mock__scene::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0.35;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.35'/%3E%3C/svg%3E");
+  background-size: 220px 220px;
+  mix-blend-mode: multiply;
+  pointer-events: none;
+}
+
+.nm-mock--sketch .nm-mock__btn {
+  border: 2px solid #1c1917;
+  font-weight: 700;
+}
+
+.nm-mock--sketch .nm-mock__btn--active {
+  color: #1c1917;
+  background: #fde68a;
+  border-color: #1c1917;
+  box-shadow: 3px 3px 0 #1c1917;
+}
+
+.nm-mock--sketch .nm-mock__node-bar {
+  background: color-mix(in srgb, var(--mk-accent) 22%, #fffef9);
+  border-bottom: 2px solid #1c1917;
+  font-weight: 700;
+}
+
+.nm-mock--sketch .nm-mock__socket {
+  border: 2px solid #1c1917;
+  box-shadow: none;
+}
+
+.nm-mock--sketch .nm-mock__edge-path {
+  stroke-width: 2.4;
+  stroke-linecap: round;
+}
+
+.nm-mock--sketch .nm-mock__node:nth-of-type(1) {
+  transform: rotate(-1.2deg);
+}
+
+.nm-mock--sketch .nm-mock__node:nth-of-type(2) {
+  transform: rotate(1.4deg);
+}
+
+.nm-mock--sketch .nm-mock__node:nth-of-type(3) {
+  transform: rotate(-0.8deg);
+}
+
+.nm-mock--sketch .nm-mock__panel {
+  transform: rotate(1deg);
+}
+
+.nm-mock--sketch .nm-mock__blurb {
+  font-style: italic;
+}
+
+/* ——— 7. Professional / product UI ——— */
+.nm-mock--pro {
+  --mk-font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --mk-canvas: #f3f4f6;
+  --mk-text: #111827;
+  --mk-muted: #6b7280;
+  --mk-dot: rgba(17, 24, 39, 0.08);
+  --mk-glass: #ffffff;
+  --mk-panel: #ffffff;
+  --mk-node: #ffffff;
+  --mk-btn: transparent;
+  --mk-rim: #e5e7eb;
+  --mk-divider: #e5e7eb;
+  --mk-blur: none;
+  --mk-badge-blur: none;
+  --mk-radius-bar: 0.75rem;
+  --mk-radius-btn: 0.5rem;
+  --mk-radius-node: 0.625rem;
+  --mk-radius-panel: 0.625rem;
+  --mk-badge-bg: #ffffff;
+  --mk-badge-border: #e5e7eb;
+  --mk-badge-shadow: 0 1px 2px rgba(15, 23, 42, 0.06), 0 4px 12px rgba(15, 23, 42, 0.04);
+  --mk-btn-shadow: none;
+  --mk-specular: none;
+  --mk-depth:
+    0 1px 2px rgba(15, 23, 42, 0.05),
+    0 8px 24px rgba(15, 23, 42, 0.06);
+  --mk-edge: #94a3b8;
+  --mk-tab-rim: #e5e7eb;
+  --mk-tab-shadow: none;
+  --mk-glow-a: transparent;
+  --mk-glow-b: transparent;
+  --mk-glow-c: transparent;
+}
+
+.nm-mock--pro .nm-mock__chrome::before,
+.nm-mock--pro .nm-mock__node::before,
+.nm-mock--pro .nm-mock__panel::before,
+.nm-mock--pro .nm-mock__bin::before {
+  display: none;
+}
+
+.nm-mock--pro .nm-mock__toolbar {
+  gap: 0.2rem;
+  padding: 0.35rem 0.45rem;
+  border: 1px solid #e5e7eb;
+}
+
+.nm-mock--pro .nm-mock__btn {
+  color: #4b5563;
+  border: 1px solid transparent;
+}
+
+.nm-mock--pro .nm-mock__btn:hover {
+  background: #f3f4f6;
+  color: #111827;
+}
+
+.nm-mock--pro .nm-mock__btn--active {
+  color: #4338ca;
+  background: #eef2ff;
+  border-color: #c7d2fe;
+  box-shadow: none;
+}
+
+.nm-mock--pro .nm-mock__node-bar {
+  background: #f9fafb;
+  color: #111827;
+  font-weight: 600;
+  font-size: 0.8rem;
+  letter-spacing: -0.01em;
+}
+
+.nm-mock--pro .nm-mock__node-body {
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.nm-mock--pro .nm-mock__panel-title {
+  font-size: 0.75rem;
+  letter-spacing: -0.01em;
+}
+
+.nm-mock--pro .nm-mock__panel-body {
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.68rem;
+  color: #6b7280;
+}
+
+.nm-mock--pro .nm-mock__socket {
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px #d1d5db, 0 1px 2px rgba(15, 23, 42, 0.12);
+}
+
+.nm-mock--pro .nm-mock__tab--on {
+  box-shadow: 0 0 0 2px #fff, 0 0 0 4px currentColor;
+}
+
+.nm-mock--pro .nm-mock__blurb {
+  border-radius: 0.5rem;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-weight: 500;
+  color: #4b5563;
+}
+
+.nm-mock--pro .nm-mock__badge {
+  border-radius: 0.5rem;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-weight: 500;
+  letter-spacing: 0;
 }

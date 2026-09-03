@@ -26,7 +26,41 @@ const THEMES = {
     panelTitle: 'Gel material',
     panelBody: 'Soft continuous shapes with wet speculars; buttons squash like liquid on hover.',
   },
+  4: {
+    id: 'clay-soft',
+    label: 'Soft clay',
+    short: 'Clay',
+    blurb: 'Claymorphism — matte pastels, dual soft shadows, chubby rounded chrome.',
+    panelTitle: 'Soft clay',
+    panelBody: 'Extruded matte surfaces with light + dark soft shadows. No glass blur — pure clay.',
+  },
+  5: {
+    id: 'clay-vivid',
+    label: 'Vivid clay',
+    short: 'Clay+',
+    blurb: 'Bolder claymorphism — saturated pastels, deeper extrusion, toy-like controls.',
+    panelTitle: 'Vivid clay',
+    panelBody: 'Higher contrast clay with thicker extrusion and candy accents for a playful desk.',
+  },
+  6: {
+    id: 'sketch',
+    label: 'Sketched',
+    short: 'Sketch',
+    blurb: 'Hand-sketched UI — paper grain, ink outlines, imperfect edges, notebook vibe.',
+    panelTitle: 'Sketch notes',
+    panelBody: 'Looks like a whiteboard doodle of the app: rough strokes, dashed wires, paper wash.',
+  },
+  7: {
+    id: 'pro',
+    label: 'Professional',
+    short: 'Pro',
+    blurb: 'Clean professional UI — crisp panels, subtle elevation, dense restrained chrome.',
+    panelTitle: 'Product chrome',
+    panelBody: 'Enterprise-ready surfaces: solid fills, 1px borders, quiet shadows, clear hierarchy.',
+  },
 };
+
+const ALL = [1, 2, 3, 4, 5, 6, 7];
 
 const NODES = [
   {
@@ -61,7 +95,7 @@ function appHref(path) {
 
 export default function MockupShell({ n }) {
   const theme = THEMES[n] || THEMES[1];
-  const others = [1, 2, 3].filter((i) => i !== n);
+  const others = ALL.filter((i) => i !== n);
 
   return (
     <div className={`nm-mock nm-mock--${theme.id}`}>
@@ -83,33 +117,30 @@ export default function MockupShell({ n }) {
       <div className="nm-mock__scene" aria-hidden="true">
         <div className="nm-mock__dots" />
         <div
-          className="nm-mock__glow"
+          className="nm-mock__glow nm-mock__glow--a"
           style={{
             width: 440,
             height: 340,
             left: '6%',
             top: '10%',
-            background: 'rgba(99, 102, 241, 0.24)',
           }}
         />
         <div
-          className="nm-mock__glow"
+          className="nm-mock__glow nm-mock__glow--b"
           style={{
             width: 400,
             height: 320,
             right: '4%',
             bottom: '16%',
-            background: 'rgba(56, 189, 248, 0.18)',
           }}
         />
         <div
-          className="nm-mock__glow"
+          className="nm-mock__glow nm-mock__glow--c"
           style={{
             width: 320,
             height: 260,
             left: '42%',
             bottom: '6%',
-            background: 'rgba(244, 114, 182, 0.14)',
           }}
         />
       </div>
@@ -132,16 +163,16 @@ export default function MockupShell({ n }) {
 
       <svg className="nm-mock__edge" aria-hidden="true">
         <path
+          className="nm-mock__edge-path"
           d="M 340 210 C 420 210, 470 255, 540 265"
           fill="none"
-          stroke="rgba(186, 200, 230, 0.42)"
           strokeWidth="2.2"
           strokeLinecap="round"
         />
         <path
+          className="nm-mock__edge-path"
           d="M 400 410 C 450 370, 500 330, 560 295"
           fill="none"
-          stroke="rgba(186, 200, 230, 0.32)"
           strokeWidth="2.2"
           strokeLinecap="round"
         />
@@ -169,7 +200,11 @@ export default function MockupShell({ n }) {
           <span
             key={c}
             className={`nm-mock__tab ${i === 0 ? 'nm-mock__tab--on' : ''}`}
-            style={{ backgroundColor: i === 0 ? c : `${c}33`, color: c }}
+            style={{
+              backgroundColor: i === 0 ? c : undefined,
+              ['--mk-tab']: c,
+              color: c,
+            }}
           />
         ))}
       </div>

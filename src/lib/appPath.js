@@ -10,8 +10,8 @@ export function getAppPath() {
   return path;
 }
 
-/** Match `/mockup1` … `/mockup3` → 1…3, else null. */
+/** Match `/mockup1` … `/mockup7` → 1…7, else null. */
 export function matchMockupPath(path = getAppPath()) {
-  const m = /^\/mockup([1-3])$/.exec(path);
+  const m = /^\/mockup([1-7])$/.exec(path);
   return m ? Number(m[1]) : null;
 }

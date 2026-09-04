@@ -1,0 +1,144 @@
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800&display=swap');
+
+html[data-ui-style='clay-vivid'] {
+  --font-heading: ui-rounded, 'Nunito', 'Segoe UI', system-ui, sans-serif;
+  --font-body: ui-rounded, 'Nunito', 'Segoe UI', system-ui, sans-serif;
+  --nm-node-blur: none;
+  --nm-radius-bar: 2rem;
+  --nm-radius-btn: 1.25rem;
+  --nm-radius-node: 1.7rem;
+  --nm-radius-panel: 1.6rem;
+  --nm-edge-dash: none;
+  --nm-edge-width: 2.6px;
+}
+
+html[data-ui-style='clay-vivid'][data-theme='light'] {
+  --nm-page: #d9f4ff;
+  --nm-canvas: #d9f4ff;
+  --nm-canvas-dot: rgba(14, 116, 144, 0.12);
+  --nm-panel: #fef3c7;
+  --nm-chrome: #fff7ed;
+  --nm-header: #fef9c3;
+  --nm-sidebar: #ffe4e6;
+  --nm-hover: rgba(244, 63, 94, 0.1);
+  --nm-hover-strong: rgba(99, 102, 241, 0.14);
+  --nm-border: #ffffff;
+  --nm-border-strong: #ffffff;
+  --nm-divider: rgba(15, 23, 42, 0.08);
+  --nm-text: #1e293b;
+  --nm-text-secondary: rgba(30, 41, 59, 0.82);
+  --nm-text-muted: rgba(30, 41, 59, 0.7);
+  --nm-text-faint: rgba(30, 41, 59, 0.55);
+  --nm-label: #334155;
+  --nm-overlay: rgba(15, 23, 42, 0.28);
+  --nm-edge: rgba(15, 23, 42, 0.28);
+  --nm-input: #fff7ed;
+  --nm-option: #ffe4e6;
+  --nm-option-text: #1e293b;
+  --nm-tooltip: #fef9c3;
+  --nm-tooltip-text: #1e293b;
+  --nm-bin: #fff1f2;
+  --nm-node-bg: #ffffff;
+  --nm-canvas-glow-a: rgba(125, 211, 252, 0.55);
+  --nm-canvas-glow-b: rgba(253, 224, 71, 0.45);
+  --nm-canvas-glow-c: rgba(251, 113, 133, 0.4);
+  --nm-glass-shadow:
+    12px 12px 0 rgba(15, 23, 42, 0.07),
+    16px 16px 30px rgba(14, 116, 144, 0.2),
+    -10px -10px 24px rgba(255, 255, 255, 1);
+}
+
+html[data-ui-style='clay-vivid'][data-theme='dark'] {
+  --nm-page: #0f2740;
+  --nm-canvas: #123047;
+  --nm-canvas-dot: rgba(125, 211, 252, 0.14);
+  --nm-panel: #3b2f12;
+  --nm-chrome: #2a3348;
+  --nm-header: #3f3514;
+  --nm-sidebar: #3a2430;
+  --nm-hover: rgba(251, 113, 133, 0.16);
+  --nm-border: rgba(255, 255, 255, 0.2);
+  --nm-text: #f8fafc;
+  --nm-text-muted: rgba(248, 250, 252, 0.7);
+  --nm-edge: rgba(248, 250, 252, 0.35);
+  --nm-bin: #3a2430;
+  --nm-node-bg: #1e293b;
+  --nm-canvas-glow-a: rgba(56, 189, 248, 0.28);
+  --nm-canvas-glow-b: rgba(250, 204, 21, 0.18);
+  --nm-canvas-glow-c: rgba(244, 63, 94, 0.2);
+  --nm-glass-shadow:
+    10px 10px 0 rgba(0, 0, 0, 0.35),
+    14px 14px 28px rgba(0, 0, 0, 0.4);
+}
+
+html[data-ui-style='clay-vivid'],
+html[data-ui-style='clay-vivid'] body,
+html[data-ui-style='clay-vivid'] button {
+  font-family: ui-rounded, 'Nunito', 'Segoe UI', system-ui, sans-serif;
+}
+
+html[data-ui-style='clay-vivid'] .bg-nm-chrome,
+html[data-ui-style='clay-vivid'] .bg-nm-panel,
+html[data-ui-style='clay-vivid'] .bg-nm-bin,
+html[data-ui-style='clay-vivid'] .bg-nm-tooltip,
+html[data-ui-style='clay-vivid'] [data-note-node] {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  background-image: none;
+  box-shadow: var(--nm-glass-shadow);
+  border-color: #fff;
+}
+
+html[data-ui-style='clay-vivid'] .shadow-xl,
+html[data-ui-style='clay-vivid'] .shadow-2xl {
+  box-shadow: var(--nm-glass-shadow) !important;
+}
+
+html[data-ui-style='clay-vivid'] [data-onboarding='toolbar'] {
+  border-radius: var(--nm-radius-bar);
+  background-color: #fff1f2;
+}
+
+html[data-ui-style='clay-vivid'] [data-onboarding='workspace-bar'] {
+  border-radius: var(--nm-radius-bar);
+  background-color: #ecfeff;
+}
+
+html[data-ui-style='clay-vivid'][data-theme='dark'] [data-onboarding='toolbar'] {
+  background-color: #3a2430;
+}
+
+html[data-ui-style='clay-vivid'][data-theme='dark'] [data-onboarding='workspace-bar'] {
+  background-color: #164e63;
+}
+
+html[data-ui-style='clay-vivid'] [data-note-node] {
+  border-radius: var(--nm-radius-node) !important;
+}
+
+html[data-ui-style='clay-vivid'] .bg-nm-panel {
+  border-radius: var(--nm-radius-panel);
+  background-color: #fef3c7;
+}
+
+html[data-ui-style='clay-vivid'] button,
+html[data-ui-style='clay-vivid'] [role='button'] {
+  border-radius: var(--nm-radius-btn);
+  box-shadow:
+    6px 6px 0 rgba(15, 23, 42, 0.06),
+    8px 8px 16px rgba(244, 63, 94, 0.15),
+    -5px -5px 14px rgba(255, 255, 255, 0.95);
+}
+
+html[data-ui-style='clay-vivid'] [data-onboarding='toolbar'] button:not(:disabled):hover {
+  background-color: #ffe4e6;
+}
+
+html[data-ui-style='clay-vivid'] [data-onboarding='toolbar'] button[class*='bg-indigo'],
+html[data-ui-style='clay-vivid'] [data-onboarding='toolbar'] button[class*='shadow-[0_0_0_1px'] {
+  color: #fff;
+  background: #6366f1;
+  box-shadow:
+    6px 6px 0 rgba(15, 23, 42, 0.12),
+    0 10px 22px rgba(99, 102, 241, 0.35);
+}

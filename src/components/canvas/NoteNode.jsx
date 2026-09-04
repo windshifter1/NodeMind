@@ -26,6 +26,7 @@ import {
 } from '@/lib/substituteSlots';
 import { listGraphSlots, graphSocketOffsetY } from '@/lib/graphSlots';
 import MathNodeBody from './MathNodeBody';
+import { PencilFrame } from '@/components/chrome/PencilFrame';
 
 const DOUBLE_TAP_MS = 450;
 
@@ -279,15 +280,14 @@ export default function NoteNode({
     onStartNodeDrag(node.id, e);
   };
 
-  const nodeRadius = '1.1rem';
+  const nodeRadius = 'var(--nm-radius-node, 1.1rem)';
   const borderW = selected ? 3 : 1;
-  const innerRadius = `calc(${nodeRadius} - ${borderW}px)`;
 
   return (
     <div
       data-note-node={node.id}
       data-liquid-spawn={liquidSpawn ? '1' : undefined}
-      className="absolute select-none rounded-[1.1rem]"
+      className="absolute select-none overflow-visible"
       style={{
         left: node.x,
         top: node.y,
@@ -297,14 +297,16 @@ export default function NoteNode({
         borderStyle: 'solid',
         borderColor: selected ? node.color : 'var(--nm-border)',
         backgroundColor: 'var(--nm-node-bg)',
+        borderRadius: nodeRadius,
         opacity: ghost ? 0.3 : 1,
         boxShadow: selected ? selectionGlow(node.color) : 'var(--nm-glass-shadow)',
-        backdropFilter: 'blur(28px) saturate(1.75) brightness(1.05)',
-        WebkitBackdropFilter: 'blur(28px) saturate(1.75) brightness(1.05)',
+        backdropFilter: 'var(--nm-node-blur)',
+        WebkitBackdropFilter: 'var(--nm-node-blur)',
         transition:
           'left 250ms ease, top 250ms ease, opacity 180ms ease, width 250ms ease, box-shadow 180ms ease, border-color 180ms ease, border-width 180ms ease',
       }}
     >
+      <PencilFrame seed={node.id} hatchColor={node.color} amp={2.4} />
       {bodySlots.length > 0 ? (
         bodySlots.map((slot, index) => (
           <Socket
@@ -371,10 +373,10 @@ export default function NoteNode({
           backgroundColor: `${node.color}33`,
           borderBottom: bodyCollapsed ? 'none' : '1px solid var(--nm-border)',
           // Match the card radius so the bar doesn’t square-poke rounded corners.
-          borderTopLeftRadius: innerRadius,
-          borderTopRightRadius: innerRadius,
-          borderBottomLeftRadius: bodyCollapsed ? innerRadius : 0,
-          borderBottomRightRadius: bodyCollapsed ? innerRadius : 0,
+          borderTopLeftRadius: 'inherit',
+          borderTopRightRadius: 'inherit',
+          borderBottomLeftRadius: bodyCollapsed ? 'inherit' : 0,
+          borderBottomRightRadius: bodyCollapsed ? 'inherit' : 0,
         }}
         onPointerDown={startDrag}
       >

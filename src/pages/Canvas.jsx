@@ -43,7 +43,12 @@ import { shouldStartOnboarding } from '@/lib/onboarding';
 import { readMathsCreditSeen, setMathsCreditSeen } from '@/lib/mathsCredit';
 import { emitTutorial } from '@/lib/tutorialEvents';
 import { applyDocumentTheme, persistTheme, readStoredTheme } from '@/lib/theme';
-import { applyDocumentUiStyle } from '@/lib/uiStyle';
+import {
+  applyDocumentUiStyle,
+  persistUiStyle,
+  readStoredUiStyle,
+  usesLiquidMotion,
+} from '@/lib/uiStyle';
 import { attachLiquidButtons } from '@/lib/liquidButtons';
 
 const MATH_SINGLE_INPUT_MESSAGE = 'This node accepts only one input';
@@ -69,6 +74,7 @@ export default function Canvas() {
   const [selectedNodeIds, setSelectedNodeIds] = useState([]);
   const [selectionArmed, setSelectionArmed] = useState(false);
   const [nodeTheme, setNodeTheme] = useState(() => readStoredTheme());
+  const [uiStyle, setUiStyle] = useState(() => readStoredUiStyle());
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [mathsCreditOpen, setMathsCreditOpen] = useState(false);
   const [nodePicker, setNodePicker] = useState(null);
@@ -86,10 +92,14 @@ export default function Canvas() {
   }, [nodeTheme]);
 
   useEffect(() => {
-    applyDocumentUiStyle();
-  }, []);
+    applyDocumentUiStyle(uiStyle);
+    persistUiStyle(uiStyle);
+  }, [uiStyle]);
 
-  useEffect(() => attachLiquidButtons(), []);
+  useEffect(() => {
+    if (!usesLiquidMotion(uiStyle)) return undefined;
+    return attachLiquidButtons();
+  }, [uiStyle]);
 
   // Plop animation + subtle ripples when nodes appear.
   useEffect(() => {
@@ -851,6 +861,8 @@ export default function Canvas() {
         onClose={() => setSettingsOpen(false)}
         nodeTheme={nodeTheme}
         onThemeChange={setNodeTheme}
+        uiStyle={uiStyle}
+        onUiStyleChange={setUiStyle}
       />
 
       <OnboardingTour open={onboardingOpen} onClose={finishOnboarding} />

@@ -3,6 +3,7 @@ import { Plus, Pencil } from 'lucide-react';
 import { WORKSPACE_ICONS } from '@/lib/workspaceIcons';
 import { isDesktopPlatform } from '@/lib/onboarding';
 import { emitTutorial } from '@/lib/tutorialEvents';
+import { PencilFrame } from '@/components/chrome/PencilFrame';
 
 function workspaceGlowShadow(colour, active) {
   if (!active) {
@@ -377,6 +378,7 @@ export default function WorkspaceBar({ workspaces, activeId, onSelect, onCreate,
             : 'min(50vw, calc(100% - 2rem - var(--safe-left) - var(--safe-right)))',
         }}
       >
+        <PencilFrame seed="workspaces" amp={1.9} />
         <button
           data-onboarding="workspace-create"
           onClick={onCreate}

@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Download, Upload, Trash2, Plus, Copy, Terminal, Share2, Wrench, Settings, Home, SquareDashed } from 'lucide-react';
 import { emitTutorial } from '@/lib/tutorialEvents';
 import { useTutorialHighlight } from '@/hooks/useTutorialHighlight';
+import { PencilFrame } from '@/components/chrome/PencilFrame';
 
 function AutoOrganiseAllIcon({ size = 15 }) {
   return (
@@ -221,9 +222,10 @@ export default function Toolbar({
     <>
       <div
         data-onboarding="toolbar"
-        className="absolute left-1/2 z-50 flex max-w-[min(96vw,calc(100%-2rem-var(--safe-left)-var(--safe-right)))] -translate-x-1/2 items-center gap-1 rounded-2xl border border-nm-border bg-nm-chrome px-2 py-2 shadow-xl backdrop-blur-md sm:gap-2 sm:px-3 sm:py-2.5"
+        className="absolute left-1/2 z-50 flex max-w-[min(96vw,calc(100%-2rem-var(--safe-left)-var(--safe-right)))] -translate-x-1/2 items-center gap-1 overflow-visible rounded-2xl border border-nm-border bg-nm-chrome px-2 py-2 shadow-xl backdrop-blur-md sm:gap-2 sm:px-3 sm:py-2.5"
         style={{ top: 'calc(1rem + var(--safe-top))' }}
       >
+        <PencilFrame seed="toolbar" amp={2.1} />
         <span data-onboarding="toolbar-add" className="inline-flex">
           <ToolbarButton
             onClick={(e) => {

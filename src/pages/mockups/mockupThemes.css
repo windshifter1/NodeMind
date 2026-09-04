@@ -1,4 +1,5 @@
 /* Static UI mockups — design explorations only (not live app chrome). */
+@import url('https://fonts.googleapis.com/css2?family=Architects+Daughter&family=Caveat:wght@500;600;700&family=Kalam:wght@400;700&display=swap');
 
 .nm-mock {
   position: relative;
@@ -889,3 +890,358 @@
   font-weight: 500;
   letter-spacing: 0;
 }
+
+/* ——— 8. Whiteboard pencil sketch ——— */
+.nm-mock--whiteboard .nm-wb__outline {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: visible;
+  z-index: 2;
+}
+
+.nm-wb__defs {
+  position: absolute;
+  width: 180px;
+  height: 180px;
+  left: -999px;
+  top: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.nm-mock--whiteboard .nm-wb__hatch {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+  overflow: visible;
+}
+
+.nm-wb__ghost {
+  fill: none;
+  stroke: rgba(74, 67, 56, 0.16);
+  stroke-width: 2.4px;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.nm-wb__lead {
+  fill: none;
+  stroke: rgba(58, 51, 42, 0.78);
+  stroke-width: 1.45px;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.nm-mock--whiteboard .nm-wb__lead {
+  filter: url(#nm-wb-grain);
+}
+
+.nm-wb__tab-mark {
+  font-family: 'Caveat', 'Segoe Print', 'Comic Sans MS', cursive;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #4a4338;
+  line-height: 1;
+}
+
+.nm-mock--whiteboard .nm-wb__socket {
+  position: absolute;
+  z-index: 4;
+  top: 1.05rem;
+  width: 0.95rem;
+  height: 0.95rem;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.nm-wb__socket--in {
+  left: -0.48rem;
+}
+
+.nm-wb__socket--out {
+  right: -0.48rem;
+}
+
+.nm-mock--whiteboard .nm-wb__underline {
+  position: absolute;
+  left: 0.55rem;
+  right: 0.55rem;
+  bottom: 0.2rem;
+  height: 8px;
+  width: auto;
+  pointer-events: none;
+}
+
+.nm-wb__board-title {
+  position: absolute;
+  left: 1.4rem;
+  top: 5.4rem;
+  margin: 0;
+  font-family: 'Architects Daughter', 'Caveat', 'Comic Sans MS', cursive;
+  font-size: 1.55rem;
+  color: rgba(74, 67, 56, 0.55);
+  transform: rotate(-6deg);
+  pointer-events: none;
+}
+
+.nm-wb__smudge {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  filter: blur(18px);
+  background: rgba(120, 112, 98, 0.07);
+}
+
+.nm-wb__smudge--a {
+  width: 220px;
+  height: 140px;
+  left: 18%;
+  top: 22%;
+}
+
+.nm-wb__smudge--b {
+  width: 180px;
+  height: 160px;
+  right: 16%;
+  bottom: 24%;
+}
+
+.nm-wb__smudge--c {
+  width: 140px;
+  height: 90px;
+  left: 48%;
+  top: 12%;
+  transform: rotate(18deg);
+}
+
+.nm-mock--whiteboard {
+  --mk-font: 'Kalam', 'Caveat', 'Segoe Print', 'Comic Sans MS', cursive;
+  --mk-canvas: #f3f1ea;
+  --mk-text: #3d382f;
+  --mk-muted: #5a5348;
+  --mk-dot: rgba(90, 83, 72, 0.18);
+  --mk-glass: transparent;
+  --mk-panel: transparent;
+  --mk-node: transparent;
+  --mk-btn: transparent;
+  --mk-rim: transparent;
+  --mk-divider: transparent;
+  --mk-blur: none;
+  --mk-badge-blur: none;
+  --mk-radius-bar: 0;
+  --mk-radius-btn: 0;
+  --mk-radius-node: 0;
+  --mk-radius-panel: 0;
+  --mk-badge-bg: transparent;
+  --mk-badge-border: transparent;
+  --mk-badge-shadow: none;
+  --mk-btn-shadow: none;
+  --mk-specular: none;
+  --mk-depth: none;
+  --mk-edge: #5c554b;
+  --mk-tab-rim: transparent;
+  --mk-tab-shadow: none;
+  --mk-glow-a: transparent;
+  --mk-glow-b: transparent;
+  --mk-glow-c: transparent;
+  box-shadow: inset 0 0 0 10px #d9d4c8, inset 0 0 0 11px #b7b09f;
+  background-image:
+    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(255, 255, 255, 0.55), transparent 50%),
+    radial-gradient(circle at 20% 80%, rgba(90, 83, 72, 0.04), transparent 28%);
+}
+
+.nm-mock--whiteboard .nm-mock__dots {
+  background-image:
+    linear-gradient(rgba(90, 83, 72, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(90, 83, 72, 0.08) 1px, transparent 1px);
+  background-size: 36px 36px;
+  opacity: 0.62;
+}
+
+.nm-mock--whiteboard .nm-mock__scene::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.22;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+  background-size: 240px 240px;
+}
+
+.nm-mock--whiteboard .nm-mock__glow {
+  display: none;
+}
+
+.nm-mock--whiteboard .nm-mock__chrome,
+.nm-mock--whiteboard .nm-mock__node,
+.nm-mock--whiteboard .nm-mock__panel,
+.nm-mock--whiteboard .nm-mock__bin,
+.nm-mock--whiteboard .nm-mock__badge,
+.nm-mock--whiteboard .nm-mock__blurb {
+  border: none;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  overflow: visible;
+}
+
+.nm-mock--whiteboard .nm-mock__chrome::before,
+.nm-mock--whiteboard .nm-mock__node::before,
+.nm-mock--whiteboard .nm-mock__panel::before,
+.nm-mock--whiteboard .nm-mock__bin::before {
+  display: none;
+}
+
+.nm-mock--whiteboard .nm-mock__btn,
+.nm-mock--whiteboard .nm-mock__tab {
+  position: relative;
+  overflow: visible;
+}
+
+.nm-mock--whiteboard .nm-mock__badge,
+.nm-mock--whiteboard .nm-mock__blurb {
+  font-family: 'Caveat', 'Segoe Print', 'Comic Sans MS', cursive;
+  font-size: 1.12rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: #4a4338;
+  background: transparent;
+}
+
+.nm-mock--whiteboard .nm-mock__badge {
+  padding: 0.28rem 0.7rem;
+}
+
+.nm-mock--whiteboard .nm-mock__blurb {
+  border-radius: 0;
+  font-size: 1.18rem;
+  font-weight: 500;
+  max-width: 30rem;
+  transform: translateX(-50%) rotate(-0.4deg);
+}
+
+.nm-mock--whiteboard .nm-mock__toolbar,
+.nm-mock--whiteboard .nm-mock__workspaces {
+  background: transparent;
+  gap: 0.4rem;
+}
+
+.nm-mock--whiteboard .nm-mock__btn {
+  width: auto;
+  min-width: 2.55rem;
+  height: 2.45rem;
+  padding: 0 0.4rem;
+  font-family: 'Caveat', 'Segoe Print', 'Comic Sans MS', cursive;
+  font-size: 1.12rem;
+  font-weight: 700;
+  color: #4a4338;
+  background: transparent;
+}
+
+.nm-mock--whiteboard .nm-mock__btn--active {
+  color: #3b2f1a;
+  background: repeating-linear-gradient(
+    -24deg,
+    rgba(196, 148, 64, 0.22) 0 2px,
+    transparent 2px 6px
+  );
+  border: none;
+  box-shadow: none;
+}
+
+.nm-mock--whiteboard .nm-mock__node {
+  background: transparent;
+}
+
+.nm-mock--whiteboard .nm-mock__node-bar {
+  position: relative;
+  font-family: 'Architects Daughter', 'Caveat', 'Comic Sans MS', cursive;
+  font-size: 1.18rem;
+  font-weight: 400;
+  color: #3d382f;
+  background: transparent;
+  border-bottom: none;
+  letter-spacing: 0.01em;
+}
+
+.nm-mock--whiteboard .nm-mock__node-body {
+  font-family: 'Kalam', 'Segoe Print', 'Comic Sans MS', cursive;
+  font-size: 0.92rem;
+  line-height: 1.45;
+  color: #5a5348;
+}
+
+.nm-mock--whiteboard .nm-mock__panel-title {
+  font-family: 'Architects Daughter', 'Caveat', 'Comic Sans MS', cursive;
+  font-size: 1.22rem;
+  font-weight: 400;
+  color: #3d382f;
+}
+
+.nm-mock--whiteboard .nm-mock__panel-body {
+  font-family: 'Kalam', 'Segoe Print', 'Comic Sans MS', cursive;
+  font-size: 0.9rem;
+  color: #5a5348;
+}
+
+.nm-mock--whiteboard .nm-mock__tab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+}
+
+.nm-mock--whiteboard .nm-mock__tab--on {
+  background: transparent;
+  box-shadow: none;
+}
+
+.nm-mock--whiteboard .nm-mock__bin {
+  font-family: 'Caveat', 'Segoe Print', 'Comic Sans MS', cursive;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #4a4338;
+  background: transparent;
+}
+
+.nm-mock--whiteboard .nm-mock__edge-path.nm-wb__ghost {
+  stroke: rgba(74, 67, 56, 0.2);
+  stroke-width: 3.2px;
+}
+
+.nm-mock--whiteboard .nm-mock__edge-path.nm-wb__lead {
+  stroke: rgba(58, 51, 42, 0.78);
+  stroke-width: 1.45px;
+}
+
+.nm-mock--whiteboard .nm-mock__node:nth-of-type(1) {
+  transform: rotate(-1.1deg);
+}
+
+.nm-mock--whiteboard .nm-mock__node:nth-of-type(2) {
+  transform: rotate(1.4deg);
+}
+
+.nm-mock--whiteboard .nm-mock__node:nth-of-type(3) {
+  transform: rotate(-0.7deg);
+}
+
+.nm-mock--whiteboard .nm-mock__panel {
+  transform: rotate(1.1deg);
+}
+
+.nm-mock--whiteboard .nm-mock__toolbar {
+  transform: translateX(-50%) rotate(-0.7deg);
+}
+
+.nm-mock--whiteboard .nm-mock__workspaces {
+  transform: translateX(-50%) rotate(0.55deg);
+}
+

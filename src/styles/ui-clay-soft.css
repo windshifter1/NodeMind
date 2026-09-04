@@ -1,0 +1,154 @@
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@500;600;700&display=swap');
+
+html[data-ui-style='clay-soft'] {
+  --font-heading: ui-rounded, 'Nunito', 'Segoe UI', system-ui, sans-serif;
+  --font-body: ui-rounded, 'Nunito', 'Segoe UI', system-ui, sans-serif;
+  --nm-node-blur: none;
+  --nm-radius-bar: 1.75rem;
+  --nm-radius-btn: 1.15rem;
+  --nm-radius-node: 1.55rem;
+  --nm-radius-panel: 1.45rem;
+  --nm-edge-dash: none;
+  --nm-edge-width: 2.4px;
+}
+
+html[data-ui-style='clay-soft'][data-theme='light'] {
+  --nm-page: #e8e4f0;
+  --nm-canvas: #e8e4f0;
+  --nm-canvas-dot: rgba(90, 70, 130, 0.1);
+  --nm-panel: #f3effa;
+  --nm-chrome: #efeaf8;
+  --nm-header: #f6f2fc;
+  --nm-sidebar: #ebe4f6;
+  --nm-hover: rgba(140, 120, 180, 0.12);
+  --nm-hover-strong: rgba(140, 120, 180, 0.18);
+  --nm-border: rgba(255, 255, 255, 0.85);
+  --nm-border-strong: rgba(255, 255, 255, 0.95);
+  --nm-divider: rgba(120, 100, 160, 0.12);
+  --nm-text: #3d3554;
+  --nm-text-secondary: rgba(61, 53, 84, 0.82);
+  --nm-text-muted: rgba(61, 53, 84, 0.68);
+  --nm-text-faint: rgba(61, 53, 84, 0.55);
+  --nm-text-subtle: rgba(61, 53, 84, 0.28);
+  --nm-label: #5b5278;
+  --nm-overlay: rgba(61, 53, 84, 0.28);
+  --nm-edge: rgba(120, 100, 170, 0.35);
+  --nm-input: #efeaf8;
+  --nm-option: #ebe4f6;
+  --nm-option-text: #3d3554;
+  --nm-tooltip: #f6f2fc;
+  --nm-tooltip-text: #3d3554;
+  --nm-bin: #efeaf8;
+  --nm-node-bg: #f6f2fc;
+  --nm-node-bar: #efeaf8;
+  --nm-canvas-glow-a: rgba(186, 170, 230, 0.45);
+  --nm-canvas-glow-b: rgba(160, 210, 230, 0.35);
+  --nm-canvas-glow-c: rgba(240, 180, 210, 0.35);
+  --nm-glass-shadow:
+    10px 10px 22px rgba(140, 120, 180, 0.28),
+    -8px -8px 20px rgba(255, 255, 255, 0.95),
+    inset 1px 1px 0 rgba(255, 255, 255, 0.7);
+  --nm-shadow: 10px 10px 22px rgba(140, 120, 180, 0.22);
+}
+
+html[data-ui-style='clay-soft'][data-theme='dark'] {
+  --nm-page: #1c1828;
+  --nm-canvas: #1c1828;
+  --nm-canvas-dot: rgba(186, 170, 230, 0.12);
+  --nm-panel: #2a2438;
+  --nm-chrome: #2e273e;
+  --nm-header: #352e46;
+  --nm-sidebar: #262033;
+  --nm-hover: rgba(186, 170, 230, 0.12);
+  --nm-border: rgba(80, 70, 110, 0.8);
+  --nm-divider: rgba(186, 170, 230, 0.12);
+  --nm-text: #ede8f7;
+  --nm-text-secondary: rgba(237, 232, 247, 0.8);
+  --nm-text-muted: rgba(237, 232, 247, 0.62);
+  --nm-edge: rgba(186, 170, 230, 0.35);
+  --nm-tooltip: #2e273e;
+  --nm-bin: #2e273e;
+  --nm-node-bg: #322b44;
+  --nm-canvas-glow-a: rgba(120, 90, 180, 0.28);
+  --nm-canvas-glow-b: rgba(80, 140, 170, 0.2);
+  --nm-canvas-glow-c: rgba(180, 90, 140, 0.18);
+  --nm-glass-shadow:
+    10px 10px 22px rgba(8, 6, 16, 0.55),
+    -6px -6px 16px rgba(70, 60, 95, 0.35);
+}
+
+html[data-ui-style='clay-soft'],
+html[data-ui-style='clay-soft'] body,
+html[data-ui-style='clay-soft'] button,
+html[data-ui-style='clay-soft'] input {
+  font-family: ui-rounded, 'Nunito', 'Segoe UI', system-ui, sans-serif;
+}
+
+html[data-ui-style='clay-soft'] .bg-nm-chrome,
+html[data-ui-style='clay-soft'] .bg-nm-panel,
+html[data-ui-style='clay-soft'] .bg-nm-bin,
+html[data-ui-style='clay-soft'] .bg-nm-tooltip,
+html[data-ui-style='clay-soft'] [data-note-node] {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  background-image: none;
+  box-shadow: var(--nm-glass-shadow);
+  border-color: var(--nm-border);
+}
+
+html[data-ui-style='clay-soft'] .shadow-xl,
+html[data-ui-style='clay-soft'] .shadow-2xl {
+  box-shadow: var(--nm-glass-shadow) !important;
+}
+
+html[data-ui-style='clay-soft'] [data-onboarding='toolbar'],
+html[data-ui-style='clay-soft'] [data-onboarding='workspace-bar'] {
+  border-radius: var(--nm-radius-bar);
+}
+
+html[data-ui-style='clay-soft'] [data-note-node] {
+  border-radius: var(--nm-radius-node) !important;
+}
+
+html[data-ui-style='clay-soft'] .bg-nm-panel {
+  border-radius: var(--nm-radius-panel);
+}
+
+html[data-ui-style='clay-soft'] [data-onboarding='delete-bin'] {
+  border-radius: var(--nm-radius-btn);
+}
+
+html[data-ui-style='clay-soft'] button,
+html[data-ui-style='clay-soft'] [role='button'] {
+  border-radius: var(--nm-radius-btn);
+  box-shadow:
+    5px 5px 12px rgba(140, 120, 180, 0.2),
+    -4px -4px 10px rgba(255, 255, 255, 0.95);
+}
+
+html[data-ui-style='clay-soft'][data-theme='dark'] button,
+html[data-ui-style='clay-soft'][data-theme='dark'] [role='button'] {
+  box-shadow:
+    5px 5px 12px rgba(8, 6, 16, 0.45),
+    -3px -3px 8px rgba(70, 60, 95, 0.3);
+}
+
+html[data-ui-style='clay-soft'] button:hover,
+html[data-ui-style='clay-soft'] [role='button']:hover {
+  filter: none;
+}
+
+html[data-ui-style='clay-soft'] [data-onboarding='toolbar'] button:not(:disabled):active,
+html[data-ui-style='clay-soft'] button.nm-liquid-held {
+  box-shadow:
+    inset 4px 4px 10px rgba(140, 120, 180, 0.25),
+    inset -3px -3px 8px rgba(255, 255, 255, 0.85);
+  background-color: #ddd2f5;
+  color: #4c1d95;
+}
+
+html[data-ui-style='clay-soft'] [data-socket] {
+  box-shadow:
+    3px 3px 8px rgba(140, 120, 180, 0.3),
+    -2px -2px 6px rgba(255, 255, 255, 0.9);
+}

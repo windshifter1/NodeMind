@@ -7,6 +7,8 @@ import {
   setOnboardingReplayPending,
 } from '@/lib/onboarding';
 import { emitTutorial } from '@/lib/tutorialEvents';
+import { UI_STYLE_OPTIONS } from '@/lib/uiStyle';
+import { PencilFrame } from '@/components/chrome/PencilFrame';
 
 const REPLAY_HELP =
   'Resets the first-run flag. After the tour shows again, this option turns itself off automatically.';
@@ -16,6 +18,8 @@ export default function SettingsDialog({
   onClose,
   nodeTheme,
   onThemeChange,
+  uiStyle,
+  onUiStyleChange,
 }) {
   const [section, setSection] = useState('style');
   const [replayPending, setReplayPending] = useState(() => readOnboardingReplayPending());
@@ -55,6 +59,7 @@ export default function SettingsDialog({
         className="relative flex max-h-[88vh] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-nm-border bg-nm-panel shadow-2xl"
         onPointerDown={(e) => e.stopPropagation()}
       >
+        <PencilFrame seed="settings" amp={1.8} />
         <div className="flex items-center gap-2 border-b border-nm-border bg-nm-header px-3 py-3 sm:px-4">
           <h2 className="text-sm font-semibold text-nm-text">Settings</h2>
           <div className="flex-1" />
@@ -94,10 +99,41 @@ export default function SettingsDialog({
           <section className="overflow-auto p-4">
             {section === 'style' && (
               <div className="space-y-6">
+                <div data-onboarding="settings-ui-style">
+                  <h3 className="text-sm font-semibold text-nm-text">Interface style</h3>
+                  <p className="mt-1 text-xs text-nm-text-muted">
+                    Complete chrome overhauls. Glass styles share liquid motion; the rest are independent materials.
+                  </p>
+                  <div className="mt-4 grid gap-2">
+                    {UI_STYLE_OPTIONS.map(({ value, label, blurb }) => {
+                      const selected = uiStyle === value;
+                      return (
+                        <button
+                          key={value}
+                          type="button"
+                          onClick={() => {
+                            if (value !== uiStyle) emitTutorial('settings.ui-style');
+                            onUiStyleChange(value);
+                          }}
+                          className="flex flex-col items-start gap-0.5 rounded-xl border px-3 py-3 text-left transition hover:bg-nm-hover"
+                          style={{
+                            backgroundColor: selected ? 'rgba(99,102,241,0.18)' : 'var(--nm-option)',
+                            borderColor: selected ? '#818cf8' : 'var(--nm-border)',
+                            color: selected ? 'var(--nm-text)' : 'var(--nm-option-text)',
+                          }}
+                        >
+                          <span className="text-sm font-medium">{label}</span>
+                          <span className="text-[11px] leading-snug opacity-75">{blurb}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
                 <div data-onboarding="settings-theme">
                   <h3 className="text-sm font-semibold text-nm-text">Theme</h3>
                   <p className="mt-1 text-xs text-nm-text-muted">
-                    Light or dark colour palette for the Modern glass UI.
+                    Light or dark colour palette. Each interface style keeps its own material.
                   </p>
                   <div className="mt-4 grid gap-2">
                     {themeOptions.map(({ value, label, icon: Icon }) => {

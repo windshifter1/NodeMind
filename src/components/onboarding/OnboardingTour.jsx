@@ -443,7 +443,7 @@ function InteractiveTutorial({ open, onClose, platform }) {
     <div
       ref={cardRef}
       data-onboarding-tour
-      className="pointer-events-auto fixed z-[230] rounded-2xl border border-nm-border bg-nm-chrome p-3 shadow-xl backdrop-blur-md transition-[top,left,opacity,transform,width] duration-300 ease-out"
+      className="pointer-events-auto fixed z-[230] rounded-2xl border border-nm-border bg-nm-panel p-3 shadow-xl backdrop-blur-md transition-[top,left,opacity,transform,width] duration-300 ease-out"
       role="dialog"
       aria-modal={isWelcome}
       aria-labelledby="nm-onboarding-title"

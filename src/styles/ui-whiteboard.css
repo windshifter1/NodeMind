@@ -4,10 +4,10 @@ html[data-ui-style='whiteboard'] {
   --font-heading: 'Architects Daughter', 'Caveat', 'Comic Sans MS', cursive;
   --font-body: 'Kalam', 'Caveat', 'Comic Sans MS', cursive;
   --nm-node-blur: none;
-  --nm-radius-bar: 0;
-  --nm-radius-btn: 0;
-  --nm-radius-node: 0;
-  --nm-radius-panel: 0;
+  --nm-radius-bar: 0.35rem;
+  --nm-radius-btn: 0.35rem;
+  --nm-radius-node: 0.4rem;
+  --nm-radius-panel: 0.4rem;
   --nm-edge-dash: none;
   --nm-edge-width: 1.7px;
 }
@@ -15,15 +15,15 @@ html[data-ui-style='whiteboard'] {
 html[data-ui-style='whiteboard'][data-theme='light'] {
   --nm-page: #f3f1ea;
   --nm-canvas: #f3f1ea;
-  --nm-canvas-dot: rgba(90, 83, 72, 0.18);
-  --nm-panel: transparent;
-  --nm-chrome: transparent;
-  --nm-header: transparent;
-  --nm-sidebar: rgba(243, 241, 234, 0.65);
+  --nm-canvas-dot: rgba(90, 83, 72, 0.14);
+  --nm-panel: #f7f4ec;
+  --nm-chrome: #f7f4ec;
+  --nm-header: #f3efe6;
+  --nm-sidebar: #efebe3;
   --nm-hover: rgba(90, 83, 72, 0.08);
   --nm-hover-strong: rgba(90, 83, 72, 0.14);
-  --nm-border: transparent;
-  --nm-border-strong: transparent;
+  --nm-border: rgba(90, 83, 72, 0.35);
+  --nm-border-strong: rgba(90, 83, 72, 0.5);
   --nm-divider: rgba(90, 83, 72, 0.28);
   --nm-text: #3d382f;
   --nm-text-secondary: #4a4338;
@@ -33,14 +33,14 @@ html[data-ui-style='whiteboard'][data-theme='light'] {
   --nm-label: #3d382f;
   --nm-overlay: rgba(61, 56, 47, 0.28);
   --nm-edge: rgba(58, 51, 42, 0.78);
-  --nm-input: transparent;
+  --nm-input: #f7f4ec;
   --nm-option: rgba(90, 83, 72, 0.06);
   --nm-option-text: #3d382f;
-  --nm-tooltip: #f3f1ea;
+  --nm-tooltip: #f7f4ec;
   --nm-tooltip-text: #3d382f;
-  --nm-bin: transparent;
-  --nm-node-bg: transparent;
-  --nm-canvas-glow-a: transparent;
+  --nm-bin: #f7f4ec;
+  --nm-node-bg: #f7f4ec;
+  --nm-canvas-glow-a: rgba(90, 83, 72, 0.04);
   --nm-canvas-glow-b: transparent;
   --nm-canvas-glow-c: transparent;
   --nm-glass-shadow: none;
@@ -50,17 +50,18 @@ html[data-ui-style='whiteboard'][data-theme='dark'] {
   --nm-page: #2a2722;
   --nm-canvas: #2a2722;
   --nm-canvas-dot: rgba(232, 220, 190, 0.12);
-  --nm-panel: transparent;
-  --nm-chrome: transparent;
-  --nm-sidebar: rgba(42, 39, 34, 0.8);
+  --nm-panel: #322e28;
+  --nm-chrome: #322e28;
+  --nm-header: #3a352e;
+  --nm-sidebar: #2a2722;
   --nm-hover: rgba(232, 220, 190, 0.08);
-  --nm-border: transparent;
+  --nm-border: rgba(232, 220, 190, 0.28);
   --nm-text: #e8dcc0;
   --nm-text-muted: #c4b89a;
   --nm-edge: rgba(232, 220, 190, 0.7);
-  --nm-tooltip: #2a2722;
-  --nm-bin: transparent;
-  --nm-node-bg: transparent;
+  --nm-tooltip: #322e28;
+  --nm-bin: #322e28;
+  --nm-node-bg: #322e28;
   --nm-glass-shadow: none;
 }
 
@@ -84,36 +85,23 @@ html[data-ui-style='whiteboard'] [data-note-node] {
   -webkit-backdrop-filter: none !important;
   background-image: none;
   box-shadow: none !important;
-  border-color: transparent;
-  overflow: visible;
 }
 
 html[data-ui-style='whiteboard'] [data-onboarding='toolbar'],
 html[data-ui-style='whiteboard'] [data-onboarding='workspace-bar'],
-html[data-ui-style='whiteboard'] [data-onboarding='delete-bin'],
-html[data-ui-style='whiteboard'] [data-note-node],
-html[data-ui-style='whiteboard'] .bg-nm-panel {
-  position: relative;
-  border-radius: 0;
+html[data-ui-style='whiteboard'] [data-onboarding='delete-bin'] {
   overflow: visible;
+  border-radius: var(--nm-radius-bar);
 }
 
 html[data-ui-style='whiteboard'] [data-note-node] {
-  border-width: 0 !important;
-  background-color: transparent !important;
+  overflow: hidden;
+  border-radius: var(--nm-radius-node) !important;
 }
 
 html[data-ui-style='whiteboard'] .shadow-xl,
 html[data-ui-style='whiteboard'] .shadow-2xl {
   box-shadow: none !important;
-}
-
-html[data-ui-style='whiteboard'] button,
-html[data-ui-style='whiteboard'] [role='button'] {
-  position: relative;
-  overflow: visible;
-  border-radius: 0;
-  background: transparent;
 }
 
 html[data-ui-style='whiteboard'] [data-onboarding='toolbar'] button[class*='bg-indigo'] {
@@ -125,26 +113,16 @@ html[data-ui-style='whiteboard'] [data-onboarding='toolbar'] button[class*='bg-i
   );
 }
 
-html[data-ui-style='whiteboard'] [data-canvas-board] {
-  box-shadow: inset 0 0 0 10px #d9d4c8, inset 0 0 0 11px #b7b09f;
-}
-
-html[data-ui-style='whiteboard'] [data-canvas-board]::after {
+html[data-ui-style='whiteboard'] [data-canvas-board]::before {
   content: '';
   position: absolute;
   inset: 0;
   pointer-events: none;
-  opacity: 0.22;
-  mix-blend-mode: multiply;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
-  background-size: 240px 240px;
-}
-
-html[data-ui-style='whiteboard'] [data-canvas-board] {
   background-image:
-    linear-gradient(rgba(90, 83, 72, 0.08) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(90, 83, 72, 0.08) 1px, transparent 1px) !important;
-  background-size: 36px 36px !important;
+    linear-gradient(rgba(90, 83, 72, 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(90, 83, 72, 0.07) 1px, transparent 1px);
+  background-size: 36px 36px;
+  opacity: 0.4;
 }
 
 html[data-ui-style='whiteboard'] [data-edge-id] {
@@ -156,6 +134,12 @@ html[data-ui-style='whiteboard'] [data-socket] {
   background: transparent !important;
   border: 1.6px solid #5a5348 !important;
   box-shadow: none !important;
+}
+
+html[data-ui-style='whiteboard'] [data-node-bar] {
+  font-family: 'Architects Daughter', 'Caveat', cursive;
+  background: transparent !important;
+  border-bottom-color: rgba(90, 83, 72, 0.35) !important;
 }
 
 .nm-wb__outline {
@@ -190,16 +174,13 @@ html[data-ui-style='whiteboard'] [data-socket] {
   width: 100%;
   height: 100%;
   pointer-events: none;
-  z-index: 0;
+  z-index: -1;
 }
 
 html[data-ui-style='whiteboard'][data-theme='dark'] .nm-wb__ghost {
   stroke: rgba(232, 220, 190, 0.18);
 }
 
-html[data-ui-style='whiteboard'] [data-onboarding='toolbar'] > *:not(.nm-wb__outline):not(.nm-wb__hatch),
-html[data-ui-style='whiteboard'] [data-onboarding='workspace-bar'] > *:not(.nm-wb__outline):not(.nm-wb__hatch),
-html[data-ui-style='whiteboard'] [data-note-node] > *:not(.nm-wb__outline):not(.nm-wb__hatch) {
-  position: relative;
-  z-index: 3;
+html[data-ui-style='whiteboard'][data-theme='dark'] .nm-wb__lead {
+  stroke: rgba(232, 220, 190, 0.78);
 }

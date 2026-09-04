@@ -124,7 +124,7 @@
 }
 
 .nm-mock__toolbar {
-  top: calc(1rem + var(--safe-top, 0px));
+  top: calc(3.35rem + var(--safe-top, 0px));
   left: 50%;
   transform: translateX(-50%);
   padding: 0.5rem 0.6rem;
@@ -1080,7 +1080,6 @@
 }
 
 .nm-mock--whiteboard .nm-mock__chrome,
-.nm-mock--whiteboard .nm-mock__node,
 .nm-mock--whiteboard .nm-mock__panel,
 .nm-mock--whiteboard .nm-mock__bin,
 .nm-mock--whiteboard .nm-mock__badge,
@@ -1090,6 +1089,14 @@
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
   overflow: visible;
+}
+
+.nm-mock--whiteboard .nm-mock__node {
+  border: none;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  overflow: hidden;
 }
 
 .nm-mock--whiteboard .nm-mock__chrome::before,
@@ -1129,7 +1136,8 @@
 
 .nm-mock--whiteboard .nm-mock__toolbar,
 .nm-mock--whiteboard .nm-mock__workspaces {
-  background: transparent;
+  overflow: visible;
+  background: #f7f4ec;
   gap: 0.4rem;
 }
 
@@ -1157,7 +1165,8 @@
 }
 
 .nm-mock--whiteboard .nm-mock__node {
-  background: transparent;
+  overflow: hidden;
+  background: #f7f4ec;
 }
 
 .nm-mock--whiteboard .nm-mock__node-bar {

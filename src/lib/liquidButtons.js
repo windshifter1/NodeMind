@@ -19,6 +19,8 @@ export function attachLiquidButtons(root = document) {
     const el = e.target?.closest?.(TARGET);
     if (!el || el.disabled || el.getAttribute('aria-disabled') === 'true') return;
     if (el.matches(SKIP) || el.closest('[data-no-liquid]')) return;
+    // Don't translate toolbar/workspace controls — pull moves them off the pointer.
+    if (el.closest('[data-onboarding="toolbar"], [data-onboarding="workspace-bar"]')) return;
     held = { el, x: e.clientX, y: e.clientY };
     el.classList.add('nm-liquid-held');
     el.classList.remove('nm-liquid-jiggle');

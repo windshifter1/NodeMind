@@ -215,7 +215,6 @@ html[data-ui-family='glass'] [data-note-node] {
 html[data-ui-family='glass'] .bg-nm-chrome,
 html[data-ui-family='glass'] .bg-nm-panel,
 html[data-ui-family='glass'] .bg-nm-bin {
-  position: relative;
   isolation: isolate;
   background-color: var(--nm-chrome);
   background-image: var(--nm-specular);
@@ -242,6 +241,15 @@ html[data-ui-family='glass'] [data-note-node] {
 
 html[data-ui-family='glass'] .bg-nm-panel {
   border-radius: var(--nm-radius-panel);
+}
+
+html[data-ui-family='glass'][data-theme='dark'] .bg-nm-panel,
+html[data-ui-family='glass'][data-theme='dark'] [data-onboarding-tour] {
+  background-color: rgba(10, 16, 32, 0.86);
+}
+
+html[data-ui-family='glass'][data-theme='light'] [data-onboarding-tour] {
+  background-color: rgba(255, 255, 255, 0.82);
 }
 
 html[data-ui-family='glass'] button:not(:disabled):not(.nm-workspace-icon-btn),
@@ -281,6 +289,21 @@ html[data-ui-family='glass'] [role='button'].nm-liquid-held {
   transition-duration: 0.1s, 0.12s, 0.12s, 0.12s, 0.12s, 0.12s, 0.12s;
 }
 
+html[data-ui-family='glass'] [data-onboarding='toolbar'] button:active,
+html[data-ui-family='glass'] [data-onboarding='toolbar'] button.nm-liquid-held,
+html[data-ui-family='glass'] [data-onboarding='toolbar'] [role='button']:active,
+html[data-ui-family='glass'] [data-onboarding='workspace-bar'] button:active,
+html[data-ui-family='glass'] [data-onboarding='workspace-bar'] button.nm-liquid-held {
+  border-radius: var(--nm-radius-btn) !important;
+}
+
+html[data-ui-family='glass'] [data-onboarding='toolbar']:active,
+html[data-ui-family='glass'] [data-onboarding='workspace-bar']:active {
+  /* Parent :active must not drop the centering translate, or the bar jumps off the pointer. */
+  transform: translateX(-50%);
+  filter: none;
+}
+
 @keyframes nm-liquid-jiggle {
   0% {
     transform: scale(0.92, 0.84);
@@ -311,12 +334,6 @@ html[data-ui-family='glass'] .nm-workspace-icon-btn:hover {
 html[data-ui-family='glass'] .nm-workspace-icon-btn:active {
   border-radius: 42% 48% 45% 50% / 48% 42% 52% 46% !important;
   filter: brightness(0.96);
-}
-
-html[data-ui-family='glass'] [data-onboarding='toolbar']:active,
-html[data-ui-family='glass'] [data-onboarding='workspace-bar']:active {
-  transform: none;
-  filter: none;
 }
 
 @keyframes nm-liquid-plop {
@@ -356,6 +373,11 @@ html[data-ui-style='gel'] [role='button']:not([aria-disabled='true']):not(.nm-wo
   --liquid-sx: 1.1;
   --liquid-sy: 1.1;
   border-radius: 44% 50% 46% 52% / 50% 44% 54% 48%;
+}
+
+html[data-ui-style='gel'] [data-onboarding='toolbar'] button:hover,
+html[data-ui-style='gel'] [data-onboarding='workspace-bar'] button:hover {
+  border-radius: var(--nm-radius-btn);
 }
 
 @keyframes nm-liquid-ripple {

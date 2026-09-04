@@ -1,0 +1,35 @@
+/* Chrome placement is shared across every UI style. Styles may restyle, not reposition. */
+
+[data-onboarding='toolbar'] {
+  position: absolute !important;
+  top: calc(1rem + var(--safe-top)) !important;
+  bottom: auto !important;
+  left: 50% !important;
+  transform: translateX(-50%);
+  z-index: 50;
+}
+
+[data-onboarding='workspace-bar'] {
+  position: absolute !important;
+  top: auto !important;
+  bottom: calc(1rem + var(--safe-bottom)) !important;
+  left: 50% !important;
+  transform: translateX(-50%);
+  z-index: 50;
+}
+
+[data-onboarding='delete-bin'] {
+  position: absolute !important;
+  right: calc(1rem + var(--safe-right)) !important;
+  bottom: calc(1rem + var(--safe-bottom)) !important;
+  z-index: 50;
+}
+
+html[data-ui-family='glass'] [data-onboarding='toolbar']:active,
+html[data-ui-family='glass'] [data-onboarding='workspace-bar']:active {
+  transform: translateX(-50%);
+}
+
+[data-onboarding-tour] {
+  background-color: color-mix(in srgb, var(--nm-page) 78%, var(--nm-panel));
+}

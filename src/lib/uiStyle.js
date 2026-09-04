@@ -6,7 +6,6 @@ export const UI_STYLE = {
   ACRYLIC: 'acrylic',
   GEL: 'gel',
   CLAY_SOFT: 'clay-soft',
-  CLAY_VIVID: 'clay-vivid',
   SKETCH: 'sketch',
   WHITEBOARD: 'whiteboard',
 };
@@ -33,11 +32,6 @@ export const UI_STYLE_OPTIONS = [
     blurb: 'Claymorphism — matte pastels, dual soft shadows, chubby rounded chrome.',
   },
   {
-    value: UI_STYLE.CLAY_VIVID,
-    label: 'Vivid clay',
-    blurb: 'Bolder claymorphism — saturated pastels, deeper extrusion, toy-like controls.',
-  },
-  {
     value: UI_STYLE.SKETCH,
     label: 'Sketch',
     blurb: 'Hand-sketched UI — paper grain, ink outlines, imperfect edges, notebook vibe.',
@@ -56,6 +50,7 @@ const LEGACY_MAP = {
   modern: UI_STYLE.LENS,
   prototype: UI_STYLE.GEL,
   original: UI_STYLE.ACRYLIC,
+  'clay-vivid': UI_STYLE.CLAY_SOFT,
 };
 
 export function normalizeUiStyle(value) {

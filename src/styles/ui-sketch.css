@@ -135,6 +135,7 @@ html[data-ui-style='sketch'] [data-canvas-board]::after {
   content: '';
   position: absolute;
   inset: 0;
+  z-index: 0;
   pointer-events: none;
   opacity: 0.35;
   mix-blend-mode: multiply;

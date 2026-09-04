@@ -766,6 +766,7 @@ export default function Canvas() {
         ghostSelections={ghostSelections}
         mathInputBlockedIds={mathInputBlockedIds}
         socketHint={socketHint}
+        hideEmptyHint={onboardingOpen}
       />
       <SelectionOpMenu
         open={!!selectionMenu}

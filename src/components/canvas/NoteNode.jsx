@@ -293,6 +293,7 @@ export default function NoteNode({
         top: node.y,
         width: nodeWidth,
         zIndex: node.z,
+        '--nm-node-accent': node.color,
         borderWidth: borderW,
         borderStyle: 'solid',
         borderColor: selected ? node.color : 'var(--nm-border)',
@@ -366,6 +367,7 @@ export default function NoteNode({
       )}
 
       <div
+        data-node-bar
         className="relative flex items-center gap-1 px-2"
         style={{
           height: TOP_BAR_HEIGHT,

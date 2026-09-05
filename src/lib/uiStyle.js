@@ -7,7 +7,6 @@ export const UI_STYLE = {
   GEL: 'gel',
   CLAY_SOFT: 'clay-soft',
   SKETCH: 'sketch',
-  WHITEBOARD: 'whiteboard',
 };
 
 export const UI_STYLE_OPTIONS = [
@@ -36,11 +35,6 @@ export const UI_STYLE_OPTIONS = [
     label: 'Sketch',
     blurb: 'Hand-sketched UI — paper grain, ink outlines, imperfect edges, notebook vibe.',
   },
-  {
-    value: UI_STYLE.WHITEBOARD,
-    label: 'Whiteboard',
-    blurb: 'Whiteboard pencil — graphite strokes, handwritten labels, fluid hand-drawn frames.',
-  },
 ];
 
 const GLASS = new Set([UI_STYLE.LENS, UI_STYLE.ACRYLIC, UI_STYLE.GEL]);
@@ -51,6 +45,7 @@ const LEGACY_MAP = {
   prototype: UI_STYLE.GEL,
   original: UI_STYLE.ACRYLIC,
   'clay-vivid': UI_STYLE.CLAY_SOFT,
+  whiteboard: UI_STYLE.SKETCH,
 };
 
 export function normalizeUiStyle(value) {

@@ -173,6 +173,24 @@ function reducer(state, action) {
       const activeId = state.activeId === action.id ? remaining[0].id : state.activeId;
       return { workspaces: remaining, activeId };
     }
+    case 'DELETE_WORKSPACES_BY_PREFIX': {
+      const prefix = String(action.prefix || '');
+      if (!prefix) return state;
+      const remaining = state.workspaces.filter((w) => !String(w.id).startsWith(prefix));
+      if (remaining.length === state.workspaces.length) return state;
+      if (remaining.length === 0) {
+        const ws = newWorkspace({ name: 'My Canvas' });
+        return { workspaces: [ws], activeId: ws.id };
+      }
+      const activeId = remaining.some((w) => w.id === state.activeId)
+        ? state.activeId
+        : remaining[0].id;
+      return { workspaces: remaining, activeId };
+    }
+    case 'RESET_ALL_WORKSPACES': {
+      const ws = newWorkspace({ name: 'My Canvas' });
+      return { workspaces: [ws], activeId: ws.id };
+    }
     case 'UPDATE_WORKSPACE_META':
       return {
         ...state,

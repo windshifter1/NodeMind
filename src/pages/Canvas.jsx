@@ -212,15 +212,11 @@ export default function Canvas() {
   }, []);
 
   // Tutorial starts on a fresh blank "Tutorial" board at the front of the bar.
-  const tutorialWsBootRef = useRef(false);
+  // Cleanup on close (Skip, Finish, unmount) always removes that board.
   const tutorialWorkspaceIdRef = useRef(null);
   useEffect(() => {
-    if (!onboardingOpen) {
-      tutorialWsBootRef.current = false;
-      return;
-    }
-    if (tutorialWsBootRef.current) return;
-    tutorialWsBootRef.current = true;
+    if (!onboardingOpen) return undefined;
+    dispatch({ type: 'DELETE_WORKSPACES_BY_PREFIX', prefix: 'w_tutorial_' });
     const tutorialId = `w_tutorial_${Date.now().toString(36)}`;
     tutorialWorkspaceIdRef.current = tutorialId;
     dispatch({
@@ -237,24 +233,35 @@ export default function Canvas() {
         nextZ: 1,
       },
     });
-    // Keep the Tutorial tab visible at the start of the scroll strip.
     window.requestAnimationFrame(() => {
       const scroller = document.querySelector('.nm-workspace-scroll-viewport');
       if (scroller) scroller.scrollLeft = 0;
     });
+    return () => {
+      if (tutorialWorkspaceIdRef.current === tutorialId) {
+        tutorialWorkspaceIdRef.current = null;
+      }
+      dispatch({ type: 'DELETE_WORKSPACE', id: tutorialId });
+    };
   }, [onboardingOpen, dispatch]);
 
   const finishOnboarding = useCallback(() => {
+    tutorialWorkspaceIdRef.current = null;
+    dispatch({ type: 'DELETE_WORKSPACES_BY_PREFIX', prefix: 'w_tutorial_' });
     setOnboardingOpen(false);
     setSettingsOpen(false);
-    const tutorialId = tutorialWorkspaceIdRef.current;
-    tutorialWorkspaceIdRef.current = null;
-    if (tutorialId) {
-      dispatch({ type: 'DELETE_WORKSPACE', id: tutorialId });
-    }
   }, [dispatch]);
 
   const terminalTutorialWsIdRef = useRef(null);
+
+  const deleteAllWorkspaces = useCallback(() => {
+    tutorialWorkspaceIdRef.current = null;
+    terminalTutorialWsIdRef.current = null;
+    dispatch({ type: 'RESET_ALL_WORKSPACES' });
+    setOnboardingOpen(false);
+    setSettingsOpen(false);
+    setTerminalOpen(false);
+  }, [dispatch]);
 
   const beginTerminalTutorialWorkspace = useCallback(() => {
     // Replace any prior terminal-tutorial board so replay stays clean.
@@ -864,6 +871,8 @@ export default function Canvas() {
         onThemeChange={setNodeTheme}
         uiStyle={uiStyle}
         onUiStyleChange={setUiStyle}
+        workspaceCount={state.workspaces.length}
+        onDeleteAllWorkspaces={deleteAllWorkspaces}
       />
 
       <OnboardingTour open={onboardingOpen} onClose={finishOnboarding} />

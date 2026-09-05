@@ -33,3 +33,11 @@ html[data-ui-family='glass'] [data-onboarding='workspace-bar']:active {
 [data-onboarding-tour] {
   background-color: color-mix(in srgb, var(--nm-page) 78%, var(--nm-panel));
 }
+
+/* Hit target only — never paint the enlarged socket pad. */
+[data-socket] {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+}

@@ -26,7 +26,6 @@ import {
 } from '@/lib/substituteSlots';
 import { listGraphSlots, graphSocketOffsetY } from '@/lib/graphSlots';
 import MathNodeBody from './MathNodeBody';
-import { PencilFrame } from '@/components/chrome/PencilFrame';
 
 const DOUBLE_TAP_MS = 450;
 
@@ -118,6 +117,7 @@ function Socket({
         }}
       />
       <div
+        data-socket-dot
         className="absolute rounded-full border-2 border-white transition-all"
         style={{
           ...visibleStyle,
@@ -307,7 +307,6 @@ export default function NoteNode({
           'left 250ms ease, top 250ms ease, opacity 180ms ease, width 250ms ease, box-shadow 180ms ease, border-color 180ms ease, border-width 180ms ease',
       }}
     >
-      <PencilFrame seed={node.id} hatchColor={node.color} amp={2.4} />
       {bodySlots.length > 0 ? (
         bodySlots.map((slot, index) => (
           <Socket

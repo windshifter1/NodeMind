@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Moon, RotateCcw, Sun, X } from 'lucide-react';
+import { AlertTriangle, Moon, RotateCcw, Sun, Trash2, X } from 'lucide-react';
 import OptionHelpRow from './OptionHelpRow';
 import {
   readOnboardingReplayPending,
@@ -8,7 +8,6 @@ import {
 } from '@/lib/onboarding';
 import { emitTutorial } from '@/lib/tutorialEvents';
 import { UI_STYLE_OPTIONS } from '@/lib/uiStyle';
-import { PencilFrame } from '@/components/chrome/PencilFrame';
 
 const REPLAY_HELP =
   'Resets the first-run flag. After the tour shows again, this option turns itself off automatically.';
@@ -20,14 +19,22 @@ export default function SettingsDialog({
   onThemeChange,
   uiStyle,
   onUiStyleChange,
+  workspaceCount = 1,
+  onDeleteAllWorkspaces,
 }) {
   const [section, setSection] = useState('style');
   const [replayPending, setReplayPending] = useState(() => readOnboardingReplayPending());
+  const [confirmWipe, setConfirmWipe] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     setReplayPending(readOnboardingReplayPending());
+    setConfirmWipe(false);
   }, [open]);
+
+  useEffect(() => {
+    setConfirmWipe(false);
+  }, [section]);
 
   if (!open) return null;
 
@@ -44,6 +51,9 @@ export default function SettingsDialog({
     }
   };
 
+  const wipeLabel =
+    workspaceCount === 1 ? '1 workspace' : `${workspaceCount} workspaces`;
+
   return (
     <div
       className="fixed inset-0 z-[210] flex items-center justify-center"
@@ -59,7 +69,6 @@ export default function SettingsDialog({
         className="relative flex max-h-[88vh] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-nm-border bg-nm-panel shadow-2xl"
         onPointerDown={(e) => e.stopPropagation()}
       >
-        <PencilFrame seed="settings" amp={1.8} />
         <div className="flex items-center gap-2 border-b border-nm-border bg-nm-header px-3 py-3 sm:px-4">
           <h2 className="text-sm font-semibold text-nm-text">Settings</h2>
           <div className="flex-1" />
@@ -76,6 +85,7 @@ export default function SettingsDialog({
             {[
               { id: 'style', label: 'Style' },
               { id: 'help', label: 'Help' },
+              { id: 'danger', label: 'Danger' },
             ].map((item) => (
               <button
                 key={item.id}
@@ -87,8 +97,12 @@ export default function SettingsDialog({
                 }}
                 className={`mb-1 w-full rounded-xl px-3 py-2 text-left text-sm font-medium transition ${
                   section === item.id
-                    ? 'bg-nm-hover text-nm-text'
-                    : 'text-nm-text-secondary hover:bg-nm-hover/60 hover:text-nm-text'
+                    ? item.id === 'danger'
+                      ? 'bg-rose-500/15 text-rose-400'
+                      : 'bg-nm-hover text-nm-text'
+                    : item.id === 'danger'
+                      ? 'text-rose-400/80 hover:bg-rose-500/10 hover:text-rose-400'
+                      : 'text-nm-text-secondary hover:bg-nm-hover/60 hover:text-nm-text'
                 }`}
               >
                 {item.label}
@@ -182,6 +196,64 @@ export default function SettingsDialog({
                     onToggle={() => setReplay(!replayPending)}
                     helpText={REPLAY_HELP}
                   />
+                </div>
+              </div>
+            )}
+
+            {section === 'danger' && (
+              <div>
+                <h3 className="text-sm font-semibold text-nm-text">Danger</h3>
+                <p className="mt-1 text-xs text-nm-text-muted">
+                  Permanent actions. They cannot be undone.
+                </p>
+
+                <div className="mt-4 rounded-xl border border-rose-500/35 bg-rose-500/10 p-3">
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle size={16} className="mt-0.5 shrink-0 text-rose-400" />
+                    <div className="min-w-0">
+                      <h4 className="text-sm font-semibold text-nm-text">Delete all workspaces</h4>
+                      <p className="mt-1 text-xs leading-relaxed text-nm-text-muted">
+                        Removes every workspace, including the Tutorial board, and starts a blank canvas.
+                        Currently {wipeLabel}.
+                      </p>
+                    </div>
+                  </div>
+
+                  {!confirmWipe ? (
+                    <button
+                      type="button"
+                      onClick={() => setConfirmWipe(true)}
+                      className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-rose-500/40 bg-rose-500/15 px-3 py-2.5 text-sm font-medium text-rose-400 transition hover:bg-rose-500/25 active:scale-[0.98]"
+                    >
+                      <Trash2 size={16} />
+                      Delete all workspaces
+                    </button>
+                  ) : (
+                    <div className="mt-3 space-y-2">
+                      <p className="text-xs font-medium text-rose-300">
+                        Permanently delete {wipeLabel}? This cannot be undone.
+                      </p>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setConfirmWipe(false)}
+                          className="flex-1 rounded-xl border border-nm-border px-3 py-2 text-sm font-medium text-nm-text-secondary transition hover:bg-nm-hover hover:text-nm-text"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            onDeleteAllWorkspaces?.();
+                            setConfirmWipe(false);
+                          }}
+                          className="flex-1 rounded-xl bg-rose-500 px-3 py-2 text-sm font-medium text-white transition hover:bg-rose-400 active:scale-[0.98]"
+                        >
+                          Yes, delete all
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             )}

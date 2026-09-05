@@ -244,7 +244,7 @@ function InteractiveTutorial({ open, onClose, platform }) {
   const finish = useCallback(() => {
     completeOnboarding();
     setVisible(false);
-    window.setTimeout(() => onClose?.(), 180);
+    onClose?.();
   }, [onClose]);
 
   const measure = useCallback(() => {

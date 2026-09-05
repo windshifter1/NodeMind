@@ -148,7 +148,7 @@ html[data-ui-style='sketch'] [data-edge-id] {
   stroke-width: 2.4;
 }
 
-html[data-ui-style='sketch'] [data-socket] {
+html[data-ui-style='sketch'] [data-socket-dot] {
   border: 2px solid var(--nm-border) !important;
   box-shadow: none !important;
 }

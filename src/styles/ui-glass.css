@@ -217,7 +217,7 @@ html[data-ui-family='glass'] .bg-nm-panel,
 html[data-ui-family='glass'] .bg-nm-bin {
   isolation: isolate;
   background-color: var(--nm-chrome);
-  background-image: var(--nm-specular);
+  background-image: none;
 }
 
 html[data-ui-family='glass'] .bg-nm-panel,
@@ -228,6 +228,33 @@ html[data-ui-family='glass'] .bg-nm-bin {
 html[data-ui-family='glass'] .shadow-xl,
 html[data-ui-family='glass'] .shadow-2xl {
   box-shadow: var(--nm-glass-shadow) !important;
+}
+
+html[data-ui-family='glass'] [data-onboarding='toolbar'],
+html[data-ui-family='glass'] [data-onboarding='workspace-bar'],
+html[data-ui-family='glass'] [data-onboarding='delete-bin'],
+html[data-ui-family='glass'] .bg-nm-panel.shadow-xl,
+html[data-ui-family='glass'] .bg-nm-panel.shadow-2xl,
+html[data-ui-family='glass'] .bg-nm-bin.shadow-xl,
+html[data-ui-family='glass'] .bg-nm-chrome.shadow-xl {
+  background-image: none !important;
+  box-shadow:
+    0 16px 40px rgba(0, 0, 0, 0.42),
+    0 2px 8px rgba(0, 0, 0, 0.22) !important;
+}
+
+html[data-ui-family='glass'][data-theme='light'] [data-onboarding='toolbar'],
+html[data-ui-family='glass'][data-theme='light'] [data-onboarding='workspace-bar'],
+html[data-ui-family='glass'][data-theme='light'] [data-onboarding='delete-bin'],
+html[data-ui-family='glass'][data-theme='light'] .bg-nm-panel.shadow-xl,
+html[data-ui-family='glass'][data-theme='light'] .bg-nm-panel.shadow-2xl,
+html[data-ui-family='glass'][data-theme='light'] .bg-nm-bin.shadow-xl,
+html[data-ui-family='glass'][data-theme='light'] .bg-nm-chrome.shadow-xl {
+  box-shadow: 0 14px 32px rgba(30, 50, 90, 0.14) !important;
+}
+
+html[data-ui-family='glass'] .bg-nm-header {
+  background-image: none;
 }
 
 html[data-ui-family='glass'] [data-onboarding='toolbar'],

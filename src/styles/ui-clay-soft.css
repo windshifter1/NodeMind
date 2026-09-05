@@ -157,7 +157,7 @@ html[data-ui-style='clay-soft'] [data-onboarding='toolbar'] button:not(:disabled
   color: #4c1d95;
 }
 
-html[data-ui-style='clay-soft'] [data-socket] {
+html[data-ui-style='clay-soft'] [data-socket-dot] {
   border-color: #fff !important;
   box-shadow:
     3px 3px 8px rgba(140, 120, 180, 0.3),

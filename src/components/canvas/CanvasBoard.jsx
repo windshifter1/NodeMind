@@ -17,7 +17,6 @@ import {
 } from '@/lib/canvasConstants';
 import { emitTutorial } from '@/lib/tutorialEvents';
 import useSpacePan from '@/hooks/useSpacePan';
-import { PencilFrame } from '@/components/chrome/PencilFrame';
 
 function clampZoom(z) {
   return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z));
@@ -1419,7 +1418,6 @@ export default function CanvasBoard({
             transform: overBin ? 'scale(1.08)' : 'none',
           }}
         >
-          <PencilFrame seed="bin" amp={1.8} />
           <span className="flex items-center justify-center" style={{ width: 38, height: 38 }}>
             <BinIcon open={overBin} size={18} />
           </span>

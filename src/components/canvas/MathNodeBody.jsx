@@ -27,7 +27,6 @@ import { classifyExprEqText, parseExpressionOrEquation } from '@/lib/cas/engine'
 import {
   isPlainNumberParam,
   listPlotModes,
-  paramNamesForMode,
   pickDefaultMode,
 } from '@/lib/cas/graphModes';
 import {
@@ -41,6 +40,7 @@ import {
   patchGraphSlotOpt,
   patchGraphSlotParam,
   patchGraphSlotText,
+  visibleGraphSlotParamNames,
 } from '@/lib/graphSlots';
 import MathPreview from './MathPreview';
 import GraphPlot from './GraphPlot';
@@ -113,22 +113,7 @@ function GraphNodeBody({
     bodySlots.forEach((slot) => {
       if (slot.greyed) return;
       const series = slotMeta.get(slot.id);
-      let paramNames = series?.paramNames;
-      if (!paramNames) {
-        if (slot.connected) return;
-        const text = String(slot.text || '');
-        if (!text.replace(/\s+/g, '')) return;
-        const parsed = parseExpressionOrEquation(text);
-        if (parsed.error) return;
-        const opt = getGraphSlotOpt(node, slot.id);
-        const modes = listPlotModes(parsed.ast);
-        const mode = pickDefaultMode(modes, {
-          independent: opt.independent,
-          dependent: opt.dependent,
-          kind: opt.kind,
-        });
-        paramNames = paramNamesForMode(parsed.ast, mode);
-      }
+      const paramNames = visibleGraphSlotParamNames(node, slot, series);
       if (!paramNames?.length) return;
       const opt = getGraphSlotOpt(mergedOpts ? { ...node, graphSlotOpts: mergedOpts } : node, slot.id);
       const nextParams = { ...opt.params };
@@ -162,18 +147,12 @@ function GraphNodeBody({
             const opt = getGraphSlotOpt(node, slot.id);
             const expanded = opt.expanded !== false;
             const series = slotMeta.get(slot.id);
+            const paramNames = visibleGraphSlotParamNames(node, slot, series);
             let modes = series?.modes || [];
-            let paramNames = series?.paramNames || [];
             if (!modes.length && !slot.connected && String(slot.text || '').replace(/\s+/g, '')) {
               const parsed = parseExpressionOrEquation(slot.text);
               if (!parsed.error) {
                 modes = listPlotModes(parsed.ast);
-                const mode = pickDefaultMode(modes, {
-                  independent: opt.independent,
-                  dependent: opt.dependent,
-                  kind: opt.kind,
-                });
-                paramNames = paramNamesForMode(parsed.ast, mode);
               }
             }
             const activeMode =
@@ -188,7 +167,11 @@ function GraphNodeBody({
                 key={slot.id}
                 className={`transition-opacity ${slot.greyed ? 'opacity-45' : 'opacity-100'}`}
               >
-                <div className="flex items-center gap-1.5" style={{ minHeight: SUB_SLOT_ROW_H }}>
+                <div
+                  className="flex items-center gap-1.5"
+                  data-graph-slot-row={slot.id}
+                  style={{ minHeight: SUB_SLOT_ROW_H }}
+                >
                   {!slot.greyed ? (
                     <button
                       type="button"

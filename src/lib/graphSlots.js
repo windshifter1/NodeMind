@@ -14,10 +14,48 @@ export { SUB_SLOT_GAP, SUB_SLOT_PAD_TOP, SUB_SLOT_ROW_H };
 /** Extra UI under each Graph slot when expanded (keep in sync with MathNodeBody). */
 export const GRAPH_SLOT_MODE_ROW_H = 28;
 export const GRAPH_SLOT_PARAM_ROW_H = 30;
-/** mt-1 (4) + container py-1.5 (12) */
-export const GRAPH_SLOT_EXPANDED_PAD = 16;
+/** mt-1 (4) + container py-1.5 (12) + 1px border top/bottom */
+export const GRAPH_SLOT_EXPANDED_PAD = 18;
 /** space-y-1.5 between mode row and each param row */
 export const GRAPH_SLOT_EXPANDED_GAP = 6;
+
+function cssEscapeAttr(value) {
+  const raw = String(value ?? '');
+  if (typeof CSS !== 'undefined' && typeof CSS.escape === 'function') return CSS.escape(raw);
+  return raw.replace(/[^a-zA-Z0-9_-]/g, (ch) => `\\${ch}`);
+}
+
+function seriesForSlot(seriesBySlot, slotId) {
+  if (!seriesBySlot || !slotId) return null;
+  if (typeof seriesBySlot.get === 'function') return seriesBySlot.get(slotId) || null;
+  return seriesBySlot[slotId] || null;
+}
+
+/** Map slotId → plot series from a Graph eval result or plot payload. */
+export function graphPlotSeriesBySlot(plotOrResult) {
+  const series = plotOrResult?.plot?.series || plotOrResult?.series || [];
+  const map = new Map();
+  series.forEach((s) => {
+    if (s?.slotId) map.set(s.slotId, s);
+  });
+  return map;
+}
+
+/**
+ * Centre of a Graph expression row, in CSS pixels from the node’s top edge.
+ * Used so sockets track the real DOM instead of drifting on later slots.
+ */
+export function measureGraphSlotCenterFromNode(nodeId, slotId) {
+  if (typeof document === 'undefined' || !nodeId || !slotId) return null;
+  const root = document.querySelector(`[data-note-node="${cssEscapeAttr(nodeId)}"]`);
+  const row = root?.querySelector(`[data-graph-slot-row="${cssEscapeAttr(slotId)}"]`);
+  if (!root || !row) return null;
+  const rootRect = root.getBoundingClientRect();
+  const rowRect = row.getBoundingClientRect();
+  if (rootRect.height < 1) return null;
+  const scale = root.offsetHeight / rootRect.height;
+  return (rowRect.top + rowRect.height / 2 - rootRect.top) * scale;
+}
 
 /** Letter label for slot index: A, B, … Z, AA, AB, … */
 export function graphSlotLetter(index) {
@@ -240,29 +278,46 @@ export function patchGraphSlotParam(node, slotId, varName, text) {
   return patchGraphSlotOpt(node, slotId, { params: { [varName]: String(text ?? '') } });
 }
 
-/** Infer free param names for layout/UI from typed text (connected slots use stored keys). */
+/**
+ * Param rows actually rendered under a Graph slot (keep in sync with MathNodeBody).
+ * Connected slots follow plot series names, not remembered typed text or stale param keys.
+ */
+export function visibleGraphSlotParamNames(node, slot, series = null) {
+  if (Array.isArray(series?.paramNames)) return series.paramNames;
+  if (slot?.connected) return [];
+  const text = String(slot?.text ?? '');
+  if (!textFilled(text)) return [];
+  const parsed = parseExpressionOrEquation(text);
+  if (parsed.error) return [];
+  const opt = getGraphSlotOpt(node, slot.id);
+  const modes = listPlotModes(parsed.ast);
+  const mode = pickDefaultMode(modes, {
+    independent: opt.independent,
+    dependent: opt.dependent,
+    kind: opt.kind,
+  });
+  return paramNamesForMode(parsed.ast, mode);
+}
+
+/** Infer free param names for layout/UI from typed text. */
 export function inferGraphSlotParamNames(node, slotId, ast = null) {
   const opt = getGraphSlotOpt(node, slotId);
-  let resolvedAst = ast;
-  if (resolvedAst == null) {
-    const exprs = normalizeGraphExprs(node);
-    const index = parseGraphSlotId(slotId);
-    const text = index != null ? exprs[index] : '';
-    if (textFilled(text)) {
-      const parsed = parseExpressionOrEquation(text);
-      if (!parsed.error) resolvedAst = parsed.ast;
-    }
-  }
-  if (resolvedAst != null && resolvedAst !== '') {
-    const modes = listPlotModes(resolvedAst);
+  if (ast != null && ast !== '') {
+    const modes = listPlotModes(ast);
     const mode = pickDefaultMode(modes, {
       independent: opt.independent,
       dependent: opt.dependent,
       kind: opt.kind,
     });
-    return paramNamesForMode(resolvedAst, mode);
+    return paramNamesForMode(ast, mode);
   }
-  return Object.keys(opt.params || {}).sort();
+  const exprs = normalizeGraphExprs(node);
+  const index = parseGraphSlotId(slotId);
+  return visibleGraphSlotParamNames(node, {
+    id: slotId,
+    connected: false,
+    text: index != null ? exprs[index] : '',
+  });
 }
 
 export function graphSlotExpandedExtraHeight(paramCount) {
@@ -278,16 +333,27 @@ export function graphSlotExpandedExtraHeight(paramCount) {
 /**
  * Socket centre Y relative to the body top for Graph slot index.
  * Accounts for expanded per-slot chrome above the target row.
+ * @param {object} [opts]
+ * @param {object[]} [opts.edges]
+ * @param {Map|object} [opts.seriesBySlot]
  */
-export function graphSocketOffsetY(node, slotIndex) {
+export function graphSocketOffsetY(node, slotIndex, opts = {}) {
   const idx = Math.max(0, slotIndex | 0);
+  const edges = opts?.edges || [];
+  const seriesBySlot = opts?.seriesBySlot || null;
+  const slots = listGraphSlots(node, edges);
   let y = SUB_SLOT_PAD_TOP;
   for (let i = 0; i < idx; i++) {
-    const id = graphSlotLetter(i);
-    const opt = getGraphSlotOpt(node, id);
+    const slot = slots[i] || {
+      id: graphSlotLetter(i),
+      connected: false,
+      text: '',
+      greyed: false,
+    };
     y += SUB_SLOT_ROW_H;
-    if (opt.expanded !== false) {
-      const params = inferGraphSlotParamNames(node, id);
+    const opt = getGraphSlotOpt(node, slot.id);
+    if (!slot.greyed && opt.expanded !== false) {
+      const params = visibleGraphSlotParamNames(node, slot, seriesForSlot(seriesBySlot, slot.id));
       y += graphSlotExpandedExtraHeight(params.length);
     }
     y += SUB_SLOT_GAP;
@@ -308,7 +374,7 @@ export function graphSlotsBlockHeight(node, edges = []) {
   slots.forEach((slot, i) => {
     h += SUB_SLOT_ROW_H;
     if (!slot.greyed && getGraphSlotOpt(node, slot.id).expanded !== false) {
-      h += graphSlotExpandedExtraHeight(inferGraphSlotParamNames(node, slot.id).length);
+      h += graphSlotExpandedExtraHeight(visibleGraphSlotParamNames(node, slot).length);
     }
     if (i < slots.length - 1) h += SUB_SLOT_GAP;
   });

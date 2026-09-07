@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useRef, useEffect, useLayoutEffect, useState, useCallback, useMemo } from 'react';
 import { ChevronDown, ChevronUp, Minus, Pencil, Pin, X } from 'lucide-react';
 import {
   MATH_NODE_MAX_WIDTH,
@@ -24,7 +24,7 @@ import {
   listSubstituteSlots,
   substituteSlotOffsetY,
 } from '@/lib/substituteSlots';
-import { listGraphSlots, graphSocketOffsetY } from '@/lib/graphSlots';
+import { listGraphSlots, graphSocketOffsetY, graphPlotSeriesBySlot, measureGraphSlotCenterFromNode } from '@/lib/graphSlots';
 import MathNodeBody from './MathNodeBody';
 
 const DOUBLE_TAP_MS = 450;
@@ -166,8 +166,16 @@ export default function NoteNode({
     if (isGraphNode(node)) return listGraphSlots(node, edges);
     return [];
   }, [node, edges, mathView]);
+  const graphSeriesBySlot = useMemo(
+    () => (isGraphNode(node) ? graphPlotSeriesBySlot(mathResult) : new Map()),
+    [node, mathResult]
+  );
   const slotOffsetY = (index) =>
-    isGraphNode(node) ? graphSocketOffsetY(node, index) : substituteSlotOffsetY(index);
+    isGraphNode(node)
+      ? graphSocketOffsetY(node, index, { edges, seriesBySlot: graphSeriesBySlot })
+      : substituteSlotOffsetY(index);
+  const [graphSlotTops, setGraphSlotTops] = useState({});
+  const graphSlotTopsRef = useRef({});
   const textareaRef = useRef(null);
   const titleInputRef = useRef(null);
   const lastTitleTapRef = useRef(0);
@@ -191,6 +199,38 @@ export default function NoteNode({
       Math.max(MATH_NODE_MIN_WIDTH, titleWidth, needed)
     );
   }, [editingTitle, titleDraft, node, mathPreviewWidth, bodyCollapsed]);
+
+  useLayoutEffect(() => {
+    if (!isGraphNode(node) || mathView !== MATH_VIEW.FULL || !bodySlots.length) {
+      if (Object.keys(graphSlotTopsRef.current).length) {
+        graphSlotTopsRef.current = {};
+        setGraphSlotTops({});
+      }
+      return;
+    }
+    const next = {};
+    bodySlots.forEach((slot) => {
+      const y = measureGraphSlotCenterFromNode(node.id, slot.id);
+      if (y != null) next[slot.id] = y;
+    });
+    const prev = graphSlotTopsRef.current;
+    const keys = Object.keys(next);
+    const same =
+      keys.length === Object.keys(prev).length &&
+      keys.every((id) => Math.abs((next[id] ?? 0) - (prev[id] ?? 0)) < 0.5);
+    if (same) return;
+    graphSlotTopsRef.current = next;
+    setGraphSlotTops(next);
+    onLayoutChange?.();
+  }, [
+    node.id,
+    mathView,
+    bodySlots,
+    node.graphSlotOpts,
+    node.graphExprs,
+    mathResult,
+    onLayoutChange,
+  ]);
 
   useEffect(() => {
     if (!isMathNode(node)) return undefined;
@@ -319,7 +359,11 @@ export default function NoteNode({
             onStartConnect={onStartConnect}
             inputBlocked={slot.connected}
             inputSlot={slot.id}
-            top={TOP_BAR_HEIGHT + slotOffsetY(index)}
+            top={
+              isGraphNode(node) && graphSlotTops[slot.id] != null
+                ? graphSlotTops[slot.id]
+                : TOP_BAR_HEIGHT + slotOffsetY(index)
+            }
             dimmed={slot.greyed}
           />
         ))

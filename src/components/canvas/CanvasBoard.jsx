@@ -16,6 +16,7 @@ import {
   socketWorld,
 } from '@/lib/canvasConstants';
 import { emitTutorial } from '@/lib/tutorialEvents';
+import { graphPlotSeriesBySlot } from '@/lib/graphSlots';
 import useSpacePan from '@/hooks/useSpacePan';
 
 function clampZoom(z) {
@@ -112,6 +113,8 @@ export default function CanvasBoard({
   nodesRef.current = nodes;
   const edgesRef = useRef(edges);
   edgesRef.current = edges;
+  const mathResultsRef = useRef(mathResults);
+  mathResultsRef.current = mathResults;
 
   // Only bump the layout epoch so edges redraw when Math nodes resize.
   // Clearance / placement sorting runs once at selection-op creation (Canvas.jsx),
@@ -368,6 +371,8 @@ export default function CanvasBoard({
     const overridden = { ...node, x, y };
     const point = socketWorld(overridden, type, graphOrientation, nodeSizeForLayout(overridden), {
       inputSlot,
+      edges: edgesRef.current,
+      seriesBySlot: graphPlotSeriesBySlot(mathResultsRef.current?.get?.(node.id)),
     });
     return { x: point.x * zoom + pan.x, y: point.y * zoom + pan.y };
   };
@@ -1144,6 +1149,8 @@ export default function CanvasBoard({
       if (!node) return;
       const point = socketWorld(node, type, graphOrientation, nodeSizeForLayout(node), {
         inputSlot,
+        edges: edgesRef.current,
+        seriesBySlot: graphPlotSeriesBySlot(mathResultsRef.current?.get?.(node.id)),
       });
       const fx = point.x * zoomRef.current + panRef.current.x;
       const fy = point.y * zoomRef.current + panRef.current.y;

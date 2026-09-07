@@ -26,6 +26,7 @@ import {
   graphSlotsBlockHeight,
   graphSocketOffsetY,
   isGraphSlotId,
+  measureGraphSlotCenterFromNode,
   migrateGraphEdges,
   normalizeGraphExprs,
   parseGraphSlotId,
@@ -247,7 +248,16 @@ export function socketWorld(
   })();
 
   const slotTop = (index) =>
-    isGraphNode(node) ? graphSocketOffsetY(node, index) : substituteSlotOffsetY(index);
+    isGraphNode(node)
+      ? graphSocketOffsetY(node, index, { edges: opts?.edges, seriesBySlot: opts?.seriesBySlot })
+      : substituteSlotOffsetY(index);
+
+  const graphSlotY = (index) => {
+    const slotId = isGraphSlotId(opts?.inputSlot) ? opts.inputSlot : null;
+    const measured = slotId ? measureGraphSlotCenterFromNode(node.id, slotId) : null;
+    if (measured != null) return node.y + measured;
+    return node.y + TOP_BAR_HEIGHT + slotTop(index);
+  };
 
   if (o === GRAPH_ORIENTATIONS.VERTICAL) {
     if (type === 'output') {
@@ -257,7 +267,7 @@ export function socketWorld(
       // Body-left slotted inputs even in vertical orientation.
       return {
         x: node.x,
-        y: node.y + TOP_BAR_HEIGHT + slotTop(slotIndex),
+        y: isGraphNode(node) ? graphSlotY(slotIndex) : node.y + TOP_BAR_HEIGHT + slotTop(slotIndex),
       };
     }
     return { x: node.x + size.width / 2, y: node.y };
@@ -269,7 +279,7 @@ export function socketWorld(
   if (slotIndex != null) {
     return {
       x: node.x,
-      y: node.y + TOP_BAR_HEIGHT + slotTop(slotIndex),
+      y: isGraphNode(node) ? graphSlotY(slotIndex) : node.y + TOP_BAR_HEIGHT + slotTop(slotIndex),
     };
   }
   return { x: node.x, y: node.y + TOP_BAR_HEIGHT / 2 };

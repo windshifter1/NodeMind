@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { AlertTriangle, Moon, RotateCcw, Sun, Trash2, X } from 'lucide-react';
+import { AlertTriangle, Moon, RotateCcw, Sparkles, Sun, Trash2, X } from 'lucide-react';
 import OptionHelpRow from './OptionHelpRow';
+import { readLandingAlways, setLandingAlways } from '@/lib/landing';
 import {
   readOnboardingReplayPending,
   setOnboardingCompleted,
@@ -11,6 +12,9 @@ import { UI_STYLE_OPTIONS } from '@/lib/uiStyle';
 
 const REPLAY_HELP =
   'Resets the first-run flag. After the tour shows again, this option turns itself off automatically.';
+
+const LANDING_ALWAYS_HELP =
+  'When on, the landing page appears every time you open NodeMind. When off, it only shows on the first visit to this device.';
 
 export default function SettingsDialog({
   open,
@@ -24,11 +28,13 @@ export default function SettingsDialog({
 }) {
   const [section, setSection] = useState('style');
   const [replayPending, setReplayPending] = useState(() => readOnboardingReplayPending());
+  const [landingAlways, setLandingAlwaysState] = useState(() => readLandingAlways());
   const [confirmWipe, setConfirmWipe] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     setReplayPending(readOnboardingReplayPending());
+    setLandingAlwaysState(readLandingAlways());
     setConfirmWipe(false);
   }, [open]);
 
@@ -49,6 +55,11 @@ export default function SettingsDialog({
     if (enabled) {
       setOnboardingCompleted(false);
     }
+  };
+
+  const setAlwaysLanding = (enabled) => {
+    setLandingAlwaysState(enabled);
+    setLandingAlways(enabled);
   };
 
   const wipeLabel =
@@ -187,7 +198,15 @@ export default function SettingsDialog({
                   command walkthrough.
                 </p>
 
-                <div className="mt-4">
+                <div className="mt-4 space-y-2">
+                  <OptionHelpRow
+                    icon={Sparkles}
+                    label="Always Show Landing Page"
+                    compactLabel
+                    selected={landingAlways}
+                    onToggle={() => setAlwaysLanding(!landingAlways)}
+                    helpText={LANDING_ALWAYS_HELP}
+                  />
                   <OptionHelpRow
                     icon={RotateCcw}
                     label="Replay Onboarding on Next Reload"

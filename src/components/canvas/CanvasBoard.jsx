@@ -2,6 +2,7 @@ import React, { useRef, useState, useEffect, useCallback } from 'react';
 import NoteNode from './NoteNode';
 import NodeTypeMenu from './NodeTypeMenu';
 import BinIcon from './BinIcon';
+import BackgroundDrawLayer from './BackgroundDrawLayer';
 import {
   TOP_BAR_HEIGHT,
   MIN_ZOOM,
@@ -18,6 +19,7 @@ import {
 import { emitTutorial } from '@/lib/tutorialEvents';
 import { graphPlotSeriesBySlot } from '@/lib/graphSlots';
 import useSpacePan from '@/hooks/useSpacePan';
+import { normalizeBackgroundArt } from '@/lib/backgroundArt';
 
 function clampZoom(z) {
   return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z));
@@ -61,11 +63,16 @@ export default function CanvasBoard({
   onPickerClose,
   onPickerSelect,
   mathResults = null,
+  dataResults = null,
+  unitInboundNumberIds = null,
   onSelectionMenu,
   ghostSelections = null,
   mathInputBlockedIds = null,
   socketHint = null,
   hideEmptyHint = false,
+  drawMode = false,
+  backgroundArt = null,
+  onBackgroundArtChange,
 }) {
   const graphOrientation = normalizeOrientation(orientation);
   const [layoutEpoch, setLayoutEpoch] = useState(0);
@@ -1225,6 +1232,7 @@ export default function CanvasBoard({
   const draggingSet = draggingNode ? new Set(draggingNode.ids) : null;
   const cursor =
     spacePanCursor ||
+    (drawMode ? (normalizeBackgroundArt(backgroundArt).tool === 'erase' ? 'cell' : 'crosshair') : null) ||
     (marqueeRect ? 'crosshair' : panState.current.panning ? 'grabbing' : 'grab');
   const dotSize = `${24 * zoom}px ${24 * zoom}px`;
   const boardBackground = {
@@ -1267,12 +1275,19 @@ export default function CanvasBoard({
           </p>
         </div>
       )}
+      <BackgroundDrawLayer
+        art={backgroundArt}
+        onChange={(next) => onBackgroundArtChange?.(next)}
+        enabled={drawMode}
+        pan={pan}
+        zoom={zoom}
+      />
       {/* Edges layer (screen-space) */}
       <svg
         className="absolute inset-0"
         width={vp.w}
         height={vp.h}
-        style={{ pointerEvents: 'none' }}
+        style={{ pointerEvents: drawMode ? 'none' : 'none', zIndex: 1 }}
       >
         {edges.map((edge) => {
           // layoutEpoch: recompute paths when Math nodes resize to fit equations
@@ -1335,6 +1350,8 @@ export default function CanvasBoard({
         style={{
           transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
           transformOrigin: '0 0',
+          zIndex: 2,
+          pointerEvents: drawMode ? 'none' : 'auto',
         }}
       >
         {(spawnRipples || []).map((ripple) => (
@@ -1364,6 +1381,8 @@ export default function CanvasBoard({
             selected={selectedSet.has(node.id)}
             ghost={overBin && draggingSet?.has(node.id)}
             mathResult={mathResults?.get?.(node.id) || null}
+            dataResult={dataResults?.get?.(node.id) || null}
+            hasInboundNumber={Boolean(unitInboundNumberIds?.has?.(node.id))}
             onUpdate={(patch) => onUpdateNode(node.id, patch)}
             onSelectNode={selectNode}
             onArmNodeDrag={armNodeDrag}

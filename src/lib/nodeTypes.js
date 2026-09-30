@@ -35,6 +35,22 @@ export const NODE_KIND = {
   GRAPH: 'graph',
   /** @deprecated Rewrite-style solve; hidden from picker in favour of EQUATION_OP. */
   SOLVE: 'solve',
+  /** Checklist / task list (Text). */
+  CHECKLIST: 'checklist',
+  /** Unit conversion (Math Core) — distinct from CAS CONVERT. */
+  UNIT_CONVERT: 'unitConvert',
+  /** Spreadsheet-like table (Data). */
+  TABLE: 'table',
+  /** Data chart (bar/line/pie/scatter) — distinct from CAS Graph. */
+  CHART: 'chart',
+  /** Stats summaries from table/chart data. */
+  STATS: 'stats',
+  /** Attach + preview a file. */
+  LOAD_FILE: 'loadFile',
+  /** Convert attached files (Manipulation-style suggestions). */
+  FILE_CONVERTER: 'fileConverter',
+  /** Interactive geometry board + proof checks. */
+  GEOMETRY: 'geometry',
 };
 
 export const DEFAULT_NODE_KIND = NODE_KIND.NOTE;
@@ -42,6 +58,8 @@ export const DEFAULT_NODE_KIND = NODE_KIND.NOTE;
 export const NODE_CATEGORIES = [
   { id: 'text', label: 'Text' },
   { id: 'math', label: 'Math' },
+  { id: 'data', label: 'Data' },
+  { id: 'media', label: 'Media' },
 ];
 
 export const MATH_GROUPS = [
@@ -57,6 +75,7 @@ export const MATH_GROUPS = [
 
 export const NODE_TYPE_DEFS = [
   { id: NODE_KIND.NOTE, category: 'text', label: 'Text' },
+  { id: NODE_KIND.CHECKLIST, category: 'text', label: 'Checklist' },
   {
     id: NODE_KIND.EXPRESSION,
     category: 'math',
@@ -104,6 +123,48 @@ export const NODE_TYPE_DEFS = [
     group: 'values',
     label: 'Solve',
     field: { key: 'field', label: 'Variable', placeholder: 'x' },
+  },
+  {
+    id: NODE_KIND.UNIT_CONVERT,
+    category: 'math',
+    group: 'values',
+    label: 'Unit conversion',
+  },
+  {
+    id: NODE_KIND.GEOMETRY,
+    category: 'math',
+    group: 'values',
+    label: 'Geometry',
+  },
+  {
+    id: NODE_KIND.TABLE,
+    category: 'data',
+    group: 'values',
+    label: 'Table',
+  },
+  {
+    id: NODE_KIND.CHART,
+    category: 'data',
+    group: 'values',
+    label: 'Chart',
+  },
+  {
+    id: NODE_KIND.STATS,
+    category: 'data',
+    group: 'values',
+    label: 'Stats',
+  },
+  {
+    id: NODE_KIND.LOAD_FILE,
+    category: 'media',
+    group: 'values',
+    label: 'Load file',
+  },
+  {
+    id: NODE_KIND.FILE_CONVERTER,
+    category: 'media',
+    group: 'values',
+    label: 'File converter',
   },
   {
     id: NODE_KIND.CAS_OP,
@@ -451,7 +512,9 @@ export function titleForExprEqRole(role) {
 
 function isPickerDef(def) {
   if (!def || def.picker === false) return false;
-  if (def.category === 'text') return true;
+  if (def.category === 'text' || def.category === 'data' || def.category === 'media') {
+    return true;
+  }
   return def.group === 'values';
 }
 
@@ -496,6 +559,64 @@ export function fieldsForKind(kind) {
     fields.method = '';
     fields.selection = null;
     fields.opId = '';
+  }
+  if (normalised === NODE_KIND.CHECKLIST) {
+    fields.items = [{ id: 'i1', text: '', done: false }];
+  }
+  if (normalised === NODE_KIND.UNIT_CONVERT) {
+    fields.value = '';
+    fields.fromUnit = 'm';
+    fields.toUnit = 'km';
+  }
+  if (normalised === NODE_KIND.TABLE) {
+    fields.columns = [
+      { id: 'c1', name: 'A' },
+      { id: 'c2', name: 'B' },
+      { id: 'c3', name: 'C' },
+    ];
+    fields.rows = [
+      { c1: '', c2: '', c3: '' },
+      { c1: '', c2: '', c3: '' },
+      { c1: '', c2: '', c3: '' },
+    ];
+  }
+  if (normalised === NODE_KIND.CHART) {
+    fields.chartType = 'bar';
+    fields.xKey = 'c1';
+    fields.yKeys = ['c2'];
+  }
+  if (normalised === NODE_KIND.STATS) {
+    fields.statsColumn = '';
+    fields.statsMetrics = ['mean', 'min', 'max'];
+  }
+  if (normalised === NODE_KIND.LOAD_FILE) {
+    fields.fileId = '';
+    fields.fileName = '';
+    fields.fileMime = '';
+    fields.fileSize = 0;
+    fields.previewCollapsed = false;
+  }
+  if (normalised === NODE_KIND.FILE_CONVERTER) {
+    fields.conversionId = '';
+    fields.outputFileId = '';
+    fields.outputFileName = '';
+    fields.outputMime = '';
+  }
+  if (normalised === NODE_KIND.GEOMETRY) {
+    fields.geometry = {
+      points: [
+        { id: 'A', x: 40, y: 140, free: true },
+        { id: 'B', x: 200, y: 140, free: true },
+        { id: 'C', x: 120, y: 40, free: true },
+      ],
+      segments: [
+        { id: 'AB', a: 'A', b: 'B' },
+        { id: 'BC', a: 'B', b: 'C' },
+        { id: 'CA', a: 'C', b: 'A' },
+      ],
+      circles: [],
+    };
+    fields.proofSteps = [];
   }
   if (def?.modes?.length) fields.mode = def.modes[0].id;
   if (def?.field?.key && def.field.key !== 'expr') fields.field = '';
@@ -600,8 +721,77 @@ export function isMathNode(nodeOrKind) {
   return def?.category === 'math';
 }
 
+export function isChecklistNode(nodeOrKind) {
+  const kind = typeof nodeOrKind === 'object' ? nodeOrKind?.kind : nodeOrKind;
+  return normalizeNodeKind(kind) === NODE_KIND.CHECKLIST;
+}
+
+export function isUnitConvertNode(nodeOrKind) {
+  const kind = typeof nodeOrKind === 'object' ? nodeOrKind?.kind : nodeOrKind;
+  return normalizeNodeKind(kind) === NODE_KIND.UNIT_CONVERT;
+}
+
+export function isTableNode(nodeOrKind) {
+  const kind = typeof nodeOrKind === 'object' ? nodeOrKind?.kind : nodeOrKind;
+  return normalizeNodeKind(kind) === NODE_KIND.TABLE;
+}
+
+export function isChartNode(nodeOrKind) {
+  const kind = typeof nodeOrKind === 'object' ? nodeOrKind?.kind : nodeOrKind;
+  return normalizeNodeKind(kind) === NODE_KIND.CHART;
+}
+
+export function isStatsNode(nodeOrKind) {
+  const kind = typeof nodeOrKind === 'object' ? nodeOrKind?.kind : nodeOrKind;
+  return normalizeNodeKind(kind) === NODE_KIND.STATS;
+}
+
+export function isLoadFileNode(nodeOrKind) {
+  const kind = typeof nodeOrKind === 'object' ? nodeOrKind?.kind : nodeOrKind;
+  return normalizeNodeKind(kind) === NODE_KIND.LOAD_FILE;
+}
+
+export function isFileConverterNode(nodeOrKind) {
+  const kind = typeof nodeOrKind === 'object' ? nodeOrKind?.kind : nodeOrKind;
+  return normalizeNodeKind(kind) === NODE_KIND.FILE_CONVERTER;
+}
+
+export function isGeometryNode(nodeOrKind) {
+  const kind = typeof nodeOrKind === 'object' ? nodeOrKind?.kind : nodeOrKind;
+  return normalizeNodeKind(kind) === NODE_KIND.GEOMETRY;
+}
+
+/** Nodes that use a custom body (not the plain note textarea). */
+export function isCustomBodyNode(nodeOrKind) {
+  return (
+    isMathNode(nodeOrKind) ||
+    isChecklistNode(nodeOrKind) ||
+    isTableNode(nodeOrKind) ||
+    isChartNode(nodeOrKind) ||
+    isStatsNode(nodeOrKind) ||
+    isLoadFileNode(nodeOrKind) ||
+    isFileConverterNode(nodeOrKind)
+  );
+}
+
+/** Single anonymous inbound socket (like Manipulation). */
+export function isSingleInputTransformNode(nodeOrKind) {
+  return (
+    isUnitConvertNode(nodeOrKind) ||
+    isChartNode(nodeOrKind) ||
+    isStatsNode(nodeOrKind) ||
+    isFileConverterNode(nodeOrKind)
+  );
+}
+
 export function isNoteNode(nodeOrKind) {
-  return !isMathNode(nodeOrKind);
+  const kind = typeof nodeOrKind === 'object' ? nodeOrKind?.kind : nodeOrKind;
+  return normalizeNodeKind(kind) === NODE_KIND.NOTE;
+}
+
+/** True when Math body chrome (view cycle) applies. */
+export function usesMathViewChrome(nodeOrKind) {
+  return isMathNode(nodeOrKind) && !isUnitConvertNode(nodeOrKind) && !isGeometryNode(nodeOrKind);
 }
 
 export function fieldVisibleForNode(def, node) {

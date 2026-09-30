@@ -29,10 +29,15 @@ import {
   fieldsForKind,
   isMathNode,
   isSelectionOpNode,
+  isSingleInputTransformNode,
+  isUnitConvertNode,
   usesInputSlots,
   NODE_KIND,
 } from '@/lib/nodeTypes';
 import { evaluateMathGraph } from '@/lib/cas/evalGraph';
+import { evaluateDataGraph } from '@/lib/dataEvalGraph';
+import { parseNumericInput } from '@/lib/units';
+import { normalizeBackgroundArt } from '@/lib/backgroundArt';
 import {
   connectionInputSlot,
   connectionInputTarget,
@@ -82,6 +87,7 @@ export default function Canvas() {
   const [socketHint, setSocketHint] = useState(null);
   const [spawnNodeIds, setSpawnNodeIds] = useState(() => new Set());
   const [spawnRipples, setSpawnRipples] = useState([]);
+  const [drawMode, setDrawMode] = useState(false);
   const socketHintTimerRef = useRef(null);
   const hadCreditOpRef = useRef(null);
   const knownNodeIdsRef = useRef(null);
@@ -194,8 +200,9 @@ export default function Canvas() {
     const blocked = new Set();
     (active.nodes || []).forEach((node) => {
       if (
-        isMathNode(node) &&
+        (isMathNode(node) || isSingleInputTransformNode(node)) &&
         !allowsMultipleInputs(node) &&
+        !usesInputSlots(node) &&
         hasInboundEdge(active.edges, node.id)
       ) {
         blocked.add(node.id);
@@ -203,6 +210,31 @@ export default function Canvas() {
     });
     return blocked;
   }, [active.nodes, active.edges]);
+
+  const mathResults = useMemo(
+    () => evaluateMathGraph(active.nodes, active.edges),
+    [active.nodes, active.edges]
+  );
+
+  const dataResults = useMemo(
+    () => evaluateDataGraph(active.nodes, active.edges, mathResults),
+    [active.nodes, active.edges, mathResults]
+  );
+
+  const unitInboundNumberIds = useMemo(() => {
+    const set = new Set();
+    (active.nodes || []).forEach((node) => {
+      if (!isUnitConvertNode(node)) return;
+      (active.edges || []).forEach((edge) => {
+        const source = edge.fromType === 'output' ? edge.fromNode : edge.toNode;
+        const target = edge.fromType === 'output' ? edge.toNode : edge.fromNode;
+        if (target !== node.id) return;
+        const mr = mathResults.get(source);
+        if (mr && Number.isFinite(parseNumericInput(mr.flat))) set.add(node.id);
+      });
+    });
+    return set;
+  }, [active.nodes, active.edges, mathResults]);
 
   useEffect(() => {
     if (!shouldStartOnboarding()) return undefined;
@@ -310,11 +342,6 @@ export default function Canvas() {
     setTerminalOpen(false);
   }, []);
 
-  const mathResults = useMemo(
-    () => evaluateMathGraph(active.nodes, active.edges),
-    [active.nodes, active.edges]
-  );
-
   /** When an operation node is selected, highlight its stored selection on the upstream preview. */
   const ghostSelections = useMemo(() => {
     const map = new Map();
@@ -409,7 +436,7 @@ export default function Canvas() {
       ? active.nodes.find((node) => node.id === inputTarget)
       : null;
     const inputSlot = connectionInputSlot(fromType, toType, fromSlot, toSlot);
-    if (targetNode && isMathNode(targetNode)) {
+    if (targetNode && (isMathNode(targetNode) || isSingleInputTransformNode(targetNode))) {
       if (usesInputSlots(targetNode)) {
         if (!inputSlot || hasInboundEdgeOnSlot(active.edges, inputTarget, inputSlot)) {
           showSocketHint(inputTarget, 'This socket already has an input');
@@ -435,8 +462,9 @@ export default function Canvas() {
   const addConnectedNode = (x, y, fromNode, fromType, anchor) => {
     const from = active.nodes.find((node) => node.id === fromNode);
     const fromMath = from && isMathNode(from);
+    const fromTransform = from && isSingleInputTransformNode(from);
     const inputSlot = anchor?.inputSlot || null;
-    if (fromMath && fromType === 'input') {
+    if ((fromMath || fromTransform) && fromType === 'input') {
       if (usesInputSlots(from)) {
         if (inputSlot && hasInboundEdgeOnSlot(active.edges, fromNode, inputSlot)) {
           showSocketHint(fromNode, 'This socket already has an input');
@@ -455,6 +483,10 @@ export default function Canvas() {
       valuesOnly = true;
     } else if (fromMath && fromType === 'output') {
       initialCategory = 'math';
+    } else if (from?.kind === 'table' && fromType === 'output') {
+      initialCategory = 'data';
+    } else if (from?.kind === 'loadFile' && fromType === 'output') {
+      initialCategory = 'media';
     }
 
     openNodePicker({
@@ -769,11 +801,18 @@ export default function Canvas() {
         onPickerClose={closeNodePicker}
         onPickerSelect={pickNodeType}
         mathResults={mathResults}
+        dataResults={dataResults}
+        unitInboundNumberIds={unitInboundNumberIds}
         onSelectionMenu={handleSelectionMenu}
         ghostSelections={ghostSelections}
         mathInputBlockedIds={mathInputBlockedIds}
         socketHint={socketHint}
         hideEmptyHint={onboardingOpen}
+        drawMode={drawMode}
+        backgroundArt={normalizeBackgroundArt(active.backgroundArt)}
+        onBackgroundArtChange={(next) =>
+          dispatch({ type: 'UPDATE_BACKGROUND_ART', patch: next })
+        }
       />
       <SelectionOpMenu
         open={!!selectionMenu}
@@ -798,6 +837,12 @@ export default function Canvas() {
         zoom={zoom}
         onRecenter={recenterView}
         onOpenSettings={() => setSettingsOpen(true)}
+        drawMode={drawMode}
+        onToggleDrawMode={() => setDrawMode((v) => !v)}
+        backgroundArt={normalizeBackgroundArt(active.backgroundArt)}
+        onBackgroundArtChange={(patch) =>
+          dispatch({ type: 'UPDATE_BACKGROUND_ART', patch })
+        }
         onAddNodeCenter={(anchor) => {
           const clientX = anchor?.clientX ?? window.innerWidth / 2;
           const clientY = anchor?.clientY ?? 72;

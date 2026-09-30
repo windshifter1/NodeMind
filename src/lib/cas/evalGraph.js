@@ -1,11 +1,13 @@
 import {
   isBasicOperationNode,
   isExpressionNode,
+  isGeometryNode,
   isGraphNode,
   isMathNode,
   isSelectionOpNode,
   isSolveNode,
   isSubstituteNode,
+  isUnitConvertNode,
 } from '@/lib/nodeTypes';
 import {
   applyRewrite,
@@ -150,6 +152,12 @@ export function evaluateMathGraph(nodes = [], edges = []) {
         applicableModes: null,
         applicableSelectionOps: null,
       });
+      return;
+    }
+
+    // Handled by dataEvalGraph / self-contained UI — skip CAS rewrite path.
+    if (isUnitConvertNode(node) || isGeometryNode(node)) {
+      results.set(id, emptyResult(null));
       return;
     }
 

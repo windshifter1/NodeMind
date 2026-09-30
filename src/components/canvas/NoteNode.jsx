@@ -12,10 +12,19 @@ import { emitTutorial } from '@/lib/tutorialEvents';
 import {
   displayNodeTitle,
   getMathView,
+  isChartNode,
+  isChecklistNode,
+  isFileConverterNode,
+  isGeometryNode,
   isGraphNode,
+  isLoadFileNode,
   isMathNode,
   isNodeBodyCollapsed,
+  isNoteNode,
+  isStatsNode,
   isSubstituteNode,
+  isTableNode,
+  isUnitConvertNode,
   MATH_VIEW,
   mathViewLabel,
   nextMathViewPatch,
@@ -26,6 +35,14 @@ import {
 } from '@/lib/substituteSlots';
 import { listGraphSlots, graphSocketOffsetY, graphPlotSeriesBySlot, measureGraphSlotCenterFromNode } from '@/lib/graphSlots';
 import MathNodeBody from './MathNodeBody';
+import ChecklistNodeBody from './bodies/ChecklistNodeBody';
+import UnitConvertNodeBody from './bodies/UnitConvertNodeBody';
+import TableNodeBody from './bodies/TableNodeBody';
+import ChartNodeBody from './bodies/ChartNodeBody';
+import StatsNodeBody from './bodies/StatsNodeBody';
+import LoadFileNodeBody from './bodies/LoadFileNodeBody';
+import FileConverterNodeBody from './bodies/FileConverterNodeBody';
+import GeometryNodeBody from './bodies/GeometryNodeBody';
 
 const DOUBLE_TAP_MS = 450;
 
@@ -143,6 +160,7 @@ export default function NoteNode({
   selected,
   ghost,
   mathResult = null,
+  dataResult = null,
   onUpdate,
   onSelectNode,
   onArmNodeDrag,
@@ -157,6 +175,7 @@ export default function NoteNode({
   socketHint = null,
   zoom = 1,
   edges = [],
+  hasInboundNumber = false,
 }) {
   const mathView = isMathNode(node) ? getMathView(node) : null;
   const bodyCollapsed = isNodeBodyCollapsed(node);
@@ -533,7 +552,7 @@ export default function NoteNode({
 
       </div>
 
-      {!bodyCollapsed && isMathNode(node) && (
+      {!bodyCollapsed && isMathNode(node) && !isUnitConvertNode(node) && !isGeometryNode(node) && (
         <MathNodeBody
           node={node}
           darkNodes={darkNodes}
@@ -551,7 +570,60 @@ export default function NoteNode({
         />
       )}
 
-      {!bodyCollapsed && !isMathNode(node) && (
+      {!bodyCollapsed && isUnitConvertNode(node) && (
+        <UnitConvertNodeBody
+          node={node}
+          darkNodes={darkNodes}
+          onUpdate={onUpdate}
+          dataResult={dataResult}
+          hasInboundNumber={hasInboundNumber}
+        />
+      )}
+
+      {!bodyCollapsed && isGeometryNode(node) && (
+        <GeometryNodeBody node={node} darkNodes={darkNodes} onUpdate={onUpdate} />
+      )}
+
+      {!bodyCollapsed && isChecklistNode(node) && (
+        <ChecklistNodeBody node={node} darkNodes={darkNodes} onUpdate={onUpdate} />
+      )}
+
+      {!bodyCollapsed && isTableNode(node) && (
+        <TableNodeBody node={node} darkNodes={darkNodes} onUpdate={onUpdate} />
+      )}
+
+      {!bodyCollapsed && isChartNode(node) && (
+        <ChartNodeBody
+          node={node}
+          darkNodes={darkNodes}
+          onUpdate={onUpdate}
+          dataResult={dataResult}
+        />
+      )}
+
+      {!bodyCollapsed && isStatsNode(node) && (
+        <StatsNodeBody
+          node={node}
+          darkNodes={darkNodes}
+          onUpdate={onUpdate}
+          dataResult={dataResult}
+        />
+      )}
+
+      {!bodyCollapsed && isLoadFileNode(node) && (
+        <LoadFileNodeBody node={node} darkNodes={darkNodes} onUpdate={onUpdate} />
+      )}
+
+      {!bodyCollapsed && isFileConverterNode(node) && (
+        <FileConverterNodeBody
+          node={node}
+          darkNodes={darkNodes}
+          onUpdate={onUpdate}
+          dataResult={dataResult}
+        />
+      )}
+
+      {!bodyCollapsed && isNoteNode(node) && (
         <textarea
           ref={textareaRef}
           value={node.content}

@@ -6,7 +6,7 @@ import pluginUnusedImports from "eslint-plugin-unused-imports";
 
 export default [
   {
-    ignores: ["src/lib/cas/equation.js"],
+    ignores: ["src/lib/cas/equation.js", "dist/**", "node_modules/**"],
   },
   {
     files: ["src/**/*.{js,mjs,cjs,jsx}"],

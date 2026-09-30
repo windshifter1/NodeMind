@@ -16,6 +16,7 @@ import {
   fieldsForKind,
   isGraphNode,
   isMathNode,
+  isSingleInputTransformNode,
   isSubstituteNode,
   usesInputSlots,
 } from '@/lib/nodeTypes';
@@ -24,6 +25,7 @@ import {
   hasInboundEdgeOnSlot,
 } from '@/lib/substituteSlots';
 import { ensureGraphSlotCapacity } from '@/lib/graphSlots';
+import { normalizeBackgroundArt } from '@/lib/backgroundArt';
 
 function ensureSlottedCapacity(host, inputSlot) {
   if (isSubstituteNode(host)) return ensureSubstituteSlotCapacity(host, inputSlot);
@@ -59,6 +61,7 @@ function newWorkspace({
   edges,
   nextZ,
   terminal,
+  backgroundArt,
 } = {}) {
   return {
     id: uid('w'),
@@ -72,6 +75,7 @@ function newWorkspace({
     edges: Array.isArray(edges) ? edges : [],
     nextZ: typeof nextZ === 'number' ? nextZ : 1,
     terminal: normalizeTerminal(terminal),
+    backgroundArt: normalizeBackgroundArt(backgroundArt),
   };
 }
 
@@ -86,6 +90,7 @@ function loadInitial() {
           workspaces: parsed.workspaces.map((ws) => ({
             ...migrateWorkspaceNodeIds(ws),
             terminal: normalizeTerminal(ws.terminal),
+            backgroundArt: normalizeBackgroundArt(ws.backgroundArt),
           })),
         };
       }
@@ -240,7 +245,7 @@ function reducer(state, action) {
         const inputSlot = action.inputSlot || null;
         if (action.fromType === 'input') {
           const host = w.nodes.find((n) => n.id === action.fromNode);
-          if (host && isMathNode(host)) {
+          if (host && (isMathNode(host) || isSingleInputTransformNode(host))) {
             if (usesInputSlots(host)) {
               if (inputSlot && hasInboundEdgeOnSlot(w.edges, host.id, inputSlot)) return w;
             } else if (!allowsMultipleInputs(host) && hasInboundEdge(w.edges, host.id)) {
@@ -361,7 +366,7 @@ function reducer(state, action) {
           action.toType
         );
         const targetNode = inputTarget ? w.nodes.find((n) => n.id === inputTarget) : null;
-        if (targetNode && isMathNode(targetNode)) {
+        if (targetNode && (isMathNode(targetNode) || isSingleInputTransformNode(targetNode))) {
           if (usesInputSlots(targetNode)) {
             if (!inputSlot || hasInboundEdgeOnSlot(w.edges, inputTarget, inputSlot)) return w;
           } else if (!allowsMultipleInputs(targetNode) && hasInboundEdge(w.edges, inputTarget)) {
@@ -400,8 +405,22 @@ function reducer(state, action) {
         ...w,
         edges: w.edges.filter((e) => e.id !== action.id),
       }));
+    case 'UPDATE_BACKGROUND_ART':
+      return withActiveGraph(state, (w) => ({
+        ...w,
+        backgroundArt: normalizeBackgroundArt({
+          ...normalizeBackgroundArt(w.backgroundArt),
+          ...(action.patch || {}),
+        }),
+      }));
     case 'CLEAR_CONTENT':
-      return withActiveGraph(state, (w) => ({ ...w, nodes: [], edges: [], nextZ: 1 }));
+      return withActiveGraph(state, (w) => ({
+        ...w,
+        nodes: [],
+        edges: [],
+        nextZ: 1,
+        backgroundArt: normalizeBackgroundArt(null),
+      }));
     default:
       return state;
   }

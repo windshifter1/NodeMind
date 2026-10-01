@@ -5,6 +5,7 @@ import NodeEditDialog from '@/components/canvas/NodeEditDialog';
 import WorkspaceBar from '@/components/canvas/WorkspaceBar';
 import WorkspaceEditDialog from '@/components/canvas/WorkspaceEditDialog';
 import TextExportDialog from '@/components/canvas/TextExportDialog';
+import ShareCanvasDialog from '@/components/canvas/ShareCanvasDialog';
 import TerminalDialog from '@/components/canvas/TerminalDialog';
 import SettingsDialog from '@/components/canvas/SettingsDialog';
 import SelectionOpMenu from '@/components/canvas/SelectionOpMenu';
@@ -74,6 +75,7 @@ export default function Canvas() {
   const [editingWorkspace, setEditingWorkspace] = useState(false);
   const [creatingWorkspace, setCreatingWorkspace] = useState(false);
   const [textExportOpen, setTextExportOpen] = useState(false);
+  const [shareCanvasOpen, setShareCanvasOpen] = useState(false);
   const [terminalOpen, setTerminalOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [selectedNodeIds, setSelectedNodeIds] = useState([]);
@@ -828,6 +830,7 @@ export default function Canvas() {
         onImport={handleImport}
         onClear={handleClear}
         onTextExport={() => setTextExportOpen(true)}
+        onShareCanvas={() => setShareCanvasOpen(true)}
         onOpenTerminal={() => setTerminalOpen(true)}
         onAutoOrganise={autoOrganise}
         onOrganiseSelected={organiseSelected}
@@ -907,6 +910,16 @@ export default function Canvas() {
         workspaceName={active.name}
         nodes={active.nodes}
         edges={active.edges}
+      />
+
+      <ShareCanvasDialog
+        open={shareCanvasOpen}
+        onClose={() => setShareCanvasOpen(false)}
+        workspaceName={active.name}
+        nodes={active.nodes}
+        edges={active.edges}
+        orientation={active.orientation}
+        darkNodes={nodeTheme === 'dark'}
       />
 
       <SettingsDialog

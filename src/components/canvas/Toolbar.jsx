@@ -227,6 +227,7 @@ export default function Toolbar({
   onToggleDrawMode,
   backgroundArt,
   onBackgroundArtChange,
+  onShareCanvas,
 }) {
   const fileRef = useRef(null);
   const imageRef = useRef(null);
@@ -474,6 +475,12 @@ export default function Toolbar({
             { label: 'Copy', icon: Copy, action: onTextExport },
             { label: 'Import', icon: Upload, action: () => fileRef.current && fileRef.current.click() },
             { label: 'Export', icon: Download, action: onExport },
+            {
+              label: 'Share…',
+              icon: Share2,
+              action: () => onShareCanvas?.(),
+              title: 'Share as JPEG, PNG, PDF, or SVG',
+            },
           ]}
         />
         <ToolbarButton onClick={onClear} title="Clear all"><Trash2 size={16} /></ToolbarButton>

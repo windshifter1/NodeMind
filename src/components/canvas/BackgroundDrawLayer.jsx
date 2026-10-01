@@ -208,12 +208,15 @@ export default function BackgroundDrawLayer({
 
   const strokes = draft ? [...bg.strokes, draft] : bg.strokes;
 
-  // Live-update glow on the selected stroke when the toolbar slider moves.
+  // Live-update glow on the in-progress draft and selected stroke when the slider moves.
   useEffect(() => {
+    const nextGlow = bg.emissiveness ?? 0;
+    if (draft && Math.abs((Number(draft.emissiveness) || 0) - nextGlow) >= 0.001) {
+      setDraft({ ...draft, emissiveness: nextGlow });
+    }
     if (selectedKind !== 'stroke' || !selectedId) return;
     const stroke = bg.strokes.find((s) => s.id === selectedId);
     if (!stroke) return;
-    const nextGlow = bg.emissiveness ?? 0;
     if (Math.abs((Number(stroke.emissiveness) || 0) - nextGlow) < 0.001) return;
     onChange({
       ...bg,
@@ -241,6 +244,23 @@ export default function BackgroundDrawLayer({
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerUp}
     >
+      <defs>
+        {/* Soft blur glow — SVG feGaussianBlur (CSS drop-shadow is unreliable on paths). */}
+        <filter
+          id="nm-stroke-glow"
+          x="-80%"
+          y="-80%"
+          width="260%"
+          height="260%"
+          colorInterpolationFilters="sRGB"
+        >
+          <feGaussianBlur in="SourceGraphic" stdDeviation="5" result="blur" />
+          <feMerge>
+            <feMergeNode in="blur" />
+            <feMergeNode in="blur" />
+          </feMerge>
+        </filter>
+      </defs>
       <g transform={`translate(${pan.x} ${pan.y}) scale(${zoom})`}>
         {bg.images.map((img) => (
           <image
@@ -269,7 +289,7 @@ export default function BackgroundDrawLayer({
   );
 }
 
-/** Soft glow via wider translucent under-strokes (CSS filter is unreliable on SVG paths). */
+/** Soft glow: wider translucent under-strokes + SVG blur filter. */
 function StrokeGraphic({ stroke, selected }) {
   const d = pointsToPath(stroke.points);
   if (!d) return null;
@@ -290,22 +310,24 @@ function StrokeGraphic({ stroke, selected }) {
         <>
           <path
             {...common}
-            strokeWidth={width + glow * 22}
-            strokeOpacity={0.1 + glow * 0.2}
+            strokeWidth={width + glow * 28}
+            opacity={0.12 + glow * 0.22}
+            filter="url(#nm-stroke-glow)"
           />
           <path
             {...common}
-            strokeWidth={width + glow * 12}
-            strokeOpacity={0.18 + glow * 0.28}
+            strokeWidth={width + glow * 14}
+            opacity={0.22 + glow * 0.3}
+            filter="url(#nm-stroke-glow)"
           />
           <path
             {...common}
-            strokeWidth={width + glow * 5}
-            strokeOpacity={0.32 + glow * 0.35}
+            strokeWidth={width + glow * 6}
+            opacity={0.4 + glow * 0.35}
           />
         </>
       )}
-      <path {...common} strokeWidth={width} strokeOpacity={1} />
+      <path {...common} strokeWidth={width} opacity={1} />
     </g>
   );
 }

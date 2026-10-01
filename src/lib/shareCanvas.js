@@ -1,4 +1,4 @@
-import { toJpeg, toPng, toSvg } from 'html-to-image';
+import { toBlob, toJpeg, toPng, toSvg } from 'html-to-image';
 import {
   MIN_ZOOM,
   MAX_ZOOM,
@@ -206,12 +206,58 @@ async function pngBlobToPdf(imageBlob) {
 }
 
 function dataUrlToBlob(dataUrl) {
-  const [header, data] = String(dataUrl).split(',');
-  const mime = /data:([^;]+)/.exec(header)?.[1] || 'application/octet-stream';
-  const bin = atob(data);
-  const bytes = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-  return new Blob([bytes], { type: mime });
+  const raw = String(dataUrl || '');
+  const comma = raw.indexOf(',');
+  if (comma < 0) throw new Error('Invalid image data');
+  const header = raw.slice(0, comma);
+  const data = raw.slice(comma + 1);
+  const mime = /data:([^;,]+)/.exec(header)?.[1] || 'application/octet-stream';
+  const isBase64 = /;base64/i.test(header);
+
+  if (isBase64) {
+    const bin = atob(data);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return new Blob([bytes], { type: mime });
+  }
+
+  // html-to-image's toSvg returns charset URI-encoded (not base64) data URLs.
+  const text = decodeURIComponent(data);
+  return new Blob([text], { type: mime });
+}
+
+async function captureBoard(board, fmt, common) {
+  if (fmt.id === 'png') {
+    try {
+      const blob = await toBlob(board, common);
+      if (blob) return blob;
+    } catch {
+      /* fall through to data-URL path */
+    }
+    return dataUrlToBlob(await toPng(board, common));
+  }
+  if (fmt.id === 'jpeg') {
+    const jpegOpts = { ...common, quality: 0.92, backgroundColor: '#ffffff' };
+    try {
+      const blob = await toBlob(board, { ...jpegOpts, type: 'image/jpeg' });
+      if (blob) return blob;
+    } catch {
+      /* fall through */
+    }
+    return dataUrlToBlob(await toJpeg(board, jpegOpts));
+  }
+  if (fmt.id === 'svg') {
+    return dataUrlToBlob(await toSvg(board, common));
+  }
+  // PDF: rasterize to PNG then wrap.
+  let pngBlob;
+  try {
+    pngBlob = await toBlob(board, common);
+  } catch {
+    pngBlob = null;
+  }
+  if (!pngBlob) pngBlob = dataUrlToBlob(await toPng(board, common));
+  return pngBlobToPdf(pngBlob);
 }
 
 /**
@@ -296,19 +342,11 @@ export async function exportWorkspaceImage({
     };
 
     let blob;
-    if (fmt.id === 'png') {
-      const url = await toPng(board, common);
-      blob = dataUrlToBlob(url);
-    } else if (fmt.id === 'jpeg') {
-      const url = await toJpeg(board, { ...common, quality: 0.92, backgroundColor: '#ffffff' });
-      blob = dataUrlToBlob(url);
-    } else if (fmt.id === 'svg') {
-      const url = await toSvg(board, common);
-      blob = dataUrlToBlob(url);
-    } else {
-      const url = await toPng(board, common);
-      const pngBlob = dataUrlToBlob(url);
-      blob = await pngBlobToPdf(pngBlob);
+    try {
+      blob = await captureBoard(board, fmt, common);
+    } catch (err) {
+      const msg = err?.message || String(err);
+      throw new Error(msg.includes('atob') ? 'Could not encode the image for this format' : msg);
     }
 
     return { blob, fileName: `${base}.${fmt.ext}`, mime: fmt.mime };

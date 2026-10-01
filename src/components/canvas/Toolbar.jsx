@@ -153,7 +153,7 @@ function ToolbarGroup({ icon: Icon, title, options, dataOnboarding }) {
   return (
     <div
       ref={groupRef}
-      className="relative"
+      className="relative shrink-0"
       data-onboarding={dataOnboarding}
       onMouseEnter={() => canHover.current && !clickOnlyOpen && setHoverOpen(true)}
       onMouseLeave={() => canHover.current && !clickOnlyOpen && setHoverOpen(false)}
@@ -247,7 +247,7 @@ export default function Toolbar({
   const patchBg = (patch) => onBackgroundArtChange?.({ ...bg, ...patch });
 
   const chromeClass =
-    'absolute left-1/2 z-50 flex max-w-[min(96vw,calc(100%-2rem-var(--safe-left)-var(--safe-right)))] -translate-x-1/2 items-center gap-1 overflow-visible rounded-2xl border border-nm-border bg-nm-chrome px-2 py-2 shadow-xl backdrop-blur-md sm:gap-2 sm:px-3 sm:py-2.5';
+    'absolute left-1/2 z-50 flex w-[min(96vw,calc(100%-1rem-var(--safe-left)-var(--safe-right)))] max-w-3xl -translate-x-1/2 flex-wrap items-center justify-center gap-x-0.5 gap-y-1 overflow-visible rounded-2xl border border-nm-border bg-nm-chrome px-1.5 py-1.5 shadow-xl backdrop-blur-md sm:w-auto sm:max-w-[min(96vw,calc(100%-2rem-var(--safe-left)-var(--safe-right)))] sm:gap-x-1 sm:px-3 sm:py-2.5';
 
   if (drawMode) {
     return (
@@ -403,7 +403,7 @@ export default function Toolbar({
         className={chromeClass}
         style={{ top: 'calc(1rem + var(--safe-top))' }}
       >
-        <span data-onboarding="toolbar-add" className="inline-flex">
+        <span data-onboarding="toolbar-add" className="inline-flex shrink-0">
           <ToolbarButton
             onClick={(e) => {
               const rect = e.currentTarget.getBoundingClientRect();
@@ -413,35 +413,40 @@ export default function Toolbar({
               });
             }}
             title="Add node"
+            className="!p-2 sm:!p-3"
           >
             <Plus size={16} />
           </ToolbarButton>
         </span>
-        <div className="w-px h-6 bg-nm-divider mx-1" />
+        <div className="mx-0.5 h-6 w-px shrink-0 bg-nm-divider sm:mx-1" />
         <ToolbarButton
           onClick={() => {
             patchBg({ tool: 'pan' });
             onToggleDrawMode?.();
           }}
           title="Draw on workspace background"
+          className="shrink-0 !p-2 sm:!p-3"
         >
           <Pencil size={16} />
         </ToolbarButton>
-        <div className="w-px h-6 bg-nm-divider mx-1" />
-        <span data-onboarding="toolbar-recenter" className="inline-flex">
+        <div className="mx-0.5 h-6 w-px shrink-0 bg-nm-divider sm:mx-1" />
+        <span data-onboarding="toolbar-recenter" className="inline-flex shrink-0">
           <ToolbarButton
             onClick={() => {
               onRecenter();
               emitTutorial('toolbar.recenter');
             }}
             title="Recenter"
+            className="!p-2 sm:!p-3"
           >
             <Home size={16} />
           </ToolbarButton>
         </span>
-        <span className="hidden sm:inline text-xs text-nm-text-muted w-10 text-center tabular-nums">{Math.round(zoom * 100)}%</span>
+        <span className="hidden w-10 shrink-0 text-center text-xs text-nm-text-muted tabular-nums sm:inline">
+          {Math.round(zoom * 100)}%
+        </span>
         {showMobileSelection && (
-          <span data-onboarding="toolbar-selection" className="inline-flex">
+          <span data-onboarding="toolbar-selection" className="inline-flex shrink-0">
             <ToolbarButton
               data-selection-arm-button
               active={selectionArmed}
@@ -451,12 +456,15 @@ export default function Toolbar({
                 if (next) emitTutorial('toolbar.selection.arm');
               }}
               title={selectionArmed ? 'Selection Mode armed — drag on canvas' : 'Selection Mode'}
+              className="!p-2 sm:!p-3"
             >
               <SquareDashed size={16} />
             </ToolbarButton>
           </span>
         )}
-        <div className="w-px h-6 bg-nm-divider mx-1" />
+        {/* Force a second row on narrow screens so Settings stays inside the chrome. */}
+        <div className="h-0 basis-full sm:hidden" aria-hidden />
+        <div className="mx-0.5 hidden h-6 w-px shrink-0 bg-nm-divider sm:mx-1 sm:block" />
         <ToolbarGroup
           icon={Wrench}
           title="Tools"
@@ -480,7 +488,9 @@ export default function Toolbar({
             },
           ]}
         />
-        <ToolbarButton onClick={onOpenTerminal} title="Terminal"><Terminal size={16} /></ToolbarButton>
+        <ToolbarButton onClick={onOpenTerminal} title="Terminal" className="shrink-0 !p-2 sm:!p-3">
+          <Terminal size={16} />
+        </ToolbarButton>
         <ToolbarGroup
           icon={Share2}
           title="Import and export"
@@ -496,15 +506,18 @@ export default function Toolbar({
             },
           ]}
         />
-        <ToolbarButton onClick={onClear} title="Clear all"><Trash2 size={16} /></ToolbarButton>
-        <div className="w-px h-6 bg-nm-divider mx-1" />
-        <span data-onboarding="toolbar-settings" className="inline-flex">
+        <ToolbarButton onClick={onClear} title="Clear all" className="shrink-0 !p-2 sm:!p-3">
+          <Trash2 size={16} />
+        </ToolbarButton>
+        <div className="mx-0.5 h-6 w-px shrink-0 bg-nm-divider sm:mx-1" />
+        <span data-onboarding="toolbar-settings" className="inline-flex shrink-0">
           <ToolbarButton
             onClick={() => {
               onOpenSettings();
               emitTutorial('toolbar.settings.open');
             }}
             title="Settings"
+            className="!p-2 sm:!p-3"
           >
             <Settings size={16} />
           </ToolbarButton>

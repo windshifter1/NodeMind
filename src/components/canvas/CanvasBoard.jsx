@@ -1277,7 +1277,10 @@ export default function CanvasBoard({
       }}
     >
       {nodes.length === 0 && !hideEmptyHint && (
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none px-6">
+        <div
+          data-empty-canvas-hint
+          className="absolute inset-0 flex items-center justify-center pointer-events-none px-6"
+        >
           <p className="text-nm-text-subtle text-center text-sm sm:text-base max-w-md leading-relaxed select-none">
             Tap empty canvas to add a node · drag sockets to connect · tap a line to delete
           </p>

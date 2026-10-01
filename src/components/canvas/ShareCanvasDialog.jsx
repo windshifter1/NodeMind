@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Download, Share2, X } from 'lucide-react';
 import {
   SHARE_FORMATS,
@@ -23,20 +23,19 @@ export default function ShareCanvasDialog({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const [status, setStatus] = useState(null);
+  const readyRef = useRef(null);
 
   if (!open) return null;
 
-  const run = async (mode) => {
-    setBusy(true);
-    setError(null);
-    setStatus(null);
+  const capture = async () => {
+    if (readyRef.current?.format === format && readyRef.current.blob) {
+      return readyRef.current;
+    }
+    const dialogRoot = document.querySelector('[data-share-canvas-dialog]');
+    const prevVis = dialogRoot?.style.visibility;
+    if (dialogRoot) dialogRoot.style.visibility = 'hidden';
     try {
-      // Hide this dialog while capturing so it does not appear in the snapshot.
-      const dialogRoot = document.querySelector('[data-share-canvas-dialog]');
-      const prevVis = dialogRoot?.style.visibility;
-      if (dialogRoot) dialogRoot.style.visibility = 'hidden';
-
-      const { blob, fileName, mime } = await exportWorkspaceImage({
+      const result = await exportWorkspaceImage({
         boardEl: document.querySelector('[data-canvas-board]'),
         nodes,
         backgroundArt,
@@ -48,12 +47,22 @@ export default function ShareCanvasDialog({
         format,
         dark: darkNodes,
       });
-
+      readyRef.current = { format, ...result };
+      return readyRef.current;
+    } finally {
       if (dialogRoot) dialogRoot.style.visibility = prevVis || '';
+    }
+  };
 
+  const run = async (mode) => {
+    setBusy(true);
+    setError(null);
+    setStatus(null);
+    try {
+      const { blob, fileName, mime } = await capture();
       if (mode === 'share') {
         const result = await shareOrDownloadBlob(blob, fileName, mime);
-        setStatus(result === 'shared' ? 'Opened share sheet' : result === 'aborted' ? null : 'Downloaded');
+        setStatus(result === 'shared' ? 'Opened share sheet' : result === 'aborted' ? null : 'Saved — tap Share again for the system sheet');
       } else {
         downloadBlob(blob, fileName);
         setStatus('Downloaded');
@@ -61,6 +70,7 @@ export default function ShareCanvasDialog({
     } catch (e) {
       const dialogRoot = document.querySelector('[data-share-canvas-dialog]');
       if (dialogRoot) dialogRoot.style.visibility = '';
+      readyRef.current = null;
       setError(e?.message || 'Share failed');
     } finally {
       setBusy(false);
@@ -107,7 +117,10 @@ export default function ShareCanvasDialog({
                 <button
                   key={fmt.id}
                   type="button"
-                  onClick={() => setFormat(fmt.id)}
+                  onClick={() => {
+                    setFormat(fmt.id);
+                    if (readyRef.current?.format !== fmt.id) readyRef.current = null;
+                  }}
                   className={`rounded-xl px-3 py-2.5 text-sm font-medium transition active:scale-[0.98] ${
                     on
                       ? 'bg-indigo-500/35 text-indigo-100 shadow-[0_0_0_1px_rgba(165,180,252,0.45)]'

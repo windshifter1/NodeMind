@@ -920,8 +920,20 @@ export default function Canvas() {
         backgroundArt={normalizeBackgroundArt(active.backgroundArt)}
         pan={pan}
         zoom={zoom}
-        setPan={setPan}
-        setZoom={setZoom}
+        setPan={(next) => {
+          if (cameraAnimRef.current) {
+            cancelAnimationFrame(cameraAnimRef.current);
+            cameraAnimRef.current = 0;
+          }
+          setPan(next);
+        }}
+        setZoom={(next) => {
+          if (cameraAnimRef.current) {
+            cancelAnimationFrame(cameraAnimRef.current);
+            cameraAnimRef.current = 0;
+          }
+          setZoom(next);
+        }}
         darkNodes={nodeTheme === 'dark'}
       />
 

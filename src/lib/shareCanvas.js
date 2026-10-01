@@ -1,3 +1,4 @@
+import { flushSync } from 'react-dom';
 import { toBlob, toJpeg, toPng, toSvg } from 'html-to-image';
 import {
   MIN_ZOOM,
@@ -205,6 +206,75 @@ async function pngBlobToPdf(imageBlob) {
   return new Blob([out], { type: 'application/pdf' });
 }
 
+function cssColorToRgb(color, fallback = '#18181b') {
+  const raw = String(color || '').trim();
+  if (!raw || raw === 'transparent') return fallback;
+  if (/^#([0-9a-f]{3,8})$/i.test(raw) || /^rgba?\(/i.test(raw)) return raw;
+  try {
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = 1;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    if (!ctx) return fallback;
+    ctx.fillStyle = '#000000';
+    ctx.fillStyle = raw;
+    ctx.fillRect(0, 0, 1, 1);
+    const [r, g, b, a] = ctx.getImageData(0, 0, 1, 1).data;
+    if (!a) return fallback;
+    return `rgba(${r}, ${g}, ${b}, ${(a / 255).toFixed(3)})`;
+  } catch {
+    return fallback;
+  }
+}
+
+const UNSAFE_COLOR_RE = /oklch|oklab|color-mix|\blab\(|\blch\(|\bcolor\(/i;
+
+function snapshotCanvasesIntoClone(liveRoot, clonedRoot) {
+  const liveCanvases = [...liveRoot.querySelectorAll('canvas')];
+  clonedRoot.querySelectorAll('canvas').forEach((canvas, index) => {
+    const live = liveCanvases[index];
+    if (!live || live.width < 2 || live.height < 2) return;
+    try {
+      const url = live.toDataURL('image/png');
+      const img = canvas.ownerDocument.createElement('img');
+      img.src = url;
+      img.alt = '';
+      img.width = live.clientWidth || live.width;
+      img.height = live.clientHeight || live.height;
+      img.setAttribute('class', canvas.getAttribute('class') || '');
+      img.setAttribute('style', canvas.getAttribute('style') || '');
+      canvas.replaceWith(img);
+    } catch {
+      /* tainted or detached canvas */
+    }
+  });
+}
+
+function sanitizeUnsupportedColors(root) {
+  const props = [
+    'color',
+    'background-color',
+    'border-color',
+    'border-top-color',
+    'border-right-color',
+    'border-bottom-color',
+    'border-left-color',
+    'outline-color',
+    'fill',
+    'stroke',
+    'text-decoration-color',
+  ];
+  root.querySelectorAll('*').forEach((el) => {
+    const style = el.style;
+    if (!style) return;
+    props.forEach((prop) => {
+      const value = style.getPropertyValue(prop);
+      if (value && UNSAFE_COLOR_RE.test(value)) {
+        style.setProperty(prop, cssColorToRgb(value));
+      }
+    });
+  });
+}
+
 function dataUrlToBlob(dataUrl) {
   const raw = String(dataUrl || '');
   const comma = raw.indexOf(',');
@@ -222,8 +292,32 @@ function dataUrlToBlob(dataUrl) {
   }
 
   // html-to-image's toSvg returns charset URI-encoded (not base64) data URLs.
-  const text = decodeURIComponent(data);
-  return new Blob([text], { type: mime });
+  // Lone "%" in CSS/SVG crashes decodeURIComponent — escape those first.
+  const safe = data.replace(/%(?![0-9A-Fa-f]{2})/g, '%25');
+  let text = safe;
+  try {
+    text = decodeURIComponent(safe);
+  } catch {
+    try {
+      text = decodeURIComponent(data);
+    } catch {
+      text = data;
+    }
+  }
+  return new Blob([text], { type: mime || 'image/svg+xml' });
+}
+
+async function rasterBlobToJpeg(imageBlob, quality = 0.92) {
+  const bitmap = await createImageBitmap(imageBlob);
+  const canvas = document.createElement('canvas');
+  canvas.width = bitmap.width;
+  canvas.height = bitmap.height;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(bitmap, 0, 0);
+  bitmap.close?.();
+  return canvasToBlob(canvas, 'image/jpeg', quality);
 }
 
 async function captureBoard(board, fmt, common) {
@@ -239,12 +333,19 @@ async function captureBoard(board, fmt, common) {
   if (fmt.id === 'jpeg') {
     const jpegOpts = { ...common, quality: 0.92, backgroundColor: '#ffffff' };
     try {
-      const blob = await toBlob(board, { ...jpegOpts, type: 'image/jpeg' });
-      if (blob) return blob;
+      const blob = dataUrlToBlob(await toJpeg(board, jpegOpts));
+      if (blob?.type === 'image/jpeg' && blob.size > 32) return blob;
     } catch {
-      /* fall through */
+      /* convert a PNG fallback */
     }
-    return dataUrlToBlob(await toJpeg(board, jpegOpts));
+    let pngBlob = null;
+    try {
+      pngBlob = await toBlob(board, common);
+    } catch {
+      pngBlob = null;
+    }
+    if (!pngBlob) pngBlob = dataUrlToBlob(await toPng(board, common));
+    return rasterBlobToJpeg(pngBlob);
   }
   if (fmt.id === 'svg') {
     return dataUrlToBlob(await toSvg(board, common));
@@ -310,35 +411,53 @@ export async function exportWorkspaceImage({
     el.style.visibility = 'hidden';
   });
 
-  const emptyHint = board.querySelector('.pointer-events-none');
-  let hintPrev = null;
-  if (emptyHint && nodes.length === 0) {
-    // keep drawings-only share without the empty-state tip
-  }
-  if (emptyHint) {
-    hintPrev = emptyHint.style.visibility;
-    emptyHint.style.visibility = 'hidden';
-  }
-
   try {
-    setPan?.(fitted.pan);
-    setZoom?.(fitted.zoom);
+    const applyCamera = () => {
+      setPan?.(fitted.pan);
+      setZoom?.(fitted.zoom);
+    };
+    if (typeof flushSync === 'function') flushSync(applyCamera);
+    else applyCamera();
     await waitFrames(3);
     // Allow blob images / KaTeX layout to settle.
-    await new Promise((r) => setTimeout(r, 50));
+    await new Promise((r) => setTimeout(r, 80));
 
     const filter = (node) => {
       if (!(node instanceof Element)) return true;
       if (node.getAttribute?.('data-node-type-menu') != null) return false;
       if (node.getAttribute?.('data-onboarding') === 'delete-bin') return false;
+      if (node.getAttribute?.('data-share-canvas-dialog') != null) return false;
+      if (node.getAttribute?.('data-empty-canvas-hint') != null) return false;
       return true;
     };
 
+    const boardRect = board.getBoundingClientRect();
+    const pixelRatio = Math.min(2, Math.max(1, window.devicePixelRatio || 1));
+
     const common = {
       cacheBust: true,
-      pixelRatio: 2,
+      skipFonts: true,
+      pixelRatio,
+      width: Math.max(1, Math.round(boardRect.width)),
+      height: Math.max(1, Math.round(boardRect.height)),
       filter,
-      backgroundColor: getComputedStyle(board).backgroundColor || '#18181b',
+      backgroundColor: cssColorToRgb(getComputedStyle(board).backgroundColor, '#18181b'),
+      imagePlaceholder:
+        'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==',
+      onImageErrorHandler: () => {},
+      onclone: (clonedDoc, clonedEl) => {
+        const root = clonedEl || clonedDoc.querySelector('[data-canvas-board]') || clonedDoc.body;
+        if (!root) return;
+        root
+          .querySelectorAll(
+            '[data-empty-canvas-hint], [data-onboarding="delete-bin"], [data-node-type-menu], .nm-liquid-ripple'
+          )
+          .forEach((el) => {
+            el.style.visibility = 'hidden';
+          });
+        snapshotCanvasesIntoClone(board, root);
+        sanitizeUnsupportedColors(root);
+      },
     };
 
     let blob;
@@ -346,15 +465,19 @@ export async function exportWorkspaceImage({
       blob = await captureBoard(board, fmt, common);
     } catch (err) {
       const msg = err?.message || String(err);
-      throw new Error(msg.includes('atob') ? 'Could not encode the image for this format' : msg);
+      throw new Error(
+        msg.includes('atob') || /URI malformed|decodeURI/i.test(msg)
+          ? 'Could not encode the image for this format'
+          : msg
+      );
     }
+    if (!blob || blob.size < 32) throw new Error('Capture produced an empty image');
 
     return { blob, fileName: `${base}.${fmt.ext}`, mime: fmt.mime };
   } finally {
     prevVisibility.forEach(([el, vis]) => {
       el.style.visibility = vis;
     });
-    if (emptyHint && hintPrev != null) emptyHint.style.visibility = hintPrev;
     setPan?.(prevPan);
     setZoom?.(prevZoom);
   }
@@ -365,18 +488,27 @@ export function downloadBlob(blob, fileName) {
   const a = document.createElement('a');
   a.href = url;
   a.download = fileName;
+  a.rel = 'noopener';
+  a.style.display = 'none';
+  document.body.appendChild(a);
   a.click();
-  URL.revokeObjectURL(url);
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
 }
 
 export async function shareOrDownloadBlob(blob, fileName, mime) {
   const file = new File([blob], fileName, { type: mime });
-  if (typeof navigator !== 'undefined' && navigator.share && navigator.canShare?.({ files: [file] })) {
+  const canFiles =
+    typeof navigator !== 'undefined' &&
+    typeof navigator.share === 'function' &&
+    (typeof navigator.canShare !== 'function' || navigator.canShare({ files: [file] }));
+  if (canFiles) {
     try {
       await navigator.share({ files: [file], title: fileName });
       return 'shared';
     } catch (e) {
       if (e?.name === 'AbortError') return 'aborted';
+      // Lost user-activation after async capture — fall through to download.
     }
   }
   downloadBlob(blob, fileName);

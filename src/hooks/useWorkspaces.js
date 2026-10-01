@@ -430,11 +430,14 @@ export function useWorkspaces() {
   const [state, dispatch] = useReducer(reducer, undefined, loadInitial);
 
   useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    } catch (e) {
-      /* ignore quota errors */
-    }
+    const id = window.setTimeout(() => {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      } catch {
+        /* ignore quota errors */
+      }
+    }, 200);
+    return () => window.clearTimeout(id);
   }, [state]);
 
   const active =

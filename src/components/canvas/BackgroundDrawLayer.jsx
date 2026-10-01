@@ -208,6 +208,21 @@ export default function BackgroundDrawLayer({
 
   const strokes = draft ? [...bg.strokes, draft] : bg.strokes;
 
+  // Live-update glow on the selected stroke when the toolbar slider moves.
+  useEffect(() => {
+    if (selectedKind !== 'stroke' || !selectedId) return;
+    const stroke = bg.strokes.find((s) => s.id === selectedId);
+    if (!stroke) return;
+    const nextGlow = bg.emissiveness ?? 0;
+    if (Math.abs((Number(stroke.emissiveness) || 0) - nextGlow) < 0.001) return;
+    onChange({
+      ...bg,
+      strokes: bg.strokes.map((s) =>
+        s.id === selectedId ? { ...s, emissiveness: nextGlow } : s
+      ),
+    });
+  }, [bg.emissiveness, selectedId, selectedKind]); // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
     <svg
       data-background-draw
@@ -219,6 +234,7 @@ export default function BackgroundDrawLayer({
         pointerEvents: enabled && !passThrough ? 'auto' : 'none',
         zIndex: enabled && !passThrough ? 4 : 0,
         touchAction: 'none',
+        overflow: 'visible',
       }}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
@@ -241,32 +257,56 @@ export default function BackgroundDrawLayer({
             }}
           />
         ))}
-        {strokes.map((s) => {
-          const d = pointsToPath(s.points);
-          if (!d) return null;
-          const glow = Number(s.emissiveness) || 0;
-          return (
-            <path
-              key={s.id}
-              d={d}
-              fill="none"
-              stroke={s.color || '#334155'}
-              strokeWidth={s.width || 3}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              style={{
-                filter:
-                  glow > 0
-                    ? `drop-shadow(0 0 ${4 + glow * 16}px ${s.color || '#334155'})`
-                    : undefined,
-                outline:
-                  selectedKind === 'stroke' && selectedId === s.id ? '1px solid #818cf8' : undefined,
-              }}
-            />
-          );
-        })}
+        {strokes.map((s) => (
+          <StrokeGraphic
+            key={s.id}
+            stroke={s}
+            selected={selectedKind === 'stroke' && selectedId === s.id}
+          />
+        ))}
       </g>
     </svg>
+  );
+}
+
+/** Soft glow via wider translucent under-strokes (CSS filter is unreliable on SVG paths). */
+function StrokeGraphic({ stroke, selected }) {
+  const d = pointsToPath(stroke.points);
+  if (!d) return null;
+  const color = stroke.color || '#334155';
+  const width = Math.max(1, Number(stroke.width) || 3);
+  const glow = Math.max(0, Math.min(1, Number(stroke.emissiveness) || 0));
+  const common = {
+    d,
+    fill: 'none',
+    stroke: color,
+    strokeLinecap: 'round',
+    strokeLinejoin: 'round',
+  };
+
+  return (
+    <g style={{ outline: selected ? '1px solid #818cf8' : undefined }}>
+      {glow > 0 && (
+        <>
+          <path
+            {...common}
+            strokeWidth={width + glow * 22}
+            strokeOpacity={0.1 + glow * 0.2}
+          />
+          <path
+            {...common}
+            strokeWidth={width + glow * 12}
+            strokeOpacity={0.18 + glow * 0.28}
+          />
+          <path
+            {...common}
+            strokeWidth={width + glow * 5}
+            strokeOpacity={0.32 + glow * 0.35}
+          />
+        </>
+      )}
+      <path {...common} strokeWidth={width} strokeOpacity={1} />
+    </g>
   );
 }
 

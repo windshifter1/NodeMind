@@ -18,6 +18,7 @@
     "prepare": "node scripts/install-hooks.mjs"
   },
   "dependencies": {
+    "html-to-image": "^1.11.13",
     "katex": "^0.18.5",
     "lucide-react": "^0.475.0",
     "mammoth": "^1.8.0",

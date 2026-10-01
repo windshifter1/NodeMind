@@ -12,8 +12,11 @@ export default function ShareCanvasDialog({
   onClose,
   workspaceName,
   nodes,
-  edges,
-  orientation,
+  backgroundArt,
+  pan,
+  zoom,
+  setPan,
+  setZoom,
   darkNodes = true,
 }) {
   const [format, setFormat] = useState('png');
@@ -28,14 +31,26 @@ export default function ShareCanvasDialog({
     setError(null);
     setStatus(null);
     try {
+      // Hide this dialog while capturing so it does not appear in the snapshot.
+      const dialogRoot = document.querySelector('[data-share-canvas-dialog]');
+      const prevVis = dialogRoot?.style.visibility;
+      if (dialogRoot) dialogRoot.style.visibility = 'hidden';
+
       const { blob, fileName, mime } = await exportWorkspaceImage({
+        boardEl: document.querySelector('[data-canvas-board]'),
         nodes,
-        edges,
-        orientation,
+        backgroundArt,
+        pan,
+        zoom,
+        setPan,
+        setZoom,
         name: workspaceName,
         format,
         dark: darkNodes,
       });
+
+      if (dialogRoot) dialogRoot.style.visibility = prevVis || '';
+
       if (mode === 'share') {
         const result = await shareOrDownloadBlob(blob, fileName, mime);
         setStatus(result === 'shared' ? 'Opened share sheet' : result === 'aborted' ? null : 'Downloaded');
@@ -44,6 +59,8 @@ export default function ShareCanvasDialog({
         setStatus('Downloaded');
       }
     } catch (e) {
+      const dialogRoot = document.querySelector('[data-share-canvas-dialog]');
+      if (dialogRoot) dialogRoot.style.visibility = '';
       setError(e?.message || 'Share failed');
     } finally {
       setBusy(false);
@@ -55,6 +72,7 @@ export default function ShareCanvasDialog({
 
   return (
     <div
+      data-share-canvas-dialog
       className="fixed inset-0 z-[100] flex items-center justify-center"
       style={{
         paddingTop: 'calc(1rem + var(--safe-top))',
@@ -79,7 +97,8 @@ export default function ShareCanvasDialog({
         </div>
         <div className="space-y-4 p-4">
           <p className="text-sm text-nm-text-secondary">
-            Export a picture of this workspace, then download it or open your device share sheet.
+            Capture this workspace as it looks on the canvas — including note text, math, and drawings —
+            then download or open your device share sheet.
           </p>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             {SHARE_FORMATS.map((fmt) => {
@@ -110,7 +129,7 @@ export default function ShareCanvasDialog({
               className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-nm-hover px-3 py-2.5 text-sm font-medium text-nm-text transition hover:bg-nm-hover-strong active:scale-95 disabled:opacity-50"
             >
               <Download size={15} />
-              {busy ? 'Working…' : 'Download'}
+              {busy ? 'Capturing…' : 'Download'}
             </button>
             <button
               type="button"
@@ -124,7 +143,7 @@ export default function ShareCanvasDialog({
               }
             >
               <Share2 size={15} />
-              {busy ? 'Working…' : 'Share'}
+              {busy ? 'Capturing…' : 'Share'}
             </button>
           </div>
         </div>

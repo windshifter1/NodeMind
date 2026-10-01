@@ -1,124 +1,14 @@
+import { toJpeg, toPng, toSvg } from 'html-to-image';
 import {
-  bezierPath,
+  MIN_ZOOM,
+  MAX_ZOOM,
   nodeSizeForLayout,
-  normalizeOrientation,
-  socketWorld,
   workspaceNodesBounds,
+  zoomToFrameBounds,
 } from '@/lib/canvasConstants';
-import { displayNodeTitle, isExpressionNode, isMathNode } from '@/lib/nodeTypes';
+import { normalizeBackgroundArt } from '@/lib/backgroundArt';
 
-const PAD = 48;
-
-function escapeXml(s) {
-  return String(s ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
-
-function nodePreviewText(node) {
-  if (isExpressionNode(node) && node.expr) return String(node.expr);
-  if (isMathNode(node)) {
-    const bits = [node.expr, node.mode, node.field].filter((b) => b != null && String(b).trim());
-    return bits.join(' · ');
-  }
-  if (node.kind === 'checklist' && Array.isArray(node.items)) {
-    const done = node.items.filter((i) => i.done).length;
-    return `${done}/${node.items.length} done`;
-  }
-  if (typeof node.content === 'string' && node.content.trim()) {
-    return node.content.trim().split('\n').slice(0, 4).join('\n');
-  }
-  return '';
-}
-
-/**
- * Build an SVG document of the workspace graph (nodes + edges) in world space.
- */
-export function buildWorkspaceSvg({
-  nodes = [],
-  edges = [],
-  orientation = 'horizontal',
-  name = 'NodeMind',
-  dark = true,
-} = {}) {
-  const orient = normalizeOrientation(orientation);
-  const bounds = workspaceNodesBounds(nodes);
-  if (!bounds) {
-    const empty = `<svg xmlns="http://www.w3.org/2000/svg" width="480" height="270" viewBox="0 0 480 270">
-  <rect width="100%" height="100%" fill="${dark ? '#18181b' : '#f8fafc'}"/>
-  <text x="50%" y="50%" text-anchor="middle" fill="${dark ? '#a1a1aa' : '#64748b'}" font-family="system-ui,sans-serif" font-size="16">Empty workspace</text>
-</svg>`;
-    return { svg: empty, width: 480, height: 270 };
-  }
-
-  const minX = bounds.minX - PAD;
-  const minY = bounds.minY - PAD;
-  const width = Math.ceil(bounds.width + PAD * 2);
-  const height = Math.ceil(bounds.height + PAD * 2);
-  const bg = dark ? '#18181b' : '#f1f5f9';
-  const edgeStroke = dark ? '#71717a' : '#94a3b8';
-  const titleFill = dark ? '#f4f4f5' : '#0f172a';
-  const bodyFill = dark ? '#d4d4d8' : '#334155';
-
-  const edgePaths = edges
-    .map((edge) => {
-      const from = nodes.find((n) => n.id === edge.fromNode);
-      const to = nodes.find((n) => n.id === edge.toNode);
-      if (!from || !to) return '';
-      let out;
-      let inp;
-      if (edge.fromType === 'output') {
-        out = socketWorld(from, 'output', orient);
-        inp = socketWorld(to, 'input', orient, nodeSizeForLayout(to), {
-          inputSlot: edge.inputSlot || null,
-        });
-      } else {
-        out = socketWorld(to, 'output', orient);
-        inp = socketWorld(from, 'input', orient, nodeSizeForLayout(from), {
-          inputSlot: edge.inputSlot || null,
-        });
-      }
-      const d = bezierPath(out.x, out.y, inp.x, inp.y, false, orient);
-      return `<path d="${d}" fill="none" stroke="${edgeStroke}" stroke-width="2.5" stroke-linecap="round"/>`;
-    })
-    .join('\n');
-
-  const nodeShapes = nodes
-    .map((node) => {
-      const size = nodeSizeForLayout(node);
-      const color = node.color || '#6366f1';
-      const title = escapeXml(displayNodeTitle(node));
-      const preview = escapeXml(nodePreviewText(node)).slice(0, 280);
-      const barH = 36;
-      const rx = 14;
-      const lines = preview
-        ? preview.split('\n').slice(0, 4).map((line, i) => {
-            const y = node.y + barH + 18 + i * 16;
-            return `<text x="${node.x + 12}" y="${y}" fill="${bodyFill}" font-family="system-ui,sans-serif" font-size="12">${line}</text>`;
-          }).join('\n')
-        : '';
-      return `
-  <g>
-    <rect x="${node.x}" y="${node.y}" width="${size.width}" height="${size.height}" rx="${rx}" ry="${rx}" fill="${dark ? '#27272a' : '#ffffff'}" stroke="${color}" stroke-width="1.5"/>
-    <path d="M ${node.x + rx} ${node.y} H ${node.x + size.width - rx} Q ${node.x + size.width} ${node.y} ${node.x + size.width} ${node.y + rx} V ${node.y + barH} H ${node.x} V ${node.y + rx} Q ${node.x} ${node.y} ${node.x + rx} ${node.y} Z" fill="${color}55"/>
-    <text x="${node.x + 12}" y="${node.y + 24}" fill="${titleFill}" font-family="system-ui,sans-serif" font-size="14" font-weight="600">${title}</text>
-    ${lines}
-  </g>`;
-    })
-    .join('\n');
-
-  const svg = `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="${minX} ${minY} ${width} ${height}">
-  <title>${escapeXml(name)}</title>
-  <rect x="${minX}" y="${minY}" width="${width}" height="${height}" fill="${bg}"/>
-  ${edgePaths}
-  ${nodeShapes}
-</svg>`;
-
-  return { svg, width, height, minX, minY };
-}
+const PAD = 64;
 
 export const SHARE_FORMATS = [
   { id: 'png', label: 'PNG', mime: 'image/png', ext: 'png' },
@@ -131,21 +21,105 @@ function safeFileBase(name) {
   return String(name || 'nodemind').replace(/[^a-z0-9]+/gi, '_').replace(/^_|_$/g, '') || 'nodemind';
 }
 
-function svgToImage(svgText) {
-  return new Promise((resolve, reject) => {
-    const blob = new Blob([svgText], { type: 'image/svg+xml;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const img = new Image();
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-      resolve(img);
+function clampZoom(z) {
+  return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z));
+}
+
+function waitFrames(n = 2) {
+  return new Promise((resolve) => {
+    const step = (left) => {
+      if (left <= 0) {
+        resolve();
+        return;
+      }
+      requestAnimationFrame(() => step(left - 1));
     };
-    img.onerror = () => {
-      URL.revokeObjectURL(url);
-      reject(new Error('Could not render SVG'));
-    };
-    img.src = url;
+    step(n);
   });
+}
+
+/** World-space bounds covering nodes and background drawings. */
+export function contentBounds(nodes = [], backgroundArt = null, boardEl = null, pan = null, zoom = 1) {
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  let any = false;
+
+  const include = (x, y) => {
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+    any = true;
+    minX = Math.min(minX, x);
+    minY = Math.min(minY, y);
+    maxX = Math.max(maxX, x);
+    maxY = Math.max(maxY, y);
+  };
+
+  const includeRect = (x, y, w, h) => {
+    include(x, y);
+    include(x + w, y + h);
+  };
+
+  (nodes || []).forEach((node) => {
+    const size = nodeSizeForLayout(node);
+    includeRect(node.x, node.y, size.width, size.height);
+  });
+
+  // Prefer live DOM measurements when available (includes expanded body text height).
+  if (boardEl && pan && Number.isFinite(zoom) && zoom > 0) {
+    const boardRect = boardEl.getBoundingClientRect();
+    boardEl.querySelectorAll('[data-note-node]').forEach((el) => {
+      const r = el.getBoundingClientRect();
+      const x1 = (r.left - boardRect.left - pan.x) / zoom;
+      const y1 = (r.top - boardRect.top - pan.y) / zoom;
+      const x2 = (r.right - boardRect.left - pan.x) / zoom;
+      const y2 = (r.bottom - boardRect.top - pan.y) / zoom;
+      includeRect(x1, y1, x2 - x1, y2 - y1);
+    });
+  }
+
+  const art = normalizeBackgroundArt(backgroundArt);
+  (art.strokes || []).forEach((stroke) => {
+    (stroke.points || []).forEach((p) => include(p.x, p.y));
+  });
+  (art.images || []).forEach((img) => {
+    includeRect(img.x, img.y, img.w || 0, img.h || 0);
+  });
+
+  if (!any) {
+    const fallback = workspaceNodesBounds(nodes || []);
+    if (!fallback) return null;
+    return {
+      minX: fallback.minX - PAD,
+      minY: fallback.minY - PAD,
+      maxX: fallback.maxX + PAD,
+      maxY: fallback.maxY + PAD,
+      width: fallback.width + PAD * 2,
+      height: fallback.height + PAD * 2,
+      centroid: fallback.centroid,
+    };
+  }
+
+  return {
+    minX: minX - PAD,
+    minY: minY - PAD,
+    maxX: maxX + PAD,
+    maxY: maxY + PAD,
+    width: maxX - minX + PAD * 2,
+    height: maxY - minY + PAD * 2,
+    centroid: { x: (minX + maxX) / 2, y: (minY + maxY) / 2 },
+  };
+}
+
+function fitCameraToBounds(bounds, viewportW, viewportH) {
+  const fitZoom = clampZoom(zoomToFrameBounds(bounds, viewportW, viewportH, 24));
+  return {
+    zoom: fitZoom,
+    pan: {
+      x: viewportW / 2 - bounds.centroid.x * fitZoom,
+      y: viewportH / 2 - bounds.centroid.y * fitZoom,
+    },
+  };
 }
 
 function canvasToBlob(canvas, mime, quality) {
@@ -154,44 +128,35 @@ function canvasToBlob(canvas, mime, quality) {
   });
 }
 
-async function rasterFromSvg(svgText, width, height, mime, quality) {
-  const img = await svgToImage(svgText);
-  const canvas = document.createElement('canvas');
-  const scale = 2;
-  canvas.width = Math.max(1, Math.round(width * scale));
-  canvas.height = Math.max(1, Math.round(height * scale));
-  const ctx = canvas.getContext('2d');
-  if (mime === 'image/jpeg') {
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-  }
-  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-  return canvasToBlob(canvas, mime, quality);
-}
-
-/** Minimal single-page PDF embedding a JPEG/PNG as full-page image. */
-async function pngBlobToPdf(imageBlob, width, height) {
-  const pngBytes = new Uint8Array(await imageBlob.arrayBuffer());
-  // Convert to JPEG for simpler PDF embedding without PNG filters.
+async function pngBlobToPdf(imageBlob) {
   let jpegBlob = imageBlob;
+  let imgW;
+  let imgH;
   if (imageBlob.type !== 'image/jpeg') {
     const bitmap = await createImageBitmap(imageBlob);
+    imgW = bitmap.width;
+    imgH = bitmap.height;
     const canvas = document.createElement('canvas');
-    canvas.width = bitmap.width;
-    canvas.height = bitmap.height;
+    canvas.width = imgW;
+    canvas.height = imgH;
     const ctx = canvas.getContext('2d');
     ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillRect(0, 0, imgW, imgH);
     ctx.drawImage(bitmap, 0, 0);
     bitmap.close?.();
     jpegBlob = await canvasToBlob(canvas, 'image/jpeg', 0.92);
+  } else {
+    const bitmap = await createImageBitmap(imageBlob);
+    imgW = bitmap.width;
+    imgH = bitmap.height;
+    bitmap.close?.();
   }
+
   const jpegBytes = new Uint8Array(await jpegBlob.arrayBuffer());
   const pageW = 612;
-  const pageH = Math.max(1, Math.round((height / width) * pageW));
-  const imgObj = `<< /Type /XObject /Subtype /Image /Width ${width * 2} /Height ${height * 2} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpegBytes.length} >>`;
+  const pageH = Math.max(1, Math.round((imgH / imgW) * pageW));
+  const imgObj = `<< /Type /XObject /Subtype /Image /Width ${imgW} /Height ${imgH} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpegBytes.length} >>`;
 
-  // Build PDF with binary image stream
   const encoder = new TextEncoder();
   const parts = [];
   const push = (s) => parts.push(typeof s === 'string' ? encoder.encode(s) : s);
@@ -240,47 +205,121 @@ async function pngBlobToPdf(imageBlob, width, height) {
   return new Blob([out], { type: 'application/pdf' });
 }
 
+function dataUrlToBlob(dataUrl) {
+  const [header, data] = String(dataUrl).split(',');
+  const mime = /data:([^;]+)/.exec(header)?.[1] || 'application/octet-stream';
+  const bin = atob(data);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new Blob([bytes], { type: mime });
+}
+
 /**
- * @returns {Promise<{ blob: Blob, fileName: string, mime: string }>}
+ * Capture the live canvas board (nodes with full rendered content + drawings).
+ * Temporarily fits the camera to content, snapshots, then restores.
+ *
+ * @param {object} opts
+ * @param {HTMLElement} opts.boardEl
+ * @param {object[]} opts.nodes
+ * @param {object} opts.backgroundArt
+ * @param {{x:number,y:number}} opts.pan
+ * @param {number} opts.zoom
+ * @param {(p:{x:number,y:number})=>void} opts.setPan
+ * @param {(z:number)=>void} opts.setZoom
+ * @param {string} opts.name
+ * @param {string} opts.format
  */
 export async function exportWorkspaceImage({
-  nodes,
-  edges,
-  orientation,
+  boardEl,
+  nodes = [],
+  backgroundArt = null,
+  pan,
+  zoom,
+  setPan,
+  setZoom,
   name,
   format = 'png',
-  dark = true,
 }) {
-  const { svg, width, height } = buildWorkspaceSvg({
-    nodes,
-    edges,
-    orientation,
-    name,
-    dark,
-  });
-  const base = safeFileBase(name);
+  const board = boardEl || document.querySelector('[data-canvas-board]');
+  if (!board) throw new Error('Canvas not found');
+
   const fmt = SHARE_FORMATS.find((f) => f.id === format) || SHARE_FORMATS[0];
+  const base = safeFileBase(name);
+  const prevPan = { x: pan?.x ?? 0, y: pan?.y ?? 0 };
+  const prevZoom = typeof zoom === 'number' ? zoom : 1;
 
-  if (fmt.id === 'svg') {
-    const blob = new Blob([svg], { type: fmt.mime });
-    return { blob, fileName: `${base}.${fmt.ext}`, mime: fmt.mime };
+  const bounds = contentBounds(nodes, backgroundArt, board, prevPan, prevZoom);
+  if (!bounds) throw new Error('Nothing to share — add nodes or drawings first');
+
+  const rect = board.getBoundingClientRect();
+  const fitted = fitCameraToBounds(bounds, rect.width, rect.height);
+
+  // Hide non-content chrome inside the board during capture.
+  const hideEls = board.querySelectorAll(
+    '[data-onboarding="delete-bin"], [data-node-type-menu], .nm-liquid-ripple'
+  );
+  const prevVisibility = [];
+  hideEls.forEach((el) => {
+    prevVisibility.push([el, el.style.visibility]);
+    el.style.visibility = 'hidden';
+  });
+
+  const emptyHint = board.querySelector('.pointer-events-none');
+  let hintPrev = null;
+  if (emptyHint && nodes.length === 0) {
+    // keep drawings-only share without the empty-state tip
+  }
+  if (emptyHint) {
+    hintPrev = emptyHint.style.visibility;
+    emptyHint.style.visibility = 'hidden';
   }
 
-  if (fmt.id === 'png' || fmt.id === 'jpeg') {
-    const blob = await rasterFromSvg(
-      svg,
-      width,
-      height,
-      fmt.mime,
-      fmt.id === 'jpeg' ? 0.92 : undefined
-    );
-    return { blob, fileName: `${base}.${fmt.ext}`, mime: fmt.mime };
-  }
+  try {
+    setPan?.(fitted.pan);
+    setZoom?.(fitted.zoom);
+    await waitFrames(3);
+    // Allow blob images / KaTeX layout to settle.
+    await new Promise((r) => setTimeout(r, 50));
 
-  // PDF
-  const png = await rasterFromSvg(svg, width, height, 'image/png');
-  const pdf = await pngBlobToPdf(png, width, height);
-  return { blob: pdf, fileName: `${base}.pdf`, mime: 'application/pdf' };
+    const filter = (node) => {
+      if (!(node instanceof Element)) return true;
+      if (node.getAttribute?.('data-node-type-menu') != null) return false;
+      if (node.getAttribute?.('data-onboarding') === 'delete-bin') return false;
+      return true;
+    };
+
+    const common = {
+      cacheBust: true,
+      pixelRatio: 2,
+      filter,
+      backgroundColor: getComputedStyle(board).backgroundColor || '#18181b',
+    };
+
+    let blob;
+    if (fmt.id === 'png') {
+      const url = await toPng(board, common);
+      blob = dataUrlToBlob(url);
+    } else if (fmt.id === 'jpeg') {
+      const url = await toJpeg(board, { ...common, quality: 0.92, backgroundColor: '#ffffff' });
+      blob = dataUrlToBlob(url);
+    } else if (fmt.id === 'svg') {
+      const url = await toSvg(board, common);
+      blob = dataUrlToBlob(url);
+    } else {
+      const url = await toPng(board, common);
+      const pngBlob = dataUrlToBlob(url);
+      blob = await pngBlobToPdf(pngBlob);
+    }
+
+    return { blob, fileName: `${base}.${fmt.ext}`, mime: fmt.mime };
+  } finally {
+    prevVisibility.forEach(([el, vis]) => {
+      el.style.visibility = vis;
+    });
+    if (emptyHint && hintPrev != null) emptyHint.style.visibility = hintPrev;
+    setPan?.(prevPan);
+    setZoom?.(prevZoom);
+  }
 }
 
 export function downloadBlob(blob, fileName) {
@@ -300,14 +339,6 @@ export async function shareOrDownloadBlob(blob, fileName, mime) {
       return 'shared';
     } catch (e) {
       if (e?.name === 'AbortError') return 'aborted';
-      // fall through to download
-    }
-  }
-  if (typeof navigator !== 'undefined' && navigator.share) {
-    try {
-      // Some browsers share URL only — download instead for binary fidelity
-    } catch {
-      /* ignore */
     }
   }
   downloadBlob(blob, fileName);

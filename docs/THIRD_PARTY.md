@@ -13,6 +13,7 @@ permissive grant is taken.
 | KaTeX | MIT | Math rendering (existing) |
 | pdfjs-dist (optional dynamic) | Apache-2.0 | PDF text preview / extract |
 | mammoth (optional dynamic) | BSD-2-Clause | DOCX → text |
+| html-to-image | MIT | Share/export live canvas snapshot |
 | In-house unit tables (`src/lib/units.js`) | Project | Unit conversion |
 | In-house CSV/MD/PDF helpers (`src/lib/media/conversions.js`) | Project | File converter |
 | IndexedDB wrapper (`src/lib/mediaStore.js`) | Project | Blob storage |

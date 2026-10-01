@@ -917,8 +917,11 @@ export default function Canvas() {
         onClose={() => setShareCanvasOpen(false)}
         workspaceName={active.name}
         nodes={active.nodes}
-        edges={active.edges}
-        orientation={active.orientation}
+        backgroundArt={normalizeBackgroundArt(active.backgroundArt)}
+        pan={pan}
+        zoom={zoom}
+        setPan={setPan}
+        setZoom={setZoom}
         darkNodes={nodeTheme === 'dark'}
       />
 

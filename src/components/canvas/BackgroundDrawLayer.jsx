@@ -1,10 +1,15 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { newImageId, newStrokeId, normalizeBackgroundArt } from '@/lib/backgroundArt';
+import {
+  isDrawCaptureTool,
+  newImageId,
+  newStrokeId,
+  normalizeBackgroundArt,
+} from '@/lib/backgroundArt';
 import { getBlobUrl, putFileFromFileList } from '@/lib/mediaStore';
 
 /**
  * Workspace-world drawing layer (behind nodes). Not a node.
- * Tools: pen, erase (stroke|area), select+move, emissiveness glow (default 0), place images.
+ * Tools: pan (pass-through), pen, erase, select+move, place images.
  */
 export default function BackgroundDrawLayer({
   art,
@@ -12,12 +17,14 @@ export default function BackgroundDrawLayer({
   enabled,
   pan,
   zoom,
+  spacePanArmed = false,
 }) {
   const bg = useMemo(() => normalizeBackgroundArt(art), [art]);
   const [draft, setDraft] = useState(null);
   const [selectedId, setSelectedId] = useState(null);
   const [selectedKind, setSelectedKind] = useState(null); // stroke | image
   const dragRef = useRef(null);
+  const capturingRef = useRef(false);
   const [imageUrls, setImageUrls] = useState({});
 
   useEffect(() => {
@@ -89,21 +96,22 @@ export default function BackgroundDrawLayer({
     if (hit) onChange({ ...bg, strokes: bg.strokes.filter((s) => s.id !== hit.id) });
   };
 
+  // Pan tool (or space-pan): let the board receive gestures.
+  const passThrough = !enabled || spacePanArmed || bg.tool === 'pan';
+
   const onPointerDown = (e) => {
-    if (!enabled) return;
+    if (!enabled || passThrough) return;
     if (e.button !== 0) return;
-    e.stopPropagation();
+
     const layer = e.currentTarget;
     const w = screenToWorld(e.clientX, e.clientY, layer.parentElement);
-    layer.setPointerCapture?.(e.pointerId);
 
-    if (bg.tool === 'erase') {
-      eraseNear(w.x, w.y);
-      return;
-    }
     if (bg.tool === 'select') {
       const img = hitImage(w.x, w.y);
       if (img) {
+        e.stopPropagation();
+        capturingRef.current = true;
+        layer.setPointerCapture?.(e.pointerId);
         setSelectedId(img.id);
         setSelectedKind('image');
         dragRef.current = { kind: 'image', id: img.id, ox: w.x - img.x, oy: w.y - img.y };
@@ -111,6 +119,9 @@ export default function BackgroundDrawLayer({
       }
       const stroke = hitStroke(w.x, w.y);
       if (stroke) {
+        e.stopPropagation();
+        capturingRef.current = true;
+        layer.setPointerCapture?.(e.pointerId);
         setSelectedId(stroke.id);
         setSelectedKind('stroke');
         dragRef.current = {
@@ -121,8 +132,20 @@ export default function BackgroundDrawLayer({
         };
         return;
       }
+      // Miss: allow canvas pan — do not stopPropagation.
       setSelectedId(null);
       setSelectedKind(null);
+      return;
+    }
+
+    if (!isDrawCaptureTool(bg.tool)) return;
+
+    e.stopPropagation();
+    capturingRef.current = true;
+    layer.setPointerCapture?.(e.pointerId);
+
+    if (bg.tool === 'erase') {
+      eraseNear(w.x, w.y);
       return;
     }
     if (bg.tool === 'pen') {
@@ -139,9 +162,10 @@ export default function BackgroundDrawLayer({
 
   const onPointerMove = (e) => {
     if (!enabled) return;
+    if (!capturingRef.current && !draft && !dragRef.current) return;
     const layer = e.currentTarget;
     const w = screenToWorld(e.clientX, e.clientY, layer.parentElement);
-    if (bg.tool === 'erase' && e.buttons === 1) {
+    if (bg.tool === 'erase' && e.buttons === 1 && capturingRef.current) {
       eraseNear(w.x, w.y);
       return;
     }
@@ -179,6 +203,7 @@ export default function BackgroundDrawLayer({
       setDraft(null);
     }
     dragRef.current = null;
+    capturingRef.current = false;
   };
 
   const strokes = draft ? [...bg.strokes, draft] : bg.strokes;
@@ -190,8 +215,9 @@ export default function BackgroundDrawLayer({
       style={{
         width: '100%',
         height: '100%',
-        pointerEvents: enabled ? 'auto' : 'none',
-        zIndex: enabled ? 4 : 0,
+        // Pan tool: none so board pans. Pen/erase/select: auto to receive strokes/hits.
+        pointerEvents: enabled && !passThrough ? 'auto' : 'none',
+        zIndex: enabled && !passThrough ? 4 : 0,
         touchAction: 'none',
       }}
       onPointerDown={onPointerDown}

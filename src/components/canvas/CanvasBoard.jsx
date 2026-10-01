@@ -1232,7 +1232,15 @@ export default function CanvasBoard({
   const draggingSet = draggingNode ? new Set(draggingNode.ids) : null;
   const cursor =
     spacePanCursor ||
-    (drawMode ? (normalizeBackgroundArt(backgroundArt).tool === 'erase' ? 'cell' : 'crosshair') : null) ||
+    (drawMode
+      ? (() => {
+          const tool = normalizeBackgroundArt(backgroundArt).tool;
+          if (tool === 'pan') return panState.current.panning ? 'grabbing' : 'grab';
+          if (tool === 'erase') return 'cell';
+          if (tool === 'select') return 'default';
+          return 'crosshair';
+        })()
+      : null) ||
     (marqueeRect ? 'crosshair' : panState.current.panning ? 'grabbing' : 'grab');
   const dotSize = `${24 * zoom}px ${24 * zoom}px`;
   const boardBackground = {
@@ -1281,6 +1289,7 @@ export default function CanvasBoard({
         enabled={drawMode}
         pan={pan}
         zoom={zoom}
+        spacePanArmed={isSpacePanArmed()}
       />
       {/* Edges layer (screen-space) */}
       <svg

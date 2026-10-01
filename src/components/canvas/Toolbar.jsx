@@ -15,6 +15,8 @@ import {
   Eraser,
   MousePointer2,
   ImagePlus,
+  Hand,
+  X,
 } from 'lucide-react';
 import { emitTutorial } from '@/lib/tutorialEvents';
 import { useTutorialHighlight } from '@/hooks/useTutorialHighlight';
@@ -243,11 +245,148 @@ export default function Toolbar({
 
   const patchBg = (patch) => onBackgroundArtChange?.({ ...bg, ...patch });
 
+  const chromeClass =
+    'absolute left-1/2 z-50 flex max-w-[min(96vw,calc(100%-2rem-var(--safe-left)-var(--safe-right)))] -translate-x-1/2 items-center gap-1 overflow-visible rounded-2xl border border-nm-border bg-nm-chrome px-2 py-2 shadow-xl backdrop-blur-md sm:gap-2 sm:px-3 sm:py-2.5';
+
+  if (drawMode) {
+    return (
+      <>
+        <div
+          data-onboarding="toolbar"
+          data-draw-toolbar
+          className={chromeClass}
+          style={{ top: 'calc(1rem + var(--safe-top))' }}
+        >
+          <ToolbarButton
+            active
+            onClick={() => onToggleDrawMode?.()}
+            title="Done — exit draw mode"
+          >
+            <X size={16} />
+          </ToolbarButton>
+          <span className="hidden px-1 text-xs font-medium text-nm-text-muted sm:inline">Draw</span>
+          <div className="w-px h-6 bg-nm-divider mx-1" />
+          <ToolbarButton
+            active={bg.tool === 'pan'}
+            onClick={() => patchBg({ tool: 'pan' })}
+            title="Pan canvas"
+          >
+            <Hand size={16} />
+          </ToolbarButton>
+          <ToolbarButton
+            active={bg.tool === 'pen'}
+            onClick={() => patchBg({ tool: 'pen' })}
+            title="Pen"
+          >
+            <Pencil size={16} />
+          </ToolbarButton>
+          <ToolbarButton
+            active={bg.tool === 'erase'}
+            onClick={() => patchBg({ tool: 'erase' })}
+            title="Erase"
+          >
+            <Eraser size={16} />
+          </ToolbarButton>
+          <ToolbarButton
+            active={bg.tool === 'select'}
+            onClick={() => patchBg({ tool: 'select' })}
+            title="Select and move"
+          >
+            <MousePointer2 size={16} />
+          </ToolbarButton>
+          <ToolbarButton
+            onClick={() => imageRef.current?.click()}
+            title="Place image on background"
+          >
+            <ImagePlus size={16} />
+          </ToolbarButton>
+          <div className="w-px h-6 bg-nm-divider mx-1" />
+          <label
+            className="flex items-center gap-1.5 px-1 text-[10px] text-nm-text-muted"
+            title="Pen width"
+          >
+            <span className="hidden sm:inline">Width</span>
+            <input
+              type="range"
+              min={1}
+              max={24}
+              value={bg.penWidth}
+              onChange={(e) => patchBg({ penWidth: Number(e.target.value) })}
+              className="w-16 sm:w-20"
+            />
+          </label>
+          <input
+            type="color"
+            value={bg.color}
+            onChange={(e) => patchBg({ color: e.target.value })}
+            title="Pen colour"
+            className="h-8 w-8 cursor-pointer rounded-lg border border-nm-border bg-transparent p-0.5"
+          />
+          <label
+            className="flex items-center gap-1.5 px-1 text-[10px] text-nm-text-muted"
+            title="Emissiveness (glow), default 0"
+          >
+            <span className="hidden sm:inline">Glow</span>
+            <input
+              type="range"
+              min={0}
+              max={100}
+              value={Math.round((bg.emissiveness || 0) * 100)}
+              onChange={(e) => patchBg({ emissiveness: Number(e.target.value) / 100 })}
+              className="w-14 sm:w-16"
+            />
+          </label>
+          {bg.tool === 'erase' && (
+            <select
+              value={bg.eraseMode}
+              onChange={(e) => patchBg({ eraseMode: e.target.value })}
+              className="rounded-xl border border-nm-border bg-transparent px-2 py-1.5 text-xs text-nm-text-secondary"
+              title="Erase type"
+            >
+              <option value="stroke">Stroke</option>
+              <option value="area">Area</option>
+            </select>
+          )}
+          <div className="w-px h-6 bg-nm-divider mx-1" />
+          <ToolbarButton
+            onClick={() => {
+              onRecenter();
+              emitTutorial('toolbar.recenter');
+            }}
+            title="Recenter"
+          >
+            <Home size={16} />
+          </ToolbarButton>
+          <span className="hidden sm:inline text-xs text-nm-text-muted w-10 text-center tabular-nums">
+            {Math.round(zoom * 100)}%
+          </span>
+        </div>
+        <input
+          ref={imageRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={async (e) => {
+            const file = e.target.files?.[0];
+            e.target.value = '';
+            if (!file) return;
+            try {
+              const next = await addBackgroundImage(bg, file);
+              onBackgroundArtChange?.(next);
+            } catch {
+              /* ignore */
+            }
+          }}
+        />
+      </>
+    );
+  }
+
   return (
     <>
       <div
         data-onboarding="toolbar"
-        className="absolute left-1/2 z-50 flex max-w-[min(96vw,calc(100%-2rem-var(--safe-left)-var(--safe-right)))] -translate-x-1/2 items-center gap-1 overflow-visible rounded-2xl border border-nm-border bg-nm-chrome px-2 py-2 shadow-xl backdrop-blur-md sm:gap-2 sm:px-3 sm:py-2.5"
+        className={chromeClass}
         style={{ top: 'calc(1rem + var(--safe-top))' }}
       >
         <span data-onboarding="toolbar-add" className="inline-flex">
@@ -266,83 +405,14 @@ export default function Toolbar({
         </span>
         <div className="w-px h-6 bg-nm-divider mx-1" />
         <ToolbarButton
-          active={drawMode}
-          onClick={() => onToggleDrawMode?.()}
-          title={drawMode ? 'Exit draw mode' : 'Draw on workspace background'}
+          onClick={() => {
+            patchBg({ tool: 'pan' });
+            onToggleDrawMode?.();
+          }}
+          title="Draw on workspace background"
         >
           <Pencil size={16} />
         </ToolbarButton>
-        {drawMode && (
-          <>
-            <ToolbarButton
-              active={bg.tool === 'pen'}
-              onClick={() => patchBg({ tool: 'pen' })}
-              title="Pen"
-            >
-              <Pencil size={14} />
-            </ToolbarButton>
-            <ToolbarButton
-              active={bg.tool === 'erase'}
-              onClick={() => patchBg({ tool: 'erase' })}
-              title="Erase"
-            >
-              <Eraser size={14} />
-            </ToolbarButton>
-            <ToolbarButton
-              active={bg.tool === 'select'}
-              onClick={() => patchBg({ tool: 'select' })}
-              title="Select and move"
-            >
-              <MousePointer2 size={14} />
-            </ToolbarButton>
-            <ToolbarButton
-              onClick={() => imageRef.current?.click()}
-              title="Place image on background"
-            >
-              <ImagePlus size={14} />
-            </ToolbarButton>
-            <label className="hidden items-center gap-1 text-[10px] text-nm-text-muted sm:flex" title="Pen width">
-              W
-              <input
-                type="range"
-                min={1}
-                max={24}
-                value={bg.penWidth}
-                onChange={(e) => patchBg({ penWidth: Number(e.target.value) })}
-                className="w-14"
-              />
-            </label>
-            <input
-              type="color"
-              value={bg.color}
-              onChange={(e) => patchBg({ color: e.target.value })}
-              title="Pen colour"
-              className="h-7 w-7 cursor-pointer rounded border border-nm-border bg-transparent"
-            />
-            <label className="hidden items-center gap-1 text-[10px] text-nm-text-muted sm:flex" title="Emissiveness (glow), default 0">
-              Glow
-              <input
-                type="range"
-                min={0}
-                max={100}
-                value={Math.round((bg.emissiveness || 0) * 100)}
-                onChange={(e) => patchBg({ emissiveness: Number(e.target.value) / 100 })}
-                className="w-14"
-              />
-            </label>
-            {bg.tool === 'erase' && (
-              <select
-                value={bg.eraseMode}
-                onChange={(e) => patchBg({ eraseMode: e.target.value })}
-                className="rounded-lg border border-nm-border bg-transparent px-1 py-1 text-[10px] text-nm-text-secondary"
-                title="Erase type"
-              >
-                <option value="stroke">Stroke erase</option>
-                <option value="area">Area erase</option>
-              </select>
-            )}
-          </>
-        )}
         <div className="w-px h-6 bg-nm-divider mx-1" />
         <span data-onboarding="toolbar-recenter" className="inline-flex">
           <ToolbarButton
@@ -420,25 +490,7 @@ export default function Toolbar({
           </ToolbarButton>
         </span>
         <input ref={fileRef} type="file" accept="application/json" className="hidden" onChange={onImport} />
-        <input
-          ref={imageRef}
-          type="file"
-          accept="image/*"
-          className="hidden"
-          onChange={async (e) => {
-            const file = e.target.files?.[0];
-            e.target.value = '';
-            if (!file) return;
-            try {
-              const next = await addBackgroundImage(bg, file);
-              onBackgroundArtChange?.(next);
-            } catch {
-              /* ignore */
-            }
-          }}
-        />
       </div>
-
     </>
   );
 }

@@ -4,16 +4,29 @@ const DB_NAME = 'nodemind-media-v1';
 const STORE = 'blobs';
 const DB_VERSION = 1;
 
+function ensureStore(db) {
+  if (!db.objectStoreNames.contains(STORE)) {
+    db.createObjectStore(STORE, { keyPath: 'id' });
+  }
+}
+
 function openDb() {
   return new Promise((resolve, reject) => {
     const req = indexedDB.open(DB_NAME, DB_VERSION);
-    req.onupgradeneeded = () => {
+    req.onupgradeneeded = () => ensureStore(req.result);
+    req.onsuccess = () => {
       const db = req.result;
-      if (!db.objectStoreNames.contains(STORE)) {
-        db.createObjectStore(STORE, { keyPath: 'id' });
+      if (db.objectStoreNames.contains(STORE)) {
+        resolve(db);
+        return;
       }
+      const next = db.version + 1;
+      db.close();
+      const retry = indexedDB.open(DB_NAME, next);
+      retry.onupgradeneeded = () => ensureStore(retry.result);
+      retry.onsuccess = () => resolve(retry.result);
+      retry.onerror = () => reject(retry.error || new Error('IndexedDB upgrade failed'));
     };
-    req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error || new Error('IndexedDB open failed'));
   });
 }

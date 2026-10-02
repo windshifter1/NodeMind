@@ -346,8 +346,17 @@ export function evaluateDataGraph(nodes = [], edges = [], mathResults = null) {
         return;
       }
       results.set(id, {
-        kind: 'conversion',
-        value: { source: fileIn, conversionId: node.conversionId },
+        kind: node.outputFileId ? 'fileRef' : 'conversion',
+        value: node.outputFileId
+          ? {
+              fileId: node.outputFileId,
+              name: node.outputFileName || 'file',
+              mime: node.outputMime || '',
+              size: node.outputFileSize || 0,
+              source: fileIn,
+              conversionId: node.conversionId,
+            }
+          : { source: fileIn, conversionId: node.conversionId },
         error: null,
         ignored: false,
         applicableConversions,

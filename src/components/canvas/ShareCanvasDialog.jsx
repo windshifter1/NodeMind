@@ -1,11 +1,19 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Download, Share2, X } from 'lucide-react';
 import {
   SHARE_FORMATS,
   downloadBlob,
   exportWorkspaceImage,
+  isIosLike,
   shareOrDownloadBlob,
 } from '@/lib/shareCanvas';
+
+function statusFor(result) {
+  if (result === 'shared') return 'Opened share sheet';
+  if (result === 'aborted') return null;
+  if (result === 'opened') return 'Opened the image — use Share to save it';
+  return 'Downloaded';
+}
 
 export default function ShareCanvasDialog({
   open,
@@ -24,53 +32,97 @@ export default function ShareCanvasDialog({
   const [error, setError] = useState(null);
   const [status, setStatus] = useState(null);
   const readyRef = useRef(null);
+  const argsRef = useRef({});
+  argsRef.current = { nodes, backgroundArt, pan, zoom, setPan, setZoom, workspaceName, darkNodes };
 
-  if (!open) return null;
-
-  const capture = async () => {
-    if (readyRef.current?.format === format && readyRef.current.blob) {
+  const capture = async (fmt) => {
+    if (readyRef.current?.format === fmt && readyRef.current.blob) {
       return readyRef.current;
     }
     const dialogRoot = document.querySelector('[data-share-canvas-dialog]');
     const prevVis = dialogRoot?.style.visibility;
     if (dialogRoot) dialogRoot.style.visibility = 'hidden';
     try {
+      const a = argsRef.current;
       const result = await exportWorkspaceImage({
         boardEl: document.querySelector('[data-canvas-board]'),
-        nodes,
-        backgroundArt,
-        pan,
-        zoom,
-        setPan,
-        setZoom,
-        name: workspaceName,
-        format,
-        dark: darkNodes,
+        nodes: a.nodes,
+        backgroundArt: a.backgroundArt,
+        pan: a.pan,
+        zoom: a.zoom,
+        setPan: a.setPan,
+        setZoom: a.setZoom,
+        name: a.workspaceName,
+        format: fmt,
+        dark: a.darkNodes,
       });
-      readyRef.current = { format, ...result };
+      readyRef.current = { format: fmt, ...result };
       return readyRef.current;
     } finally {
       if (dialogRoot) dialogRoot.style.visibility = prevVis || '';
     }
   };
 
-  const run = async (mode) => {
+  useEffect(() => {
+    if (!open) {
+      readyRef.current = null;
+      setBusy(false);
+      setError(null);
+      setStatus(null);
+      return undefined;
+    }
+    let cancelled = false;
     setBusy(true);
     setError(null);
-    setStatus(null);
-    try {
-      const { blob, fileName, mime } = await capture();
-      if (mode === 'share') {
-        const result = await shareOrDownloadBlob(blob, fileName, mime);
-        setStatus(result === 'shared' ? 'Opened share sheet' : result === 'aborted' ? null : 'Saved — tap Share again for the system sheet');
-      } else {
-        downloadBlob(blob, fileName);
-        setStatus('Downloaded');
+    setStatus('Preparing…');
+    (async () => {
+      try {
+        await capture(format);
+        if (!cancelled) setStatus('Ready');
+      } catch (e) {
+        if (!cancelled) {
+          readyRef.current = null;
+          setError(e?.message || 'Share failed');
+          setStatus(null);
+        }
+      } finally {
+        if (!cancelled) setBusy(false);
       }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [open, format]);
+
+  const run = async (mode) => {
+    setError(null);
+    const ready = readyRef.current?.format === format ? readyRef.current : null;
+    if (!ready) {
+      setBusy(true);
+      setStatus(null);
+      try {
+        await capture(format);
+        setStatus('Ready — tap again to save');
+      } catch (e) {
+        const dialogRoot = document.querySelector('[data-share-canvas-dialog]');
+        if (dialogRoot) dialogRoot.style.visibility = '';
+        readyRef.current = null;
+        setError(e?.message || 'Share failed');
+      } finally {
+        setBusy(false);
+      }
+      return;
+    }
+
+    setBusy(true);
+    try {
+      const { blob, fileName, mime } = ready;
+      const result =
+        mode === 'share'
+          ? await shareOrDownloadBlob(blob, fileName, mime)
+          : await downloadBlob(blob, fileName, mime);
+      setStatus(statusFor(result));
     } catch (e) {
-      const dialogRoot = document.querySelector('[data-share-canvas-dialog]');
-      if (dialogRoot) dialogRoot.style.visibility = '';
-      readyRef.current = null;
       setError(e?.message || 'Share failed');
     } finally {
       setBusy(false);
@@ -79,6 +131,9 @@ export default function ShareCanvasDialog({
 
   const canNativeShare =
     typeof navigator !== 'undefined' && typeof navigator.share === 'function';
+  const ios = typeof navigator !== 'undefined' && isIosLike();
+
+  if (!open) return null;
 
   return (
     <div
@@ -107,9 +162,14 @@ export default function ShareCanvasDialog({
         </div>
         <div className="space-y-4 p-4">
           <p className="text-sm text-nm-text-secondary">
-            Capture this workspace as it looks on the canvas — including note text, math, and drawings —
-            then download or open your device share sheet.
+            Capture this workspace as it looks on the canvas — including note text, math, drawings, and
+            loaded images — then download or open your device share sheet.
           </p>
+          {ios && (
+            <p className="text-xs text-nm-text-muted">
+              On iPhone, tap Share or Download, then choose Save Image.
+            </p>
+          )}
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             {SHARE_FORMATS.map((fmt) => {
               const on = format === fmt.id;
@@ -142,7 +202,7 @@ export default function ShareCanvasDialog({
               className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-nm-hover px-3 py-2.5 text-sm font-medium text-nm-text transition hover:bg-nm-hover-strong active:scale-95 disabled:opacity-50"
             >
               <Download size={15} />
-              {busy ? 'Capturing…' : 'Download'}
+              {busy ? (readyRef.current ? 'Saving…' : 'Capturing…') : 'Download'}
             </button>
             <button
               type="button"
@@ -156,7 +216,7 @@ export default function ShareCanvasDialog({
               }
             >
               <Share2 size={15} />
-              {busy ? 'Capturing…' : 'Share'}
+              {busy ? (readyRef.current ? 'Sharing…' : 'Capturing…') : 'Share'}
             </button>
           </div>
         </div>

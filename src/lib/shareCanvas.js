@@ -228,6 +228,100 @@ function cssColorToRgb(color, fallback = '#18181b') {
 
 const UNSAFE_COLOR_RE = /oklch|oklab|color-mix|\blab\(|\blch\(|\bcolor\(/i;
 
+function isIosLike() {
+  if (typeof navigator === 'undefined') return false;
+  const ua = navigator.userAgent || '';
+  return /iP(ad|hone|od)/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+}
+
+function canShareFiles(file) {
+  return (
+    typeof navigator !== 'undefined' &&
+    typeof navigator.share === 'function' &&
+    (typeof navigator.canShare !== 'function' || navigator.canShare({ files: [file] }))
+  );
+}
+
+function blobToDataUrl(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.onerror = () => reject(reader.error || new Error('Could not read image'));
+    reader.readAsDataURL(blob);
+  });
+}
+
+function htmlImageToDataUrl(img) {
+  const canvas = document.createElement('canvas');
+  canvas.width = img.naturalWidth;
+  canvas.height = img.naturalHeight;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(img, 0, 0);
+  return canvas.toDataURL('image/png');
+}
+
+async function srcToDataUrl(src, htmlImg) {
+  if (!src || src.startsWith('data:')) return src || '';
+  if (htmlImg instanceof HTMLImageElement && htmlImg.complete && htmlImg.naturalWidth > 0) {
+    try {
+      return htmlImageToDataUrl(htmlImg);
+    } catch {
+      /* tainted canvas — fall through to fetch */
+    }
+  }
+  const res = await fetch(src);
+  if (!res.ok) throw new Error('image fetch failed');
+  return blobToDataUrl(await res.blob());
+}
+
+/** Inline blob:/http: images so html-to-image can embed Load File and draw-layer pictures. */
+async function markAndEmbedImages(root) {
+  const marks = [];
+  const nodes = [...root.querySelectorAll('img, image')];
+  for (let i = 0; i < nodes.length; i++) {
+    const el = nodes[i];
+    const key = `s${i}`;
+    el.setAttribute('data-share-img', key);
+    const isSvg = el.tagName.toLowerCase() === 'image';
+    const src = isSvg
+      ? el.getAttribute('href') ||
+        el.getAttributeNS('http://www.w3.org/1999/xlink', 'href') ||
+        el.href?.baseVal ||
+        ''
+      : el.currentSrc || el.getAttribute('src') || '';
+    if (!src || src.startsWith('data:')) continue;
+    try {
+      const dataUrl = await srcToDataUrl(src, isSvg ? null : el);
+      if (dataUrl && dataUrl.startsWith('data:')) marks.push({ key, dataUrl, isSvg });
+    } catch {
+      /* leave the live URL */
+    }
+  }
+  return marks;
+}
+
+function applyEmbeddedImages(root, marks) {
+  marks.forEach(({ key, dataUrl, isSvg }) => {
+    const el = root.querySelector(`[data-share-img="${key}"]`);
+    if (!el) return;
+    if (isSvg) {
+      el.setAttribute('href', dataUrl);
+      try {
+        el.setAttributeNS('http://www.w3.org/1999/xlink', 'href', dataUrl);
+      } catch {
+        /* ignore */
+      }
+    } else {
+      el.removeAttribute('srcset');
+      el.setAttribute('src', dataUrl);
+    }
+  });
+}
+
+function clearImageMarks(root) {
+  root.querySelectorAll('[data-share-img]').forEach((el) => el.removeAttribute('data-share-img'));
+}
+
 function snapshotCanvasesIntoClone(liveRoot, clonedRoot) {
   const liveCanvases = [...liveRoot.querySelectorAll('canvas')];
   clonedRoot.querySelectorAll('canvas').forEach((canvas, index) => {
@@ -421,6 +515,7 @@ export async function exportWorkspaceImage({
     await waitFrames(3);
     // Allow blob images / KaTeX layout to settle.
     await new Promise((r) => setTimeout(r, 80));
+    const imageMarks = await markAndEmbedImages(board);
 
     const filter = (node) => {
       if (!(node instanceof Element)) return true;
@@ -435,16 +530,14 @@ export async function exportWorkspaceImage({
     const pixelRatio = Math.min(2, Math.max(1, window.devicePixelRatio || 1));
 
     const common = {
-      cacheBust: true,
+      // cacheBust appends ?t=… which breaks blob: URLs used by Load File / draw images.
+      cacheBust: false,
       skipFonts: true,
       pixelRatio,
       width: Math.max(1, Math.round(boardRect.width)),
       height: Math.max(1, Math.round(boardRect.height)),
       filter,
       backgroundColor: cssColorToRgb(getComputedStyle(board).backgroundColor, '#18181b'),
-      imagePlaceholder:
-        'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==',
-      onImageErrorHandler: () => {},
       onclone: (clonedDoc, clonedEl) => {
         const root = clonedEl || clonedDoc.querySelector('[data-canvas-board]') || clonedDoc.body;
         if (!root) return;
@@ -455,6 +548,7 @@ export async function exportWorkspaceImage({
           .forEach((el) => {
             el.style.visibility = 'hidden';
           });
+        applyEmbeddedImages(root, imageMarks);
         snapshotCanvasesIntoClone(board, root);
         sanitizeUnsupportedColors(root);
       },
@@ -470,6 +564,8 @@ export async function exportWorkspaceImage({
           ? 'Could not encode the image for this format'
           : msg
       );
+    } finally {
+      clearImageMarks(board);
     }
     if (!blob || blob.size < 32) throw new Error('Capture produced an empty image');
 
@@ -483,34 +579,57 @@ export async function exportWorkspaceImage({
   }
 }
 
-export function downloadBlob(blob, fileName) {
-  const url = URL.createObjectURL(blob);
+function triggerAnchorDownload(url, fileName) {
   const a = document.createElement('a');
   a.href = url;
   a.download = fileName;
   a.rel = 'noopener';
-  a.style.display = 'none';
+  a.target = '_blank';
+  a.style.position = 'fixed';
+  a.style.left = '-9999px';
   document.body.appendChild(a);
   a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 2000);
+  setTimeout(() => a.remove(), 4000);
 }
 
-export async function shareOrDownloadBlob(blob, fileName, mime) {
-  const file = new File([blob], fileName, { type: mime });
-  const canFiles =
-    typeof navigator !== 'undefined' &&
-    typeof navigator.share === 'function' &&
-    (typeof navigator.canShare !== 'function' || navigator.canShare({ files: [file] }));
-  if (canFiles) {
+export async function downloadBlob(blob, fileName, mime) {
+  const type = mime || blob.type || 'application/octet-stream';
+  const file = new File([blob], fileName, { type });
+  // iOS ignores <a download> for blobs — the share sheet is how users Save Image.
+  if (isIosLike() && canShareFiles(file)) {
     try {
       await navigator.share({ files: [file], title: fileName });
       return 'shared';
     } catch (e) {
       if (e?.name === 'AbortError') return 'aborted';
-      // Lost user-activation after async capture — fall through to download.
     }
   }
-  downloadBlob(blob, fileName);
+
+  const url = URL.createObjectURL(blob);
+  if (isIosLike()) {
+    const opened = window.open(url, '_blank', 'noopener');
+    if (!opened) triggerAnchorDownload(url, fileName);
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    return opened ? 'opened' : 'downloaded';
+  }
+
+  triggerAnchorDownload(url, fileName);
+  setTimeout(() => URL.revokeObjectURL(url), 8000);
   return 'downloaded';
 }
+
+export async function shareOrDownloadBlob(blob, fileName, mime) {
+  const file = new File([blob], fileName, { type: mime || blob.type });
+  if (canShareFiles(file)) {
+    try {
+      await navigator.share({ files: [file], title: fileName });
+      return 'shared';
+    } catch (e) {
+      if (e?.name === 'AbortError') return 'aborted';
+      // Lost user-activation after async capture — fall through.
+    }
+  }
+  return downloadBlob(blob, fileName, mime);
+}
+
+export { isIosLike, canShareFiles };

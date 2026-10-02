@@ -601,6 +601,8 @@ export function fieldsForKind(kind) {
     fields.outputFileId = '';
     fields.outputFileName = '';
     fields.outputMime = '';
+    fields.outputFileSize = 0;
+    fields.previewCollapsed = false;
   }
   if (normalised === NODE_KIND.GEOMETRY) {
     fields.geometry = {

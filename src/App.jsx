@@ -2,7 +2,8 @@ import { useCallback, useEffect, useState } from 'react';
 import Canvas from '@/pages/Canvas';
 import LandingPage from '@/components/landing/LandingPage';
 import MockupShell from '@/pages/mockups/MockupShell';
-import { getAppPath, matchMockupPath } from '@/lib/appPath';
+import MobileDevMockup from '@/pages/mockups/MobileDevMockup';
+import { getAppPath, matchDevPath, matchMockupPath } from '@/lib/appPath';
 import { dismissLanding, shouldShowLanding } from '@/lib/landing';
 import { lockMobileViewport } from '@/lib/lockMobileViewport';
 
@@ -39,6 +40,11 @@ export default function App() {
   const mockupN = matchMockupPath(path);
   if (mockupN) {
     return <MockupShell n={mockupN} />;
+  }
+
+  const devN = matchDevPath(path);
+  if (devN) {
+    return <MobileDevMockup n={devN} />;
   }
 
   if (showLanding) {

@@ -62,4 +62,12 @@ export default defineConfig({
     __NODEMIND_GIT_COMMIT__: JSON.stringify(gitCommit),
     __NODEMIND_GIT_BRANCH__: JSON.stringify(gitBranch),
   },
+  server: {
+    host: true,
+    port: 5173,
+  },
+  preview: {
+    host: true,
+    port: 4173,
+  },
 });

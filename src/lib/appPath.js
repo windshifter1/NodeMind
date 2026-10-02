@@ -15,3 +15,9 @@ export function matchMockupPath(path = getAppPath()) {
   const m = /^\/mockup([1-8])$/.exec(path);
   return m ? Number(m[1]) : null;
 }
+
+/** Match `/dev1` … `/dev2` → 1…2, else null. Mobile layout mockups. */
+export function matchDevPath(path = getAppPath()) {
+  const m = /^\/dev([12])$/.exec(path);
+  return m ? Number(m[1]) : null;
+}

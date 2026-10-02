@@ -321,13 +321,6 @@ export default function Toolbar({
             >
               <Home size={16} />
             </ToolbarButton>
-            <ToolbarButton
-              onClick={() => onShareCanvas?.()}
-              title="Share as JPEG, PNG, PDF, or SVG"
-              className="shrink-0 !p-2"
-            >
-              <Share2 size={16} />
-            </ToolbarButton>
             <span className="hidden shrink-0 text-xs text-nm-text-muted tabular-nums sm:inline sm:w-10 sm:text-center">
               {Math.round(zoom * 100)}%
             </span>
@@ -449,13 +442,6 @@ export default function Toolbar({
             <Home size={16} />
           </ToolbarButton>
         </span>
-        <ToolbarButton
-          onClick={() => onShareCanvas?.()}
-          title="Share as JPEG, PNG, PDF, or SVG"
-          className="shrink-0 !p-2 sm:!p-3"
-        >
-          <Share2 size={16} />
-        </ToolbarButton>
         <span className="hidden w-10 shrink-0 text-center text-xs text-nm-text-muted tabular-nums sm:inline">
           {Math.round(zoom * 100)}%
         </span>

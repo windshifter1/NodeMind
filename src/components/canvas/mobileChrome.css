@@ -79,15 +79,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   max-width: 100%;
-  background: transparent;
-  border: none;
-  padding: 0;
   margin: 0 auto;
-  display: block;
-}
-
-.nm-mobile__ws-name:active {
-  opacity: 0.75;
 }
 
 .nm-mobile__zoom {
@@ -97,27 +89,32 @@
   color: var(--nm-text-muted);
 }
 
-.nm-mobile__rail,
-.nm-mobile__rail:active {
-  position: absolute;
-  z-index: 50;
-  left: calc(0.45rem + var(--safe-left));
-  top: 50%;
-  transform: translateY(-50%);
+.nm-mobile__ws-sheet {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.45rem 0.35rem;
-  border-radius: calc(var(--nm-radius-bar) + 0.1rem);
-  max-height: min(52vh, calc(100% - 12rem - var(--safe-top) - var(--safe-bottom)));
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  scrollbar-width: none;
+  gap: 0.65rem;
 }
 
-.nm-mobile__rail::-webkit-scrollbar {
-  display: none;
+.nm-mobile__ws-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.nm-mobile__ws-edit {
+  align-self: stretch;
+  gap: 0.4rem;
+  min-height: 42px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--nm-text-secondary);
+}
+
+.nm-mobile__ws-edit span {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--nm-text-muted);
 }
 
 .nm-mobile__ws-tab {
@@ -243,7 +240,7 @@
   bottom: calc(0.55rem + var(--safe-bottom));
   transform: none;
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
   gap: 0.25rem;
   padding: 0.45rem 0.4rem 0.4rem;
@@ -260,12 +257,12 @@
 }
 
 .nm-mobile__fab {
-  width: 58px;
-  height: 58px;
-  min-width: 58px;
-  min-height: 58px;
-  margin-top: -1.35rem;
-  border-radius: 1.25rem;
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  min-height: 48px;
+  margin-top: 0;
+  border-radius: 1rem;
   padding: 0;
 }
 
@@ -319,6 +316,12 @@
 .nm-mobile__sheet-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.45rem;
+}
+
+.nm-mobile__sheet-stack {
+  display: flex;
+  flex-direction: column;
   gap: 0.45rem;
 }
 

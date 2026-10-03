@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { NODE_CATEGORIES, isValueSourceKind, mathTypesByGroup, typesForCategory } from '@/lib/nodeTypes';
 
@@ -18,6 +19,8 @@ export default function NodeTypeMenu({
   hideValueSources = false,
   /** Only show Value sources under Math — used when dragging into a Math input. */
   valuesOnly = false,
+  /** Use viewport-fixed placement (e.g. mobile toolbar) so chrome cannot cover the menu. */
+  fixed = false,
 }) {
   const [category, setCategory] = useState(initialCategory);
 
@@ -29,9 +32,27 @@ export default function NodeTypeMenu({
       e.preventDefault();
       onClose();
     };
+    const onPointer = (e) => {
+      if (!fixed) return;
+      if (e.target?.closest?.('[data-node-type-menu]')) return;
+      onClose();
+    };
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [open, onClose, initialCategory]);
+    // Defer so the opening tap does not immediately dismiss a fixed menu.
+    let removePointer = () => {};
+    let timer = 0;
+    if (fixed) {
+      timer = window.setTimeout(() => {
+        window.addEventListener('pointerdown', onPointer, true);
+        removePointer = () => window.removeEventListener('pointerdown', onPointer, true);
+      }, 0);
+    }
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      window.clearTimeout(timer);
+      removePointer();
+    };
+  }, [open, onClose, initialCategory, fixed]);
 
   const mathGroups = useMemo(() => {
     if (category !== 'math') return null;
@@ -77,11 +98,28 @@ export default function NodeTypeMenu({
     ? NODE_CATEGORIES.filter((cat) => cat.id === 'math')
     : NODE_CATEGORIES;
 
-  return (
+  const menuWidth = Math.min(
+    MENU_WIDTH,
+    Math.max(240, (typeof window !== 'undefined' ? window.innerWidth : MENU_WIDTH) - 16)
+  );
+  const left = fixed
+    ? Math.max(8, Math.min(x, (typeof window !== 'undefined' ? window.innerWidth : x) - menuWidth - 8))
+    : x;
+  const top = fixed
+    ? Math.max(8, Math.min(y, (typeof window !== 'undefined' ? window.innerHeight : y) - 80))
+    : y;
+
+  const menu = (
     <div
       data-node-type-menu
-      className="absolute overflow-hidden rounded-2xl border border-nm-border bg-nm-chrome shadow-xl backdrop-blur-md"
-      style={{ left: x, top: y, width: MENU_WIDTH, zIndex: 1_000_000 }}
+      className={`${fixed ? 'fixed' : 'absolute'} overflow-hidden rounded-2xl border border-nm-border bg-nm-chrome shadow-xl backdrop-blur-md`}
+      style={{
+        left,
+        top,
+        width: menuWidth,
+        zIndex: fixed ? 1_000_001 : 1_000_000,
+        maxHeight: fixed ? 'min(420px, 70vh)' : undefined,
+      }}
       onPointerDown={(e) => e.stopPropagation()}
       onPointerUp={(e) => e.stopPropagation()}
     >
@@ -155,4 +193,9 @@ export default function NodeTypeMenu({
       </div>
     </div>
   );
+
+  if (fixed && typeof document !== 'undefined') {
+    return createPortal(menu, document.body);
+  }
+  return menu;
 }

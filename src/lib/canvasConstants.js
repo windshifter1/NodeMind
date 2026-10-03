@@ -349,6 +349,65 @@ export function connectedNodePositionAtSocket(
   return { x, y };
 }
 
+/** World-space point at the centre of the visible canvas board. */
+export function viewCenterWorld(pan, zoom, boardRect) {
+  const left = boardRect?.left ?? 0;
+  const top = boardRect?.top ?? 0;
+  const width = boardRect?.width ?? (typeof window !== 'undefined' ? window.innerWidth : 0);
+  const height = boardRect?.height ?? (typeof window !== 'undefined' ? window.innerHeight : 0);
+  const z = zoom || 1;
+  return {
+    x: (width / 2 - (pan?.x || 0)) / z,
+    y: (height / 2 - (pan?.y || 0)) / z,
+  };
+}
+
+/**
+ * Prefer (preferredX, preferredY); if that overlaps an existing node, return the
+ * nearest free top-left on a spiral grid around that point.
+ */
+export function freeNodePositionNear(nodes, preferredX, preferredY, newNodeLike = '', padding = 24) {
+  const size = nodeSizeForLayout(newNodeLike);
+  const others = nodes || [];
+
+  const overlaps = (x, y) =>
+    others.some((node) => {
+      const other = nodeSizeForLayout(node);
+      return !(
+        x + size.width + padding < node.x ||
+        node.x + other.width + padding < x ||
+        y + size.height + padding < node.y ||
+        node.y + other.height + padding < y
+      );
+    });
+
+  if (!overlaps(preferredX, preferredY)) {
+    return { x: preferredX, y: preferredY };
+  }
+
+  const step = Math.max(48, Math.min(size.width, size.height) * 0.55);
+  let best = null;
+  let bestDist = Infinity;
+  for (let ring = 1; ring <= 48; ring++) {
+    for (let dx = -ring; dx <= ring; dx++) {
+      for (let dy = -ring; dy <= ring; dy++) {
+        if (Math.max(Math.abs(dx), Math.abs(dy)) !== ring) continue;
+        const x = preferredX + dx * step;
+        const y = preferredY + dy * step;
+        if (overlaps(x, y)) continue;
+        const dist = dx * dx + dy * dy;
+        if (dist < bestDist) {
+          bestDist = dist;
+          best = { x, y };
+        }
+      }
+    }
+    if (best) return best;
+  }
+
+  return { x: preferredX, y: preferredY };
+}
+
 /** Place a node off a socket, then stack along the cross-axis so it does not overlap existing nodes. */
 export function connectedNodePositionAvoidingOverlap(
   nodes,

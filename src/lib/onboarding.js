@@ -493,7 +493,7 @@ export const MOBILE_TUTORIAL_SECTIONS = [
   {
     id: 'workspaces',
     title: 'Workspaces',
-    body: 'Switch between different boards and customise each workspace.',
+    body: 'Open the menu to switch boards and customise each workspace.',
     target: 'workspace-bar',
     tasks: [
       {
@@ -510,7 +510,7 @@ export const MOBILE_TUTORIAL_SECTIONS = [
       },
       {
         id: 'edit',
-        label: 'Open workspace options using the pencil icon to edit the current workspace’s details. Tap Cancel or Save to close it.',
+        label: 'Tap Edit to change the current workspace’s details. Tap Cancel or Save to close it.',
         event: 'workspace.edit.close',
         target: 'workspace-edit',
       },

@@ -1419,11 +1419,29 @@ export default function CanvasBoard({
             edges={edges}
           />
         ))}
+        {!nodePicker?.fixed && (
+          <NodeTypeMenu
+            key={nodePicker ? `${nodePicker.source}-${nodePicker.worldX}-${nodePicker.worldY}` : 'closed'}
+            open={!!nodePicker}
+            x={nodePicker?.worldX ?? 0}
+            y={nodePicker?.worldY ?? 0}
+            onClose={onPickerClose}
+            onSelect={onPickerSelect}
+            allowedMathKinds={nodePicker?.allowedMathKinds ?? null}
+            initialCategory={nodePicker?.initialCategory ?? 'text'}
+            hideValueSources={!!nodePicker?.hideValueSources}
+            valuesOnly={!!nodePicker?.valuesOnly}
+          />
+        )}
+      </div>
+
+      {nodePicker?.fixed && (
         <NodeTypeMenu
-          key={nodePicker ? `${nodePicker.source}-${nodePicker.worldX}-${nodePicker.worldY}` : 'closed'}
-          open={!!nodePicker}
-          x={nodePicker?.worldX ?? 0}
-          y={nodePicker?.worldY ?? 0}
+          key={`fixed-${nodePicker.source}-${nodePicker.clientX}-${nodePicker.clientY}`}
+          open
+          fixed
+          x={nodePicker.clientX ?? 0}
+          y={nodePicker.clientY ?? 0}
           onClose={onPickerClose}
           onSelect={onPickerSelect}
           allowedMathKinds={nodePicker?.allowedMathKinds ?? null}
@@ -1431,7 +1449,7 @@ export default function CanvasBoard({
           hideValueSources={!!nodePicker?.hideValueSources}
           valuesOnly={!!nodePicker?.valuesOnly}
         />
-      </div>
+      )}
 
       {marqueeRect && (
         <div

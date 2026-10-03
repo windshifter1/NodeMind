@@ -21,8 +21,11 @@ import {
   autoOrganiseSelectedNodes,
   connectedNodePositionAtSocket,
   connectedNodePositionAvoidingOverlap,
+  freeNodePositionNear,
+  nodeSizeForLayout,
   nodeWidthForTitle,
   TOP_BAR_HEIGHT,
+  viewCenterWorld,
   workspaceNodesBounds,
   zoomToFrameBounds,
 } from '@/lib/canvasConstants';
@@ -416,13 +419,26 @@ export default function Canvas() {
           mode: preferredMode,
         });
         emitTutorial('canvas.node.create-connected');
+      } else if (source === 'toolbar') {
+        const stub = fieldsForKind(kind);
+        const size = nodeSizeForLayout(stub);
+        const boardRect = document.querySelector('[data-canvas-board]')?.getBoundingClientRect();
+        const center = viewCenterWorld(pan, zoom, boardRect);
+        const pos = freeNodePositionNear(
+          active.nodes,
+          center.x - size.width / 2,
+          center.y - size.height / 2,
+          stub
+        );
+        dispatch({ type: 'ADD_NODE', x: pos.x, y: pos.y, kind, mode: preferredMode });
+        emitTutorial('toolbar.node.create');
       } else {
         dispatch({ type: 'ADD_NODE', x, y, kind, mode: preferredMode });
-        emitTutorial(source === 'toolbar' ? 'toolbar.node.create' : 'canvas.node.create-click');
+        emitTutorial('canvas.node.create-click');
       }
       setNodePicker(null);
     },
-    [active.nodes, active.orientation, dispatch, nodePicker]
+    [active.nodes, active.orientation, dispatch, nodePicker, pan, zoom]
   );
 
   const addNode = (x, y, anchor) =>
@@ -914,14 +930,21 @@ export default function Canvas() {
           onBackgroundArtChange={(patch) =>
             dispatch({ type: 'UPDATE_BACKGROUND_ART', patch })
           }
-          onAddNodeCenter={(anchor) => {
-            const clientX = anchor?.clientX ?? window.innerWidth / 2;
-            const clientY = anchor?.clientY ?? 72;
+          onAddNodeCenter={() => {
+            const menuW = Math.min(300, window.innerWidth - 16);
+            const menuH = Math.min(420, window.innerHeight * 0.7);
+            const clientX = Math.max(8, (window.innerWidth - menuW) / 2);
+            // Sit above the bottom nav; keep the full menu on-screen.
+            const clientY = Math.max(
+              72,
+              Math.min((window.innerHeight - menuH) / 2, window.innerHeight - menuH - 96)
+            );
             const rect = document.querySelector('[data-canvas-board]')?.getBoundingClientRect();
             const left = rect?.left ?? 0;
             const top = rect?.top ?? 0;
             openNodePicker({
               source: 'toolbar',
+              fixed: true,
               x: -nodeWidthForTitle('') / 2,
               y: -TOP_BAR_HEIGHT / 2,
               worldX: (clientX - left - pan.x) / zoom,

@@ -188,7 +188,7 @@ function DockMockup() {
         <span className="nm-mdev__badge-sep">·</span>
         <span>Dev1 · Bottom dock</span>
         <span className="nm-mdev__badge-sep">·</span>
-        <a href={appHref('/dev2')}>Dev2</a>
+        <a href={appHref('/dev')}>Organise /dev</a>
       </div>
 
       <div className="nm-mdev__canvas" aria-hidden="true">

@@ -685,6 +685,7 @@ export function autoOrganiseNodes(
     preferredRootIds: options.preferredRootIds || [],
     fixComponentRoots: !!options.fixComponentRoots,
     edgeAwareLayout: !!options.edgeAwareLayout,
+    edgeAwareMode: options.edgeAwareMode || null,
   }).nodes;
 }
 
@@ -715,6 +716,7 @@ export function autoOrganiseSelectedNodes(
     fixComponentRoots: true,
     preferredRootIds: selectedIds,
     edgeAwareLayout: !!options.edgeAwareLayout,
+    edgeAwareMode: options.edgeAwareMode || null,
   });
   const posMap = new Map(arranged.map((n) => [n.id, { x: n.x, y: n.y }]));
   return allNodes.map((n) => (posMap.has(n.id) ? { ...n, ...posMap.get(n.id) } : n));

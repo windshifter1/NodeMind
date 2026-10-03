@@ -77,9 +77,10 @@ export default function CanvasBoard({
   backgroundArt = null,
   onBackgroundArtChange,
   edgeAwareLayout = false,
+  edgeCurveFan = false,
 }) {
   const graphOrientation = normalizeOrientation(orientation);
-  const edgeDisplay = edgeAwareLayout
+  const edgeDisplay = edgeCurveFan
     ? planEdgeDisplayOffsets(edges, graphOrientation, nodes)
     : { offsets: new Map() };
   const [layoutEpoch, setLayoutEpoch] = useState(0);
@@ -440,14 +441,14 @@ export default function CanvasBoard({
           out = socketScreen(to, 'output', overrideMap);
           inp = socketScreen(from, 'input', overrideMap, edge.inputSlot || null);
         }
-        const lateral = edgeAwareLayout ? edgeDisplay.offsets.get(edge.id) || 0 : 0;
+        const lateral = edgeCurveFan ? edgeDisplay.offsets.get(edge.id) || 0 : 0;
         const d = edgePath(out, inp, false, lateral);
         boardRef.current
           ?.querySelectorAll(`[data-edge-id="${edge.id}"]`)
           .forEach((path) => path.setAttribute('d', d));
       });
     },
-    [edgeAwareLayout, edgeDisplay.offsets, graphOrientation, pan.x, pan.y, zoom]
+    [edgeAwareLayout, edgeCurveFan, edgeDisplay.offsets, graphOrientation, pan.x, pan.y, zoom]
   );
 
   const scheduleDragVisual = useCallback(
@@ -1364,7 +1365,7 @@ export default function CanvasBoard({
             out = socketScreen(to, 'output');
             inp = socketScreen(from, 'input', null, edge.inputSlot || null);
           }
-          const lateral = edgeAwareLayout ? edgeDisplay.offsets.get(edge.id) || 0 : 0;
+          const lateral = edgeCurveFan ? edgeDisplay.offsets.get(edge.id) || 0 : 0;
           const d = edgePath(out, inp, false, lateral);
           return (
             <g key={edge.id}>

@@ -1,5 +1,9 @@
 import { analyseGraph } from './analysis.js';
-import { reduceEdgeClutter, spreadSharedHubNeighbors } from './edgeAware.js';
+import {
+  reduceEdgeClutter,
+  separateOverlappingCorridors,
+  spreadSharedHubNeighbors,
+} from './edgeAware.js';
 import { boundsForPositions, buildGraphModel } from './graphModel.js';
 import { optimiseComponent, resolveCollisions } from './optimise.js';
 import { planRoutes } from './routing.js';
@@ -128,6 +132,8 @@ export function autoOrganiseGraph(nodes, edges, orientation, settings, centre, g
   const model = buildGraphModel(nodes, edges, orientation, geometry.nodeSizeForLayout);
   const analyses = analyseGraph(model);
   const edgeAware = !!geometry.edgeAwareLayout;
+  const edgeAwareMode = geometry.edgeAwareMode || (edgeAware ? 'curve-fan' : null);
+  const nodeSpread = edgeAwareMode === 'node-spread';
   const layoutOptions = {
     preferredRootIds: geometry.preferredRootIds || [],
     fixedIds: geometry.fixedIds || [],
@@ -137,9 +143,9 @@ export function autoOrganiseGraph(nodes, edges, orientation, settings, centre, g
   const layoutSettings = edgeAware
     ? {
         ...settings,
-        // Extra lane room so connection curves have space to separate.
-        horizontalSpacing: settings.horizontalSpacing * 1.15,
-        verticalSpacing: settings.verticalSpacing * 1.25,
+        // Extra lane room so connection corridors have space to separate.
+        horizontalSpacing: settings.horizontalSpacing * (nodeSpread ? 1.25 : 1.15),
+        verticalSpacing: settings.verticalSpacing * (nodeSpread ? 1.45 : 1.25),
       }
     : settings;
 
@@ -174,10 +180,17 @@ export function autoOrganiseGraph(nodes, edges, orientation, settings, centre, g
   }
 
   if (edgeAware) {
+    const hubOpts = { aggressive: nodeSpread };
     analyses.forEach((analysis) => {
-      spreadSharedHubNeighbors(model, analysis, positions, orientation, layoutSettings, fixedIds);
+      spreadSharedHubNeighbors(model, analysis, positions, orientation, layoutSettings, fixedIds, hubOpts);
+      if (nodeSpread) {
+        separateOverlappingCorridors(model, analysis, positions, orientation, layoutSettings, fixedIds);
+      }
       reduceEdgeClutter(model, analysis, positions, orientation, layoutSettings, fixedIds);
-      spreadSharedHubNeighbors(model, analysis, positions, orientation, layoutSettings, fixedIds);
+      if (nodeSpread) {
+        separateOverlappingCorridors(model, analysis, positions, orientation, layoutSettings, fixedIds);
+      }
+      spreadSharedHubNeighbors(model, analysis, positions, orientation, layoutSettings, fixedIds, hubOpts);
     });
     resolveCollisions(model, allIds, positions, layoutSettings, fixedIds);
   }

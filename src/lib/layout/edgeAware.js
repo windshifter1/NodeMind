@@ -243,8 +243,20 @@ export function reduceEdgeClutter(model, analysis, positions, orientation, setti
  * on the cross-axis with a minimum gap so their connection chords do not sit on
  * top of each other.
  */
-export function spreadSharedHubNeighbors(model, analysis, positions, orientation, settings, fixedIds = new Set()) {
-  const minGap = Math.max(64, (settings.verticalSpacing || 48) * 1.35);
+export function spreadSharedHubNeighbors(
+  model,
+  analysis,
+  positions,
+  orientation,
+  settings,
+  fixedIds = new Set(),
+  options = {}
+) {
+  const aggressive = !!options.aggressive;
+  const minGap = Math.max(
+    aggressive ? 88 : 64,
+    (settings.verticalSpacing || 48) * (aggressive ? 1.75 : 1.35)
+  );
   const vertical = orient(orientation) === 'vertical';
 
   const packGroup = (hubId, neighborIds) => {
@@ -301,6 +313,94 @@ export function spreadSharedHubNeighbors(model, analysis, positions, orientation
   incoming.forEach((sources, target) => {
     if (new Set(sources).size >= 2) packGroup(target, sources);
   });
+
+  return positions;
+}
+
+/**
+ * /dev2: push nodes apart when two connection chords share a long near-parallel
+ * overlap, instead of bending the drawn curves.
+ */
+export function separateOverlappingCorridors(
+  model,
+  analysis,
+  positions,
+  orientation,
+  settings,
+  fixedIds = new Set()
+) {
+  const vertical = orient(orientation) === 'vertical';
+  const minCrossGap = Math.max(56, (settings.verticalSpacing || 48) * 1.2);
+  const minOverlap = Math.max(48, (settings.horizontalSpacing || 80) * 0.45);
+  const segs = () => buildSegments(model, analysis, positions, orientation);
+
+  const overlapInfo = (a, b) => {
+    if (vertical) {
+      const a0 = Math.min(a.y1, a.y2);
+      const a1 = Math.max(a.y1, a.y2);
+      const b0 = Math.min(b.y1, b.y2);
+      const b1 = Math.max(b.y1, b.y2);
+      const overlap = Math.min(a1, b1) - Math.max(a0, b0);
+      if (overlap < minOverlap) return null;
+      const mid = (Math.max(a0, b0) + Math.min(a1, b1)) / 2;
+      const tA = (mid - a.y1) / (a.y2 - a.y1 || 1);
+      const tB = (mid - b.y1) / (b.y2 - b.y1 || 1);
+      const ax = a.x1 + (a.x2 - a.x1) * Math.max(0, Math.min(1, tA));
+      const bx = b.x1 + (b.x2 - b.x1) * Math.max(0, Math.min(1, tB));
+      return { overlap, crossGap: Math.abs(ax - bx), sign: Math.sign(bx - ax) || 1 };
+    }
+    const a0 = Math.min(a.x1, a.x2);
+    const a1 = Math.max(a.x1, a.x2);
+    const b0 = Math.min(b.x1, b.x2);
+    const b1 = Math.max(b.x1, b.x2);
+    const overlap = Math.min(a1, b1) - Math.max(a0, b0);
+    if (overlap < minOverlap) return null;
+    const mid = (Math.max(a0, b0) + Math.min(a1, b1)) / 2;
+    const tA = (mid - a.x1) / (a.x2 - a.x1 || 1);
+    const tB = (mid - b.x1) / (b.x2 - b.x1 || 1);
+    const ay = a.y1 + (a.y2 - a.y1) * Math.max(0, Math.min(1, tA));
+    const by = b.y1 + (b.y2 - b.y1) * Math.max(0, Math.min(1, tB));
+    return { overlap, crossGap: Math.abs(ay - by), sign: Math.sign(by - ay) || 1 };
+  };
+
+  const pushNode = (id, delta) => {
+    if (!id || fixedIds.has(id) || !positions.has(id)) return false;
+    nudgeCross(positions, id, delta, orientation);
+    return true;
+  };
+
+  for (let pass = 0; pass < 6; pass += 1) {
+    let moved = false;
+    const list = segs();
+    for (let i = 0; i < list.length; i += 1) {
+      for (let j = i + 1; j < list.length; j += 1) {
+        const a = list[i];
+        const b = list[j];
+        const info = overlapInfo(a, b);
+        if (!info || info.crossGap >= minCrossGap) continue;
+
+        const need = (minCrossGap - info.crossGap) / 2 + 4;
+        const dir = info.sign || 1;
+        // Prefer moving free endpoints that are not shared between the pair.
+        const aEnds = [a.source, a.target];
+        const bEnds = [b.source, b.target];
+        let did = false;
+        // Push B's unique ends one way, A's the other.
+        bEnds.forEach((id) => {
+          if (aEnds.includes(id)) return;
+          if (pushNode(id, dir * need)) did = true;
+        });
+        aEnds.forEach((id) => {
+          if (bEnds.includes(id)) return;
+          if (pushNode(id, -dir * need)) did = true;
+        });
+        // Shared hub: push the non-hub ends only (already handled). If nothing
+        // moved (both edges share both ends — duplicate), skip.
+        if (did) moved = true;
+      }
+    }
+    if (!moved) break;
+  }
 
   return positions;
 }

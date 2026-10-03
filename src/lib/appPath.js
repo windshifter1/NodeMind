@@ -16,13 +16,23 @@ export function matchMockupPath(path = getAppPath()) {
   return m ? Number(m[1]) : null;
 }
 
-/** Match `/dev1` … `/dev2` → 1…2, else null. Mobile layout mockups. */
+/** Match `/dev1` → 1. Mobile layout mockup (/dev2 is an organise experiment). */
 export function matchDevPath(path = getAppPath()) {
-  const m = /^\/dev([12])$/.exec(path);
-  return m ? Number(m[1]) : null;
+  return path === '/dev1' ? 1 : null;
 }
 
-/** `/dev` — canvas with edge-aware auto-organise experiment. */
+/**
+ * Edge-aware organise experiments:
+ * - `/dev`  → curve-fan (bend overlapping edges apart)
+ * - `/dev2` → node-spread (move nodes to clear overlapping corridors)
+ */
+export function matchDevOrganisePath(path = getAppPath()) {
+  if (path === '/dev') return 'curve-fan';
+  if (path === '/dev2') return 'node-spread';
+  return null;
+}
+
+/** @deprecated use matchDevOrganisePath */
 export function isDevOrganisePath(path = getAppPath()) {
-  return path === '/dev';
+  return matchDevOrganisePath(path) != null;
 }

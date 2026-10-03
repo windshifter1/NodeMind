@@ -427,11 +427,20 @@ export default function TerminalDialog({
       return;
     }
     if (activeWorkspaceIdRef.current !== workspace.id) return;
+    const stored = normalizeTerminal(workspace.terminal);
+    const same =
+      stored.cwdId === cwdId &&
+      stored.welcomeHidden === welcomeHidden &&
+      stored.lines.length === lines.length &&
+      stored.history.length === history.length &&
+      stored.lines.every((line, i) => line === lines[i]) &&
+      stored.history.every((line, i) => line === history[i]);
+    if (same) return;
     dispatch({
       type: 'SET_WORKSPACE_TERMINAL',
       terminal: { lines, history, cwdId, welcomeHidden },
     });
-  }, [lines, history, cwdId, welcomeHidden, dispatch, workspace.id]);
+  }, [lines, history, cwdId, welcomeHidden, dispatch, workspace.id, workspace.terminal]);
 
   useEffect(() => {
     if (open) {

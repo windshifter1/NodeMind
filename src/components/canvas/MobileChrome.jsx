@@ -8,6 +8,7 @@ import {
   Settings,
   Terminal,
   Share2,
+  MonitorSmartphone,
   Copy,
   Upload,
   Download,
@@ -220,6 +221,7 @@ export default function MobileChrome({
   backgroundArt,
   onBackgroundArtChange,
   onShareCanvas,
+  onSendToDevice,
 }) {
   const [workspaceSheetOpen, setWorkspaceSheetOpen] = useState(false);
   const [moreSheetOpen, setMoreSheetOpen] = useState(false);
@@ -507,6 +509,14 @@ export default function MobileChrome({
           label="Share"
           onClick={() => {
             onShareCanvas?.();
+            closeMoreSheet();
+          }}
+        />
+        <SheetItem
+          icon={MonitorSmartphone}
+          label="Send to device"
+          onClick={() => {
+            onSendToDevice?.();
             closeMoreSheet();
           }}
         />

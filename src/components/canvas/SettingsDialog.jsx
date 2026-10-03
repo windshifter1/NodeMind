@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { AlertTriangle, Moon, RotateCcw, Sparkles, Sun, Trash2, X } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { AlertTriangle, Download, Moon, RotateCcw, Sparkles, Sun, Trash2, Upload, X } from 'lucide-react';
 import OptionHelpRow from './OptionHelpRow';
 import { readLandingAlways, setLandingAlways } from '@/lib/landing';
 import {
@@ -9,6 +9,7 @@ import {
 } from '@/lib/onboarding';
 import { emitTutorial } from '@/lib/tutorialEvents';
 import { UI_STYLE_OPTIONS } from '@/lib/uiStyle';
+import { estimateStorage, formatBytes } from '@/lib/workspaceStore';
 
 const REPLAY_HELP =
   'Resets the first-run flag. After the tour shows again, this option turns itself off automatically.';
@@ -25,11 +26,18 @@ export default function SettingsDialog({
   onUiStyleChange,
   workspaceCount = 1,
   onDeleteAllWorkspaces,
+  persistStatus = {},
+  onExportAll,
+  onImportBackup,
+  deviceName = '',
+  onDeviceNameChange,
 }) {
   const [section, setSection] = useState('style');
   const [replayPending, setReplayPending] = useState(() => readOnboardingReplayPending());
   const [landingAlways, setLandingAlwaysState] = useState(() => readLandingAlways());
   const [confirmWipe, setConfirmWipe] = useState(false);
+  const [estimate, setEstimate] = useState(null);
+  const backupInputRef = useRef(null);
 
   useEffect(() => {
     if (!open) return;
@@ -37,6 +45,17 @@ export default function SettingsDialog({
     setLandingAlwaysState(readLandingAlways());
     setConfirmWipe(false);
   }, [open]);
+
+  useEffect(() => {
+    if (!open || section !== 'data') return undefined;
+    let cancelled = false;
+    estimateStorage().then((next) => {
+      if (!cancelled) setEstimate(next);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, section, persistStatus.lastSavedAt, persistStatus.lastError]);
 
   useEffect(() => {
     setConfirmWipe(false);
@@ -95,6 +114,7 @@ export default function SettingsDialog({
           <aside className="border-r border-nm-border bg-nm-sidebar p-3">
             {[
               { id: 'style', label: 'Style' },
+              { id: 'data', label: 'Data' },
               { id: 'help', label: 'Help' },
               { id: 'danger', label: 'Danger' },
             ].map((item) => (
@@ -188,6 +208,88 @@ export default function SettingsDialog({
               </div>
             )}
 
+            {section === 'data' && (
+              <div className="space-y-4">
+                <div>
+                  <h3 className="text-sm font-semibold text-nm-text">Storage</h3>
+                  <p className="mt-1 text-xs text-nm-text-muted">
+                    Workspaces stay on this device in IndexedDB. Export a backup before clearing
+                    browser data.
+                  </p>
+                </div>
+
+                <div>
+                  <h3 className="text-sm font-semibold text-nm-text">This device</h3>
+                  <p className="mt-1 text-xs text-nm-text-muted">
+                    Nearby NodeMind sessions see this name when you send a workspace.
+                  </p>
+                  <input
+                    value={deviceName}
+                    onChange={(e) => onDeviceNameChange?.(e.target.value)}
+                    maxLength={32}
+                    className="mt-2 w-full rounded-xl border border-nm-border bg-nm-option px-3 py-2 text-sm text-nm-text outline-none"
+                  />
+                </div>
+
+                <dl className="space-y-2 text-xs">
+                  <div className="flex items-start justify-between gap-3">
+                    <dt className="text-nm-text-muted">Last saved</dt>
+                    <dd className="text-right text-nm-text">
+                      {persistStatus.lastSavedAt
+                        ? new Date(persistStatus.lastSavedAt).toLocaleString()
+                        : 'Not yet'}
+                    </dd>
+                  </div>
+                  <div className="flex items-start justify-between gap-3">
+                    <dt className="text-nm-text-muted">This site</dt>
+                    <dd className="text-right text-nm-text">
+                      {estimate
+                        ? `${formatBytes(estimate.usage)} of ${formatBytes(estimate.quota)}`
+                        : 'Measuring…'}
+                    </dd>
+                  </div>
+                  <div className="flex items-start justify-between gap-3">
+                    <dt className="text-nm-text-muted">Persistent storage</dt>
+                    <dd className="text-right text-nm-text">
+                      {persistStatus.persisted ? 'Requested' : 'Browser default'}
+                    </dd>
+                  </div>
+                </dl>
+
+                {persistStatus.lastError && (
+                  <p className="rounded-xl border border-rose-500/35 bg-rose-500/10 px-3 py-2 text-xs text-rose-300">
+                    {persistStatus.lastError}
+                  </p>
+                )}
+
+                <div className="grid gap-2">
+                  <button
+                    type="button"
+                    onClick={() => onExportAll?.()}
+                    className="flex w-full items-center justify-center gap-2 rounded-xl border border-nm-border bg-nm-option px-3 py-2.5 text-sm font-medium text-nm-text transition hover:bg-nm-hover"
+                  >
+                    <Download size={16} />
+                    Export all workspaces
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => backupInputRef.current?.click()}
+                    className="flex w-full items-center justify-center gap-2 rounded-xl border border-nm-border bg-nm-option px-3 py-2.5 text-sm font-medium text-nm-text transition hover:bg-nm-hover"
+                  >
+                    <Upload size={16} />
+                    Import backup
+                  </button>
+                </div>
+                <input
+                  ref={backupInputRef}
+                  type="file"
+                  accept="application/json,.json"
+                  className="hidden"
+                  onChange={onImportBackup}
+                />
+              </div>
+            )}
+
             {section === 'help' && (
               <div data-onboarding="settings-help">
                 <h3 className="text-sm font-semibold text-nm-text">Help</h3>
@@ -232,8 +334,8 @@ export default function SettingsDialog({
                     <div className="min-w-0">
                       <h4 className="text-sm font-semibold text-nm-text">Delete all workspaces</h4>
                       <p className="mt-1 text-xs leading-relaxed text-nm-text-muted">
-                        Removes every workspace, including the Tutorial board, and starts a blank canvas.
-                        Currently {wipeLabel}.
+                        Removes every workspace, including the Tutorial board and attached files,
+                        and starts a blank canvas. Currently {wipeLabel}.
                       </p>
                     </div>
                   </div>

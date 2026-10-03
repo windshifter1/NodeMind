@@ -4,8 +4,14 @@
  * then locally nudges/swaps nodes on the cross-axis to clear the clutter.
  */
 
+import { byStableOrder } from './graphModel.js';
+
 function orient(orientation) {
   return orientation === 'vertical' ? 'vertical' : 'horizontal';
+}
+
+function stableIdCmp(model, a, b) {
+  return byStableOrder(model.order)(a, b);
 }
 
 function socketEnds(model, positions, orientation, link) {
@@ -190,11 +196,13 @@ export function reduceEdgeClutter(model, analysis, positions, orientation, setti
   if (best === 0) return positions;
 
   // Passes of neighbour swaps along the cross axis within similar primary bands.
+  // Tie-break with stable IDs so the search order does not depend on the prior canvas.
   for (let pass = 0; pass < 4; pass += 1) {
     const ordered = [...movable].sort(
       (a, b) =>
         primaryCoord(positions.get(a), orientation) - primaryCoord(positions.get(b), orientation) ||
-        crossCoord(positions.get(a), orientation) - crossCoord(positions.get(b), orientation)
+        crossCoord(positions.get(a), orientation) - crossCoord(positions.get(b), orientation) ||
+        stableIdCmp(model, a, b)
     );
 
     let improved = false;
@@ -221,19 +229,21 @@ export function reduceEdgeClutter(model, analysis, positions, orientation, setti
     if (best === 0) return positions;
   }
 
-  // Nudge each movable node on the cross-axis if it clears clutter.
-  movable.forEach((id) => {
-    for (const delta of [-step, step, -step * 2, step * 2]) {
-      nudgeCross(positions, id, delta, orientation);
-      const next = scoreEdgeLayout(model, analysis, positions, orientation);
-      if (next < best) {
-        best = next;
-      } else {
-        nudgeCross(positions, id, -delta, orientation);
+  // Nudge in stable ID order so workspace node-array order cannot change the result.
+  [...movable]
+    .sort((a, b) => stableIdCmp(model, a, b))
+    .forEach((id) => {
+      for (const delta of [-step, step, -step * 2, step * 2]) {
+        nudgeCross(positions, id, delta, orientation);
+        const next = scoreEdgeLayout(model, analysis, positions, orientation);
+        if (next < best) {
+          best = next;
+        } else {
+          nudgeCross(positions, id, -delta, orientation);
+        }
+        if (best === 0) return;
       }
-      if (best === 0) return;
-    }
-  });
+    });
 
   return positions;
 }
@@ -271,13 +281,9 @@ export function spreadSharedHubNeighbors(
       ? hub.x + hubSize.width / 2
       : hub.y + Math.min(22, hubSize.height / 2);
 
-    const ordered = unique.sort((a, b) => {
-      const pa = positions.get(a);
-      const pb = positions.get(b);
-      const ca = vertical ? pa.x : pa.y;
-      const cb = vertical ? pb.x : pb.y;
-      return ca - cb || String(a).localeCompare(String(b), undefined, { numeric: true });
-    });
+    // Always pack in stable ID order so the same hub topology gets the same
+    // neighbour order regardless of where nodes sat before organise.
+    const ordered = unique.sort((a, b) => stableIdCmp(model, a, b));
 
     // Ideal centres spaced by minGap, centred on the hub socket.
     const total = (ordered.length - 1) * minGap;
@@ -371,7 +377,7 @@ export function separateOverlappingCorridors(
 
   for (let pass = 0; pass < 6; pass += 1) {
     let moved = false;
-    const list = segs();
+    const list = segs().sort((a, b) => String(a.id || '').localeCompare(String(b.id || ''), undefined, { numeric: true }));
     for (let i = 0; i < list.length; i += 1) {
       for (let j = i + 1; j < list.length; j += 1) {
         const a = list[i];
@@ -380,12 +386,12 @@ export function separateOverlappingCorridors(
         if (!info || info.crossGap >= minCrossGap) continue;
 
         const need = (minCrossGap - info.crossGap) / 2 + 4;
-        const dir = info.sign || 1;
-        // Prefer moving free endpoints that are not shared between the pair.
+        // Deterministic push direction from stable endpoint ids, not geometry sign.
+        const dirSeed = `${a.source}:${a.target}:${b.source}:${b.target}`;
+        const dir = dirSeed < `${b.source}:${b.target}:${a.source}:${a.target}` ? 1 : -1;
         const aEnds = [a.source, a.target];
         const bEnds = [b.source, b.target];
         let did = false;
-        // Push B's unique ends one way, A's the other.
         bEnds.forEach((id) => {
           if (aEnds.includes(id)) return;
           if (pushNode(id, dir * need)) did = true;
@@ -394,8 +400,6 @@ export function separateOverlappingCorridors(
           if (bEnds.includes(id)) return;
           if (pushNode(id, -dir * need)) did = true;
         });
-        // Shared hub: push the non-hub ends only (already handled). If nothing
-        // moved (both edges share both ends — duplicate), skip.
         if (did) moved = true;
       }
     }
@@ -489,8 +493,11 @@ export function planEdgeDisplayOffsets(edges, orientation = 'horizontal', nodes 
   // 3) Exact duplicate corridors (same source→target) get an extra push.
   byCorridor.forEach((list) => {
     if (list.length < 2) return;
-    const mid = (list.length - 1) / 2;
-    list.forEach((edge, index) => {
+    const ordered = [...list].sort((a, b) =>
+      String(a.id).localeCompare(String(b.id), undefined, { numeric: true })
+    );
+    const mid = (ordered.length - 1) / 2;
+    ordered.forEach((edge, index) => {
       const base = offsets.get(edge.id) || 0;
       offsets.set(edge.id, base + (index - mid) * 12);
     });

@@ -174,13 +174,13 @@ export const HELP_GROUPS = [
       {
         keys: ['export'],
         syntax: 'export',
-        summary: 'Download the workspace as JSON.',
+        summary: 'Download this workspace as JSON, including drawings and attached files.',
         example: 'export',
       },
       {
         keys: ['import'],
         syntax: 'import',
-        summary: 'Open the JSON import picker.',
+        summary: 'Open the JSON import picker. Adds a workspace or full backup without replacing existing ones.',
         example: 'import',
       },
     ],

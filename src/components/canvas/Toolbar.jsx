@@ -7,6 +7,7 @@ import {
   Copy,
   Terminal,
   Share2,
+  MonitorSmartphone,
   Wrench,
   Settings,
   Home,
@@ -228,6 +229,7 @@ export default function Toolbar({
   backgroundArt,
   onBackgroundArtChange,
   onShareCanvas,
+  onSendToDevice,
 }) {
   const fileRef = useRef(null);
   const imageRef = useRef(null);
@@ -503,6 +505,12 @@ export default function Toolbar({
               icon: Share2,
               action: () => onShareCanvas?.(),
               title: 'Share as JPEG, PNG, PDF, or SVG',
+            },
+            {
+              label: 'Send to device',
+              icon: MonitorSmartphone,
+              action: () => onSendToDevice?.(),
+              title: 'Send this workspace to another NodeMind session on the network',
             },
           ]}
         />

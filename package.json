@@ -15,7 +15,8 @@
     "version:info": "node scripts/version.mjs",
     "version:bump": "node scripts/version.mjs bump",
     "hooks:install": "node scripts/install-hooks.mjs",
-    "prepare": "node scripts/install-hooks.mjs"
+    "prepare": "node scripts/install-hooks.mjs",
+    "test:storage": "node scripts/test-workspace-backup.mjs"
   },
   "dependencies": {
     "html-to-image": "^1.11.13",
@@ -24,7 +25,8 @@
     "mammoth": "^1.8.0",
     "pdfjs-dist": "^4.10.38",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
+    "trystero": "^0.25.4"
   },
   "devDependencies": {
     "@eslint/js": "^9.19.0",

@@ -9,10 +9,13 @@ import TextExportDialog from '@/components/canvas/TextExportDialog';
 import ShareCanvasDialog from '@/components/canvas/ShareCanvasDialog';
 import TerminalDialog from '@/components/canvas/TerminalDialog';
 import SettingsDialog from '@/components/canvas/SettingsDialog';
+import NearbyShareDialog from '@/components/canvas/NearbyShareDialog';
+import NearbyOfferDialog from '@/components/canvas/NearbyOfferDialog';
 import SelectionOpMenu from '@/components/canvas/SelectionOpMenu';
 import MathsCreditDialog from '@/components/canvas/MathsCreditDialog';
 import OnboardingTour from '@/components/onboarding/OnboardingTour';
 import { useWorkspaces } from '@/hooks/useWorkspaces';
+import { useNearbyShare } from '@/hooks/useNearbyShare';
 import {
   LAYOUT_ON_ORIENTATION_CHANGE,
   MIN_ZOOM,
@@ -60,6 +63,14 @@ import {
   usesLiquidMotion,
 } from '@/lib/uiStyle';
 import { attachLiquidButtons } from '@/lib/liquidButtons';
+import { downloadBlob } from '@/lib/shareCanvas';
+import {
+  backupFileName,
+  downloadFileName,
+  packBackupExport,
+  packWorkspaceExport,
+  prepareImportedWorkspaces,
+} from '@/lib/workspaceBackup';
 
 const MATH_SINGLE_INPUT_MESSAGE = 'This node accepts only one input';
 
@@ -71,8 +82,29 @@ function clampZoom(z) {
   return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z));
 }
 
-export default function Canvas({ edgeAwareLayout = false, edgeAwareMode = null, edgeCurveFan = false } = {}) {
-  const { state, dispatch, active } = useWorkspaces();
+function RestoreScreen() {
+  return (
+    <div className="flex h-full w-full items-center justify-center bg-nm-canvas text-sm text-nm-text-muted">
+      Restoring workspaces…
+    </div>
+  );
+}
+
+export default function Canvas(props = {}) {
+  const workspaces = useWorkspaces();
+  if (!workspaces.ready || !workspaces.active) {
+    return <RestoreScreen />;
+  }
+  return <CanvasReady {...props} workspaces={workspaces} />;
+}
+
+function CanvasReady({
+  edgeAwareLayout = false,
+  edgeAwareMode = null,
+  edgeCurveFan = false,
+  workspaces,
+} = {}) {
+  const { state, dispatch, active, persistStatus, retrySave } = workspaces;
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [editingNodeId, setEditingNodeId] = useState(null);
@@ -80,6 +112,8 @@ export default function Canvas({ edgeAwareLayout = false, edgeAwareMode = null, 
   const [creatingWorkspace, setCreatingWorkspace] = useState(false);
   const [textExportOpen, setTextExportOpen] = useState(false);
   const [shareCanvasOpen, setShareCanvasOpen] = useState(false);
+  const [nearbyShareOpen, setNearbyShareOpen] = useState(false);
+  const nearby = useNearbyShare({ workspaceName: active.name, enabled: true });
   const [terminalOpen, setTerminalOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [selectedNodeIds, setSelectedNodeIds] = useState([]);
@@ -702,47 +736,62 @@ export default function Canvas({ edgeAwareLayout = false, edgeAwareMode = null, 
     return () => document.removeEventListener('pointerdown', onPointerDown, true);
   }, [selectionArmed]);
 
-  const handleExport = () => {
-    const data = JSON.stringify(
-      {
-        workspace: {
-          name: active.name,
-          colour: active.colour,
-          icon: active.icon,
-          orientation: active.orientation,
-          layoutOnOrientationChange: active.layoutOnOrientationChange,
-          layoutSettings: active.layoutSettings,
-        },
-        nodes: active.nodes,
-        edges: active.edges,
-        nextZ: active.nextZ,
-        terminal: active.terminal,
-      },
-      null,
-      2
-    );
-    const blob = new Blob([data], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${(active.name || 'workspace').replace(/[^a-z0-9]+/gi, '_')}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+  const handleExport = async () => {
+    try {
+      const payload = await packWorkspaceExport(active);
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      await downloadBlob(blob, downloadFileName(active.name), 'application/json');
+    } catch (err) {
+      alert(err?.message || 'Export failed.');
+    }
   };
 
-  const handleImport = (e) => {
-    const file = e.target.files && e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
+  const handleExportAll = async () => {
+    try {
+      const payload = await packBackupExport(state);
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      await downloadBlob(blob, backupFileName(), 'application/json');
+    } catch (err) {
+      alert(err?.message || 'Backup failed.');
+    }
+  };
+
+  const receivedPack = nearby.receivedPack;
+  const clearReceived = nearby.clearReceived;
+  useEffect(() => {
+    if (!receivedPack) return undefined;
+    let cancelled = false;
+    (async () => {
       try {
-        dispatch({ type: 'IMPORT_AS_WORKSPACE', data: JSON.parse(reader.result) });
+        const imported = await prepareImportedWorkspaces(receivedPack);
+        if (cancelled) return;
+        dispatch({ type: 'IMPORT_WORKSPACES', workspaces: imported.workspaces });
+        clearReceived();
       } catch (err) {
-        alert('Invalid JSON file.');
+        if (!cancelled) alert(err?.message || 'Could not import the received workspace.');
+        clearReceived();
       }
+    })();
+    return () => {
+      cancelled = true;
     };
-    reader.readAsText(file);
-    e.target.value = '';
+  }, [receivedPack, clearReceived, dispatch]);
+
+  const handleSendToDevice = async (peer) => {
+    await nearby.sendToPeer(peer, () => packWorkspaceExport(active));
+  };
+
+  const handleImport = async (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (e.target) e.target.value = '';
+    if (!file) return;
+    try {
+      const parsed = JSON.parse(await file.text());
+      const imported = await prepareImportedWorkspaces(parsed);
+      dispatch({ type: 'IMPORT_WORKSPACES', workspaces: imported.workspaces });
+    } catch (err) {
+      alert(err?.message || 'Invalid JSON file.');
+    }
   };
 
   const handleClear = () => {
@@ -874,6 +923,7 @@ export default function Canvas({ edgeAwareLayout = false, edgeAwareMode = null, 
             onClear={handleClear}
             onTextExport={() => setTextExportOpen(true)}
             onShareCanvas={() => setShareCanvasOpen(true)}
+            onSendToDevice={() => setNearbyShareOpen(true)}
             onOpenTerminal={() => setTerminalOpen(true)}
             onAutoOrganise={autoOrganise}
             onOrganiseSelected={organiseSelected}
@@ -928,6 +978,7 @@ export default function Canvas({ edgeAwareLayout = false, edgeAwareMode = null, 
           onClear={handleClear}
           onTextExport={() => setTextExportOpen(true)}
           onShareCanvas={() => setShareCanvasOpen(true)}
+          onSendToDevice={() => setNearbyShareOpen(true)}
           onOpenTerminal={() => setTerminalOpen(true)}
           onAutoOrganise={autoOrganise}
           onOrganiseSelected={organiseSelected}
@@ -1034,6 +1085,31 @@ export default function Canvas({ edgeAwareLayout = false, edgeAwareMode = null, 
         darkNodes={nodeTheme === 'dark'}
       />
 
+      {persistStatus.lastError && (
+        <div
+          className="absolute left-1/2 z-[120] flex max-w-[min(36rem,calc(100%-1.5rem))] -translate-x-1/2 flex-wrap items-center justify-center gap-2 rounded-full border border-rose-500/40 bg-rose-500/15 px-3 py-1.5 text-xs font-medium text-rose-100 shadow-lg backdrop-blur"
+          style={{
+            top: 'calc(4.75rem + var(--safe-top))',
+          }}
+        >
+          <span className="text-center">{persistStatus.lastError}</span>
+          <button
+            type="button"
+            onClick={handleExportAll}
+            className="rounded-full border border-rose-300/40 px-2 py-0.5 text-[11px] font-semibold text-rose-50 transition hover:bg-rose-400/20"
+          >
+            Export backup
+          </button>
+          <button
+            type="button"
+            onClick={retrySave}
+            className="rounded-full border border-rose-300/40 px-2 py-0.5 text-[11px] font-semibold text-rose-50 transition hover:bg-rose-400/20"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
       <SettingsDialog
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
@@ -1043,7 +1119,25 @@ export default function Canvas({ edgeAwareLayout = false, edgeAwareMode = null, 
         onUiStyleChange={setUiStyle}
         workspaceCount={state.workspaces.length}
         onDeleteAllWorkspaces={deleteAllWorkspaces}
+        persistStatus={persistStatus}
+        onExportAll={handleExportAll}
+        onImportBackup={handleImport}
+        deviceName={nearby.deviceName}
+        onDeviceNameChange={nearby.setDeviceName}
       />
+
+      <NearbyShareDialog
+        open={nearbyShareOpen}
+        onClose={() => {
+          setNearbyShareOpen(false);
+          nearby.clearOutgoing();
+        }}
+        workspaceName={active.name}
+        nearby={nearby}
+        onSend={handleSendToDevice}
+      />
+
+      <NearbyOfferDialog offer={nearby.incoming} progress={nearby.incomingProgress} />
 
       <OnboardingTour open={onboardingOpen} onClose={finishOnboarding} />
 

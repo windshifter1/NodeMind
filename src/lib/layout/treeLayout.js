@@ -30,10 +30,12 @@ function priorCross(model, id, orientation) {
   return orientation === 'vertical' ? node.x : node.y;
 }
 
-function sortSiblings(ids, model, orientation, order) {
+function sortSiblings(ids, model, orientation, order, ignorePriorPositions = false) {
   return [...ids].sort((a, b) => {
-    const d = priorCross(model, a, orientation) - priorCross(model, b, orientation);
-    if (Math.abs(d) > 0.5) return d;
+    if (!ignorePriorPositions) {
+      const d = priorCross(model, a, orientation) - priorCross(model, b, orientation);
+      if (Math.abs(d) > 0.5) return d;
+    }
     return compareIds(a, b, order);
   });
 }
@@ -114,6 +116,7 @@ export function chooseLayoutRoot(model, analysis, options = {}) {
 export function buildSpanningForest(model, analysis, orientation = 'horizontal', options = {}) {
   const idSet = new Set(analysis.ids);
   const order = model.order;
+  const ignorePrior = !!options.ignorePriorPositions;
 
   const treeChildren = new Map(analysis.ids.map((id) => [id, []]));
   const treeParent = new Map(analysis.ids.map((id) => [id, null]));
@@ -133,7 +136,7 @@ export function buildSpanningForest(model, analysis, orientation = 'horizontal',
     while (queue.length) {
       const id = queue.shift();
       const outs = [...(model.outgoing.get(id) || [])].filter((nid) => idSet.has(nid) && !assigned.has(nid));
-      sortSiblings(outs, model, orientation, order).forEach((nid) => claim(nid, id));
+      sortSiblings(outs, model, orientation, order, ignorePrior).forEach((nid) => claim(nid, id));
     }
   };
 
@@ -153,7 +156,7 @@ export function buildSpanningForest(model, analysis, orientation = 'horizontal',
     initialSeeds.push(primary);
   }
 
-  sortSiblings(initialSeeds, model, orientation, order).forEach((id) => claim(id, null));
+  sortSiblings(initialSeeds, model, orientation, order, ignorePrior).forEach((id) => claim(id, null));
   expandOutgoing();
 
   // Remaining sources become additional forest roots, then expand.
@@ -161,7 +164,8 @@ export function buildSpanningForest(model, analysis, orientation = 'horizontal',
     sources.filter((id) => !assigned.has(id)),
     model,
     orientation,
-    order
+    order,
+    ignorePrior
   ).forEach((id) => {
     claim(id, null);
     expandOutgoing();
@@ -172,7 +176,8 @@ export function buildSpanningForest(model, analysis, orientation = 'horizontal',
     preferred.filter((id) => !assigned.has(id)),
     model,
     orientation,
-    order
+    order,
+    ignorePrior
   ).forEach((id) => {
     claim(id, null);
     expandOutgoing();
@@ -207,7 +212,7 @@ export function buildSpanningForest(model, analysis, orientation = 'horizontal',
     });
 
   treeChildren.forEach((list, id) => {
-    treeChildren.set(id, sortSiblings([...new Set(list)], model, orientation, order));
+    treeChildren.set(id, sortSiblings([...new Set(list)], model, orientation, order, ignorePrior));
   });
 
   const roots = analysis.ids

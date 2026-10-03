@@ -1,0 +1,241 @@
+import { joinRoom, selfId } from 'trystero';
+
+export const NEARBY_APP_ID = 'windshifter.nodemind.nearby.v1';
+export const DEVICE_NAME_KEY = 'nodemind-device-name-v1';
+export const DEVICE_COLOR_KEY = 'nodemind-device-color-v1';
+
+const ADJECTIVES = [
+  'Amber', 'Cedar', 'Indigo', 'Maple', 'Quartz', 'River', 'Solar', 'Willow',
+];
+const NOUNS = [
+  'Atlas', 'Comet', 'Forge', 'Heron', 'Lumen', 'Pine', 'Sparrow', 'Wren',
+];
+const COLORS = [
+  '#6366f1', '#ef4444', '#f59e0b', '#10b981', '#06b6d4',
+  '#ec4899', '#8b5cf6', '#14b8a6',
+];
+const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+
+export function getSelfPeerId() {
+  return selfId;
+}
+
+export function randomDeviceName() {
+  const adj = ADJECTIVES[Math.floor(Math.random() * ADJECTIVES.length)];
+  const noun = NOUNS[Math.floor(Math.random() * NOUNS.length)];
+  return `${adj} ${noun}`;
+}
+
+export function readDeviceName() {
+  try {
+    const stored = localStorage.getItem(DEVICE_NAME_KEY);
+    if (stored && stored.trim()) return stored.trim().slice(0, 32);
+  } catch {
+    /* ignore */
+  }
+  const name = randomDeviceName();
+  writeDeviceName(name);
+  return name;
+}
+
+export function writeDeviceName(name) {
+  const next = String(name || '').trim().slice(0, 32) || randomDeviceName();
+  try {
+    localStorage.setItem(DEVICE_NAME_KEY, next);
+  } catch {
+    /* ignore */
+  }
+  return next;
+}
+
+export function readDeviceColor() {
+  try {
+    const stored = localStorage.getItem(DEVICE_COLOR_KEY);
+    if (stored) return stored;
+  } catch {
+    /* ignore */
+  }
+  const color = COLORS[Math.floor(Math.random() * COLORS.length)];
+  try {
+    localStorage.setItem(DEVICE_COLOR_KEY, color);
+  } catch {
+    /* ignore */
+  }
+  return color;
+}
+
+export function normalizeSessionCode(value) {
+  return String(value || '')
+    .toUpperCase()
+    .replace(/[^A-Z2-9]/g, '')
+    .slice(0, 4);
+}
+
+export function randomSessionCode() {
+  return Array.from({ length: 4 }, () => (
+    CODE_ALPHABET[Math.floor(Math.random() * CODE_ALPHABET.length)]
+  )).join('');
+}
+
+export function codeRoomId(code) {
+  return `nm-code-${normalizeSessionCode(code)}`;
+}
+
+async function sha256Hex(text) {
+  const bytes = new TextEncoder().encode(text);
+  const digest = await crypto.subtle.digest('SHA-256', bytes);
+  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+export async function fetchPublicIp() {
+  const urls = [
+    'https://api.ipify.org?format=json',
+    'https://api64.ipify.org?format=json',
+  ];
+  for (const url of urls) {
+    try {
+      const res = await fetch(url, { cache: 'no-store' });
+      if (!res.ok) continue;
+      const data = await res.json();
+      if (data?.ip) return String(data.ip);
+    } catch {
+      /* try next */
+    }
+  }
+  return null;
+}
+
+export async function resolveLanRoomId() {
+  const ip = await fetchPublicIp();
+  if (!ip) return null;
+  const hash = await sha256Hex(ip);
+  return `nm-lan-${hash.slice(0, 16)}`;
+}
+
+function snapshotPeers(map) {
+  return [...map.values()].sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/**
+ * Join a Trystero room and run the AirDrop-style offer / accept / payload protocol.
+ * Workspace bytes travel on the WebRTC data channel, not the signaling relays.
+ */
+export function joinNearbyRoom({
+  roomId,
+  device,
+  onPeers,
+  onIncomingOffer,
+  onPayload,
+  onReceiveProgress,
+} = {}) {
+  const room = joinRoom({ appId: NEARBY_APP_ID }, roomId);
+  const peers = new Map();
+  const hello = room.makeAction('hello');
+  const payload = room.makeAction('pack');
+  let pendingReceiveFrom = null;
+  let offerWaiter = null;
+
+  const emitPeers = () => onPeers?.(snapshotPeers(peers));
+
+  const announce = (target) => {
+    const body = {
+      name: device.name,
+      color: device.color,
+      workspaceName: device.workspaceName || 'Untitled',
+    };
+    hello.send(body, target ? { target } : undefined).catch(() => {});
+  };
+
+  hello.onMessage = (data, { peerId }) => {
+    if (!data || typeof data !== 'object') return;
+    peers.set(peerId, {
+      id: peerId,
+      name: String(data.name || 'Nearby device').slice(0, 32),
+      color: typeof data.color === 'string' ? data.color : '#6366f1',
+      workspaceName: String(data.workspaceName || 'Untitled').slice(0, 80),
+    });
+    emitPeers();
+  };
+
+  room.onPeerJoin = (peerId) => {
+    announce(peerId);
+  };
+
+  room.onPeerLeave = (peerId) => {
+    peers.delete(peerId);
+    emitPeers();
+    if (pendingReceiveFrom === peerId) pendingReceiveFrom = null;
+    if (offerWaiter?.peerId === peerId) {
+      offerWaiter.resolve({ ok: false, reason: 'left' });
+      offerWaiter = null;
+    }
+  };
+
+  const offer = room.makeAction('offer', {
+    kind: 'request',
+    onRequest: (data, { peerId, signal }) =>
+      new Promise((resolve) => {
+        if (offerWaiter) {
+          resolve({ ok: false, reason: 'busy' });
+          return;
+        }
+        const finish = (result) => {
+          if (offerWaiter?.peerId !== peerId) return;
+          offerWaiter = null;
+          if (result.ok) pendingReceiveFrom = peerId;
+          resolve(result);
+        };
+        offerWaiter = { peerId, resolve: finish };
+        const abort = () => finish({ ok: false, reason: 'cancelled' });
+        signal?.addEventListener?.('abort', abort, { once: true });
+        onIncomingOffer?.({
+          peerId,
+          fromName: String(data?.fromName || 'Nearby device').slice(0, 32),
+          workspaceName: String(data?.workspaceName || 'Untitled').slice(0, 80),
+          accept: () => finish({ ok: true }),
+          decline: () => finish({ ok: false, reason: 'declined' }),
+        });
+      }),
+  });
+
+  payload.onMessage = (data, { peerId }) => {
+    if (pendingReceiveFrom !== peerId) return;
+    pendingReceiveFrom = null;
+    onPayload?.(data, peerId);
+  };
+  payload.onReceiveProgress = (percent, context) => {
+    onReceiveProgress?.(percent, context);
+  };
+
+  announce();
+
+  return {
+    roomId,
+    selfId,
+    announce,
+    getPeers: () => snapshotPeers(peers),
+    requestSend(peerId, meta) {
+      return offer.request(
+        {
+          fromName: device.name,
+          workspaceName: meta?.workspaceName || device.workspaceName || 'Untitled',
+        },
+        { target: peerId, timeoutMs: 90_000 }
+      );
+    },
+    sendPack(peerId, pack, onProgress) {
+      return payload.send(pack, {
+        target: peerId,
+        onProgress: (percent) => onProgress?.(percent),
+      });
+    },
+    leave() {
+      if (offerWaiter) {
+        offerWaiter.resolve({ ok: false, reason: 'left' });
+        offerWaiter = null;
+      }
+      pendingReceiveFrom = null;
+      return room.leave();
+    },
+  };
+}

@@ -1,6 +1,6 @@
 # NodeMind
 
-A local-first mind map canvas. Open the page and start editing — all workspaces, notes, and connections are stored in your browser's localStorage.
+A local-first mind map canvas. Open the page and start editing — all workspaces, notes, connections, and attached files stay on this device.
 
 Built by **Windshifter**.
 
@@ -9,6 +9,7 @@ Built by **Windshifter**.
 - Infinite pan/zoom canvas with Text notes and Math CAS nodes (expand, factor, calculus, solve)
 - Multiple workspaces with custom names, colours, and icons
 - Export/import workspaces as JSON
+- Send the current workspace to another open NodeMind session on the same network
 - Copy workspace contents as plain text
 - Dark/light note themes
 - No login, no server — works fully offline after first load
@@ -71,7 +72,11 @@ Edit `base` in `vite.config.js` to match your path (e.g. `'/'` for a user site a
 
 ## Data storage
 
-Workspaces are saved under the localStorage key `thoughts-canvas-workspaces-v2`. Use **Export JSON** in the toolbar to back up your data. Clearing browser storage will remove your canvases.
+Workspaces and attached files are saved in this browser's **IndexedDB** (`nodemind-app-v1`). Theme, landing, and onboarding flags stay in localStorage.
+
+Use **Export** in the toolbar to download the active workspace (including background art and referenced files). Use **Settings → Data → Export all workspaces** for a full backup. Import either file to add workspaces without overwriting existing ones.
+
+Clearing site data for this origin still deletes canvases. If a save fails (for example the browser is out of space), NodeMind shows a banner with **Export backup** and **Retry**.
 
 ## License
 

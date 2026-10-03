@@ -1,9 +1,12 @@
+import { LS_MIGRATED, LS_WORKSPACES_V2 } from '@/lib/workspaceStore';
+
 const SEEN_KEY = 'nodemind-landing-seen-v1';
 const ALWAYS_KEY = 'nodemind-landing-always-v1';
 
 /** Storage keys that imply this device already used the app before the landing page existed. */
 const PRIOR_USE_KEYS = [
-  'thoughts-canvas-workspaces-v2',
+  LS_MIGRATED,
+  LS_WORKSPACES_V2,
   'thoughts-canvas-workspaces',
   'nodemind-onboarding-completed-v1',
   'nodemind-maths-credit-seen-v1',

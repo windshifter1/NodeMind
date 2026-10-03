@@ -126,18 +126,35 @@ function packComponents(model, componentLayouts, orientation, settings, fixedIds
   return positions;
 }
 
+/** Size helper that never reads the live DOM — keeps /dev organise workspace-invariant. */
+function stableSizeFn(nodeSizeForLayout) {
+  return (node) => {
+    if (node && typeof node === 'object' && node.id != null) {
+      const { id: _id, x: _x, y: _y, z: _z, ...rest } = node;
+      return nodeSizeForLayout(rest);
+    }
+    return nodeSizeForLayout(node);
+  };
+}
+
 export function autoOrganiseGraph(nodes, edges, orientation, settings, centre, geometry) {
   if (!nodes.length) return { nodes, routes: new Map(), analyses: [] };
 
-  const model = buildGraphModel(nodes, edges, orientation, geometry.nodeSizeForLayout);
-  const analyses = analyseGraph(model);
   const edgeAware = !!geometry.edgeAwareLayout;
   const edgeAwareMode = geometry.edgeAwareMode || (edgeAware ? 'curve-fan' : null);
   const nodeSpread = edgeAwareMode === 'node-spread';
+  const nodeSizeForLayout = edgeAware
+    ? stableSizeFn(geometry.nodeSizeForLayout)
+    : geometry.nodeSizeForLayout;
+  const model = buildGraphModel(nodes, edges, orientation, nodeSizeForLayout);
+  const analyses = analyseGraph(model);
   const layoutOptions = {
     preferredRootIds: geometry.preferredRootIds || [],
     fixedIds: geometry.fixedIds || [],
     edgeAwareLayout: edgeAware,
+    // /dev experiments: same graph structure → same relative layout, independent
+    // of prior canvas positions / orientation history.
+    ignorePriorPositions: edgeAware,
   };
   const fixedIds = collectFixedIds(model, nodes, analyses, geometry);
   const layoutSettings = edgeAware

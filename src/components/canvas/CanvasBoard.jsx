@@ -8,6 +8,7 @@ import {
   MIN_ZOOM,
   MAX_ZOOM,
   bezierPath,
+  bezierPathZoomStable,
   connectedNodePositionAtSocket,
   normalizeOrientation,
   nodeLayoutRect,
@@ -380,17 +381,39 @@ export default function CanvasBoard({
     };
   }, []);
 
-  const socketScreen = (node, type, overrides, inputSlot = null) => {
+  const socketPoint = (node, type, overrides, inputSlot = null) => {
     const override = overrides?.get?.(node.id);
     const x = override ? override.x : node.x;
     const y = override ? override.y : node.y;
     const overridden = { ...node, x, y };
-    const point = socketWorld(overridden, type, graphOrientation, nodeSizeForLayout(overridden), {
+    return socketWorld(overridden, type, graphOrientation, nodeSizeForLayout(overridden), {
       inputSlot,
       edges: edgesRef.current,
       seriesBySlot: graphPlotSeriesBySlot(mathResultsRef.current?.get?.(node.id)),
     });
+  };
+
+  const socketScreen = (node, type, overrides, inputSlot = null) => {
+    const point = socketPoint(node, type, overrides, inputSlot);
     return { x: point.x * zoom + pan.x, y: point.y * zoom + pan.y };
+  };
+
+  const edgePath = (out, inp, reversed = false, lateral = 0) => {
+    if (edgeAwareLayout) {
+      // World-space cubic → screen: shape does not change with zoom.
+      return bezierPathZoomStable(
+        out.x,
+        out.y,
+        inp.x,
+        inp.y,
+        reversed,
+        graphOrientation,
+        lateral,
+        zoom,
+        pan
+      );
+    }
+    return bezierPath(out.x, out.y, inp.x, inp.y, reversed, graphOrientation, lateral);
   };
 
   const updateDraggedEdges = useCallback(
@@ -402,7 +425,15 @@ export default function CanvasBoard({
         const to = nodesRef.current.find((n) => n.id === edge.toNode);
         if (!from || !to) return;
         let out, inp;
-        if (edge.fromType === 'output') {
+        if (edgeAwareLayout) {
+          if (edge.fromType === 'output') {
+            out = socketPoint(from, 'output', overrideMap);
+            inp = socketPoint(to, 'input', overrideMap, edge.inputSlot || null);
+          } else {
+            out = socketPoint(to, 'output', overrideMap);
+            inp = socketPoint(from, 'input', overrideMap, edge.inputSlot || null);
+          }
+        } else if (edge.fromType === 'output') {
           out = socketScreen(from, 'output', overrideMap);
           inp = socketScreen(to, 'input', overrideMap, edge.inputSlot || null);
         } else {
@@ -410,7 +441,7 @@ export default function CanvasBoard({
           inp = socketScreen(from, 'input', overrideMap, edge.inputSlot || null);
         }
         const lateral = edgeAwareLayout ? edgeDisplay.offsets.get(edge.id) || 0 : 0;
-        const d = bezierPath(out.x, out.y, inp.x, inp.y, false, graphOrientation, lateral);
+        const d = edgePath(out, inp, false, lateral);
         boardRef.current
           ?.querySelectorAll(`[data-edge-id="${edge.id}"]`)
           .forEach((path) => path.setAttribute('d', d));
@@ -1318,7 +1349,15 @@ export default function CanvasBoard({
           const to = nodes.find((n) => n.id === edge.toNode);
           if (!from || !to) return null;
           let out, inp;
-          if (edge.fromType === 'output') {
+          if (edgeAwareLayout) {
+            if (edge.fromType === 'output') {
+              out = socketPoint(from, 'output');
+              inp = socketPoint(to, 'input', null, edge.inputSlot || null);
+            } else {
+              out = socketPoint(to, 'output');
+              inp = socketPoint(from, 'input', null, edge.inputSlot || null);
+            }
+          } else if (edge.fromType === 'output') {
             out = socketScreen(from, 'output');
             inp = socketScreen(to, 'input', null, edge.inputSlot || null);
           } else {
@@ -1326,7 +1365,7 @@ export default function CanvasBoard({
             inp = socketScreen(from, 'input', null, edge.inputSlot || null);
           }
           const lateral = edgeAwareLayout ? edgeDisplay.offsets.get(edge.id) || 0 : 0;
-          const d = bezierPath(out.x, out.y, inp.x, inp.y, false, graphOrientation, lateral);
+          const d = edgePath(out, inp, false, lateral);
           return (
             <g key={edge.id}>
               <path data-edge-id={edge.id} d={d} fill="none" stroke="var(--nm-edge)" strokeWidth={2.5} strokeLinecap="round" />
@@ -1350,6 +1389,22 @@ export default function CanvasBoard({
           if (!source) return null;
           const fn = nodes.find((n) => n.id === source.fromNode);
           if (!fn) return null;
+          if (edgeAwareLayout) {
+            const from = socketPoint(fn, source.fromType, null, source.inputSlot || null);
+            const toX = live ? (live.toX - pan.x) / zoom : held.toWorldX;
+            const toY = live ? (live.toY - pan.y) / zoom : held.toWorldY;
+            if (!Number.isFinite(toX) || !Number.isFinite(toY)) return null;
+            return (
+              <path
+                d={edgePath(from, { x: toX, y: toY }, source.fromType === 'input')}
+                fill="none"
+                stroke="#818cf8"
+                strokeWidth={2.5}
+                strokeDasharray="6 6"
+                strokeLinecap="round"
+              />
+            );
+          }
           const from = socketScreen(fn, source.fromType, null, source.inputSlot || null);
           const toX = live ? live.toX : held.toWorldX * zoom + pan.x;
           const toY = live ? live.toY : held.toWorldY * zoom + pan.y;

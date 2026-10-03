@@ -285,7 +285,8 @@ export function socketWorld(
   return { x: node.x, y: node.y + TOP_BAR_HEIGHT / 2 };
 }
 
-export function bezierPath(
+/** Cubic control points for a socket-to-socket edge (same coordinate space as inputs). */
+export function bezierControls(
   x1,
   y1,
   x2,
@@ -307,9 +308,27 @@ export function bezierPath(
     const against = (!reversed && y2 < y1) || (reversed && y2 > y1);
     if (against) {
       const dx = Math.max(50, dist * 0.35 + 40) + Math.abs(fan);
-      return `M ${x1} ${y1} C ${x1 + dx + fan} ${y1 + startDir * dy}, ${x2 + dx + fan} ${y2 + endDir * dy}, ${x2} ${y2}`;
+      return {
+        x1,
+        y1,
+        cx1: x1 + dx + fan,
+        cy1: y1 + startDir * dy,
+        cx2: x2 + dx + fan,
+        cy2: y2 + endDir * dy,
+        x2,
+        y2,
+      };
     }
-    return `M ${x1} ${y1} C ${x1 + fan} ${y1 + startDir * dy}, ${x2 + fan} ${y2 + endDir * dy}, ${x2} ${y2}`;
+    return {
+      x1,
+      y1,
+      cx1: x1 + fan,
+      cy1: y1 + startDir * dy,
+      cx2: x2 + fan,
+      cy2: y2 + endDir * dy,
+      x2,
+      y2,
+    };
   }
 
   const dist = Math.abs(x2 - x1);
@@ -320,9 +339,76 @@ export function bezierPath(
   if (against) {
     // Keep socket exit/entry sides, but arc so the curve doesn’t look handle-reversed.
     const dy = Math.max(50, dist * 0.35 + 40) + Math.abs(fan);
-    return `M ${x1} ${y1} C ${x1 + startDir * dx} ${y1 + dy + fan}, ${x2 + endDir * dx} ${y2 + dy + fan}, ${x2} ${y2}`;
+    return {
+      x1,
+      y1,
+      cx1: x1 + startDir * dx,
+      cy1: y1 + dy + fan,
+      cx2: x2 + endDir * dx,
+      cy2: y2 + dy + fan,
+      x2,
+      y2,
+    };
   }
-  return `M ${x1} ${y1} C ${x1 + startDir * dx} ${y1 + fan}, ${x2 + endDir * dx} ${y2 + fan}, ${x2} ${y2}`;
+  return {
+    x1,
+    y1,
+    cx1: x1 + startDir * dx,
+    cy1: y1 + fan,
+    cx2: x2 + endDir * dx,
+    cy2: y2 + fan,
+    x2,
+    y2,
+  };
+}
+
+function formatBezierPath({ x1, y1, cx1, cy1, cx2, cy2, x2, y2 }) {
+  return `M ${x1} ${y1} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${x2} ${y2}`;
+}
+
+export function bezierPath(
+  x1,
+  y1,
+  x2,
+  y2,
+  reversed = false,
+  orientation = GRAPH_ORIENTATIONS.HORIZONTAL,
+  lateral = 0
+) {
+  return formatBezierPath(bezierControls(x1, y1, x2, y2, reversed, orientation, lateral));
+}
+
+/**
+ * Build the cubic in world space, then map to screen — curve shape is zoom-invariant.
+ * Used by the /dev edge-aware canvas; main app keeps screen-space beziers.
+ */
+export function bezierPathZoomStable(
+  worldX1,
+  worldY1,
+  worldX2,
+  worldY2,
+  reversed = false,
+  orientation = GRAPH_ORIENTATIONS.HORIZONTAL,
+  lateral = 0,
+  zoom = 1,
+  pan = { x: 0, y: 0 }
+) {
+  const c = bezierControls(worldX1, worldY1, worldX2, worldY2, reversed, orientation, lateral);
+  const z = zoom || 1;
+  const px = pan?.x || 0;
+  const py = pan?.y || 0;
+  const mapX = (x) => x * z + px;
+  const mapY = (y) => y * z + py;
+  return formatBezierPath({
+    x1: mapX(c.x1),
+    y1: mapY(c.y1),
+    cx1: mapX(c.cx1),
+    cy1: mapY(c.cy1),
+    cx2: mapX(c.cx2),
+    cy2: mapY(c.cy2),
+    x2: mapX(c.x2),
+    y2: mapY(c.y2),
+  });
 }
 
 export function connectedNodePositionAtSocket(

@@ -303,23 +303,26 @@ export function bezierPath(
   if (o === GRAPH_ORIENTATIONS.VERTICAL) {
     const dist = Math.abs(y2 - y1);
     const dy = Math.max(60, dist * 0.5);
+    const fan = lat * (dist < 160 ? 1.55 : 1.2);
     const against = (!reversed && y2 < y1) || (reversed && y2 > y1);
     if (against) {
-      const dx = Math.max(50, dist * 0.35 + 40) + Math.abs(lat);
-      return `M ${x1} ${y1} C ${x1 + dx + lat} ${y1 + startDir * dy}, ${x2 + dx + lat} ${y2 + endDir * dy}, ${x2} ${y2}`;
+      const dx = Math.max(50, dist * 0.35 + 40) + Math.abs(fan);
+      return `M ${x1} ${y1} C ${x1 + dx + fan} ${y1 + startDir * dy}, ${x2 + dx + fan} ${y2 + endDir * dy}, ${x2} ${y2}`;
     }
-    return `M ${x1} ${y1} C ${x1 + lat} ${y1 + startDir * dy}, ${x2 + lat} ${y2 + endDir * dy}, ${x2} ${y2}`;
+    return `M ${x1} ${y1} C ${x1 + fan} ${y1 + startDir * dy}, ${x2 + fan} ${y2 + endDir * dy}, ${x2} ${y2}`;
   }
 
   const dist = Math.abs(x2 - x1);
   const dx = Math.max(60, dist * 0.5);
+  // Amplify lateral fan near short spans so multi-input hubs stay readable.
+  const fan = lat * (dist < 160 ? 1.55 : 1.2);
   const against = (!reversed && x2 < x1) || (reversed && x2 > x1);
   if (against) {
     // Keep socket exit/entry sides, but arc so the curve doesn’t look handle-reversed.
-    const dy = Math.max(50, dist * 0.35 + 40) + Math.abs(lat);
-    return `M ${x1} ${y1} C ${x1 + startDir * dx} ${y1 + dy + lat}, ${x2 + endDir * dx} ${y2 + dy + lat}, ${x2} ${y2}`;
+    const dy = Math.max(50, dist * 0.35 + 40) + Math.abs(fan);
+    return `M ${x1} ${y1} C ${x1 + startDir * dx} ${y1 + dy + fan}, ${x2 + endDir * dx} ${y2 + dy + fan}, ${x2} ${y2}`;
   }
-  return `M ${x1} ${y1} C ${x1 + startDir * dx} ${y1 + lat}, ${x2 + endDir * dx} ${y2 + lat}, ${x2} ${y2}`;
+  return `M ${x1} ${y1} C ${x1 + startDir * dx} ${y1 + fan}, ${x2 + endDir * dx} ${y2 + fan}, ${x2} ${y2}`;
 }
 
 export function connectedNodePositionAtSocket(

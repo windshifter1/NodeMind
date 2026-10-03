@@ -238,48 +238,161 @@ export function reduceEdgeClutter(model, analysis, positions, orientation, setti
   return positions;
 }
 
-/** Lateral offsets so parallel edges from the same socket fan apart when drawn. */
-export function planEdgeDisplayOffsets(edges, orientation = 'horizontal') {
-  const groups = new Map();
-  (edges || []).forEach((edge) => {
-    const key = `${edge.fromNode}|${edge.fromType}|${edge.toNode}|${edge.toType}|${edge.inputSlot || ''}`;
-    if (!groups.has(key)) groups.set(key, []);
-    groups.get(key).push(edge.id);
-  });
+/**
+ * When several nodes feed the same target (or leave the same source), pack them
+ * on the cross-axis with a minimum gap so their connection chords do not sit on
+ * top of each other.
+ */
+export function spreadSharedHubNeighbors(model, analysis, positions, orientation, settings, fixedIds = new Set()) {
+  const minGap = Math.max(64, (settings.verticalSpacing || 48) * 1.35);
+  const vertical = orient(orientation) === 'vertical';
 
-  // Also group by shared source socket (fan outbound) and shared target socket.
-  const bySource = new Map();
-  const byTarget = new Map();
-  (edges || []).forEach((edge) => {
-    const sKey = `${edge.fromType === 'output' ? edge.fromNode : edge.toNode}:out`;
-    const tKey = `${edge.fromType === 'output' ? edge.toNode : edge.fromNode}:in:${edge.inputSlot || ''}`;
-    if (!bySource.has(sKey)) bySource.set(sKey, []);
-    if (!byTarget.has(tKey)) byTarget.set(tKey, []);
-    bySource.get(sKey).push(edge.id);
-    byTarget.get(tKey).push(edge.id);
-  });
+  const packGroup = (hubId, neighborIds) => {
+    const unique = [...new Set(neighborIds)].filter((id) => positions.has(id));
+    if (unique.length < 2) return;
 
-  const offsets = new Map();
-  const applyFan = (ids) => {
-    if (ids.length < 2) return;
-    const mid = (ids.length - 1) / 2;
-    ids.forEach((id, index) => {
-      const prior = offsets.get(id) || 0;
-      const fan = (index - mid) * 14;
-      offsets.set(id, prior + fan);
+    const hub = positions.get(hubId);
+    const hubSize = model.sizes.get(hubId);
+    if (!hub || !hubSize) return;
+
+    const hubCross = vertical
+      ? hub.x + hubSize.width / 2
+      : hub.y + Math.min(22, hubSize.height / 2);
+
+    const ordered = unique.sort((a, b) => {
+      const pa = positions.get(a);
+      const pb = positions.get(b);
+      const ca = vertical ? pa.x : pa.y;
+      const cb = vertical ? pb.x : pb.y;
+      return ca - cb || String(a).localeCompare(String(b), undefined, { numeric: true });
+    });
+
+    // Ideal centres spaced by minGap, centred on the hub socket.
+    const total = (ordered.length - 1) * minGap;
+    let cursor = hubCross - total / 2;
+
+    ordered.forEach((id) => {
+      if (fixedIds.has(id)) {
+        const pos = positions.get(id);
+        const size = model.sizes.get(id);
+        cursor = (vertical ? pos.x + size.width / 2 : pos.y + Math.min(22, size.height / 2)) + minGap;
+        return;
+      }
+      const pos = positions.get(id);
+      const size = model.sizes.get(id);
+      if (!pos || !size) return;
+      if (vertical) {
+        positions.set(id, { x: cursor - size.width / 2, y: pos.y });
+      } else {
+        positions.set(id, { x: pos.x, y: cursor - Math.min(22, size.height / 2) });
+      }
+      cursor += minGap;
     });
   };
 
-  bySource.forEach(applyFan);
-  byTarget.forEach(applyFan);
+  // Only spread sources into multi-input hubs. Spreading outbound targets as
+  // well fights those hubs (a shared sink gets yanked by each parent).
+  const incoming = new Map();
+  analysis.links.forEach((link) => {
+    if (!incoming.has(link.target)) incoming.set(link.target, []);
+    incoming.get(link.target).push(link.source);
+  });
 
-  // Exact duplicate corridors get a stronger push.
-  groups.forEach((ids) => {
-    if (ids.length < 2) return;
-    const mid = (ids.length - 1) / 2;
-    ids.forEach((id, index) => {
-      const prior = offsets.get(id) || 0;
-      offsets.set(id, prior + (index - mid) * 8);
+  incoming.forEach((sources, target) => {
+    if (new Set(sources).size >= 2) packGroup(target, sources);
+  });
+
+  return positions;
+}
+
+function edgePeerKey(edge) {
+  const fromIsOut = edge.fromType === 'output';
+  const source = fromIsOut ? edge.fromNode : edge.toNode;
+  const target = fromIsOut ? edge.toNode : edge.fromNode;
+  const slot = edge.inputSlot || '';
+  return {
+    source,
+    target,
+    sourceKey: `${source}:out`,
+    targetKey: `${target}:in:${slot}`,
+    corridorKey: `${source}->${target}:${slot}`,
+  };
+}
+
+function crossOfNode(node, orientation) {
+  if (!node) return 0;
+  return orient(orientation) === 'vertical' ? node.x : node.y;
+}
+
+/**
+ * Lateral offsets so edges that share a socket fan apart when drawn.
+ * Target-socket fans are assigned first (fixes multi-input hubs like D1);
+ * source fans only add separation when edges are still stacked.
+ * Never sum opposing fans that cancel to zero.
+ */
+export function planEdgeDisplayOffsets(edges, orientation = 'horizontal', nodes = []) {
+  const nodeById = new Map((nodes || []).map((n) => [n.id, n]));
+  const offsets = new Map();
+  (edges || []).forEach((edge) => offsets.set(edge.id, 0));
+
+  const byTarget = new Map();
+  const bySource = new Map();
+  const byCorridor = new Map();
+
+  (edges || []).forEach((edge) => {
+    const keys = edgePeerKey(edge);
+    if (!byTarget.has(keys.targetKey)) byTarget.set(keys.targetKey, []);
+    if (!bySource.has(keys.sourceKey)) bySource.set(keys.sourceKey, []);
+    if (!byCorridor.has(keys.corridorKey)) byCorridor.set(keys.corridorKey, []);
+    byTarget.get(keys.targetKey).push(edge);
+    bySource.get(keys.sourceKey).push(edge);
+    byCorridor.get(keys.corridorKey).push(edge);
+  });
+
+  const sortEdges = (list, peerNodeId) =>
+    [...list].sort((a, b) => {
+      const aPeer = peerNodeId(a);
+      const bPeer = peerNodeId(b);
+      const d = crossOfNode(nodeById.get(aPeer), orientation) - crossOfNode(nodeById.get(bPeer), orientation);
+      if (Math.abs(d) > 0.5) return d;
+      return String(a.id).localeCompare(String(b.id), undefined, { numeric: true });
+    });
+
+  const assignAbsoluteFan = (edgeList, spacing, peerNodeId) => {
+    if (edgeList.length < 2) return;
+    const ordered = sortEdges(edgeList, peerNodeId);
+    const mid = (ordered.length - 1) / 2;
+    ordered.forEach((edge, index) => {
+      offsets.set(edge.id, (index - mid) * spacing);
+    });
+  };
+
+  // Edges that already belong to a multi-input hub keep that fan exclusively —
+  // source-side fans used to cancel it (one inbound ended at lateral 0).
+  const multiInbound = new Set();
+  byTarget.forEach((list) => {
+    if (list.length >= 2) list.forEach((edge) => multiInbound.add(edge.id));
+  });
+
+  // 1) Shared input sockets — the D1 case. Strong absolute fan.
+  byTarget.forEach((list) => {
+    assignAbsoluteFan(list, 32, (edge) => edgePeerKey(edge).source);
+  });
+
+  // 2) Shared output sockets — fan only edges not already claimed by a hub input.
+  bySource.forEach((list) => {
+    const free = list.filter((edge) => !multiInbound.has(edge.id));
+    if (free.length < 2) return;
+    assignAbsoluteFan(free, 22, (edge) => edgePeerKey(edge).target);
+  });
+
+  // 3) Exact duplicate corridors (same source→target) get an extra push.
+  byCorridor.forEach((list) => {
+    if (list.length < 2) return;
+    const mid = (list.length - 1) / 2;
+    list.forEach((edge, index) => {
+      const base = offsets.get(edge.id) || 0;
+      offsets.set(edge.id, base + (index - mid) * 12);
     });
   });
 

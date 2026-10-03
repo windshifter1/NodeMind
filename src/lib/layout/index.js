@@ -1,5 +1,5 @@
 import { analyseGraph } from './analysis.js';
-import { reduceEdgeClutter } from './edgeAware.js';
+import { reduceEdgeClutter, spreadSharedHubNeighbors } from './edgeAware.js';
 import { boundsForPositions, buildGraphModel } from './graphModel.js';
 import { optimiseComponent, resolveCollisions } from './optimise.js';
 import { planRoutes } from './routing.js';
@@ -175,7 +175,9 @@ export function autoOrganiseGraph(nodes, edges, orientation, settings, centre, g
 
   if (edgeAware) {
     analyses.forEach((analysis) => {
+      spreadSharedHubNeighbors(model, analysis, positions, orientation, layoutSettings, fixedIds);
       reduceEdgeClutter(model, analysis, positions, orientation, layoutSettings, fixedIds);
+      spreadSharedHubNeighbors(model, analysis, positions, orientation, layoutSettings, fixedIds);
     });
     resolveCollisions(model, allIds, positions, layoutSettings, fixedIds);
   }

@@ -79,7 +79,7 @@ export default function CanvasBoard({
 }) {
   const graphOrientation = normalizeOrientation(orientation);
   const edgeDisplay = edgeAwareLayout
-    ? planEdgeDisplayOffsets(edges, graphOrientation)
+    ? planEdgeDisplayOffsets(edges, graphOrientation, nodes)
     : { offsets: new Map() };
   const [layoutEpoch, setLayoutEpoch] = useState(0);
   const [isDesktop, setIsDesktop] = useState(() => isDesktopPlatform());

@@ -21,3 +21,8 @@ export function matchDevPath(path = getAppPath()) {
   const m = /^\/dev([12])$/.exec(path);
   return m ? Number(m[1]) : null;
 }
+
+/** `/dev` — canvas with edge-aware auto-organise experiment. */
+export function isDevOrganisePath(path = getAppPath()) {
+  return path === '/dev';
+}

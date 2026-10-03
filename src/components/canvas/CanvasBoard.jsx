@@ -16,6 +16,7 @@ import {
   rectsIntersect,
   socketWorld,
 } from '@/lib/canvasConstants';
+import { planEdgeDisplayOffsets } from '@/lib/layout/edgeAware';
 import { emitTutorial } from '@/lib/tutorialEvents';
 import { graphPlotSeriesBySlot } from '@/lib/graphSlots';
 import useSpacePan from '@/hooks/useSpacePan';
@@ -74,8 +75,12 @@ export default function CanvasBoard({
   drawMode = false,
   backgroundArt = null,
   onBackgroundArtChange,
+  edgeAwareLayout = false,
 }) {
   const graphOrientation = normalizeOrientation(orientation);
+  const edgeDisplay = edgeAwareLayout
+    ? planEdgeDisplayOffsets(edges, graphOrientation)
+    : { offsets: new Map() };
   const [layoutEpoch, setLayoutEpoch] = useState(0);
   const [isDesktop, setIsDesktop] = useState(() => isDesktopPlatform());
   const boardRef = useRef(null);
@@ -404,13 +409,14 @@ export default function CanvasBoard({
           out = socketScreen(to, 'output', overrideMap);
           inp = socketScreen(from, 'input', overrideMap, edge.inputSlot || null);
         }
-        const d = bezierPath(out.x, out.y, inp.x, inp.y, false, graphOrientation);
+        const lateral = edgeAwareLayout ? edgeDisplay.offsets.get(edge.id) || 0 : 0;
+        const d = bezierPath(out.x, out.y, inp.x, inp.y, false, graphOrientation, lateral);
         boardRef.current
           ?.querySelectorAll(`[data-edge-id="${edge.id}"]`)
           .forEach((path) => path.setAttribute('d', d));
       });
     },
-    [graphOrientation, pan.x, pan.y, zoom]
+    [edgeAwareLayout, edgeDisplay.offsets, graphOrientation, pan.x, pan.y, zoom]
   );
 
   const scheduleDragVisual = useCallback(
@@ -1319,7 +1325,8 @@ export default function CanvasBoard({
             out = socketScreen(to, 'output');
             inp = socketScreen(from, 'input', null, edge.inputSlot || null);
           }
-          const d = bezierPath(out.x, out.y, inp.x, inp.y, false, graphOrientation);
+          const lateral = edgeAwareLayout ? edgeDisplay.offsets.get(edge.id) || 0 : 0;
+          const d = bezierPath(out.x, out.y, inp.x, inp.y, false, graphOrientation, lateral);
           return (
             <g key={edge.id}>
               <path data-edge-id={edge.id} d={d} fill="none" stroke="var(--nm-edge)" strokeWidth={2.5} strokeLinecap="round" />

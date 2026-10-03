@@ -71,7 +71,7 @@ function clampZoom(z) {
   return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z));
 }
 
-export default function Canvas() {
+export default function Canvas({ edgeAwareLayout = false } = {}) {
   const { state, dispatch, active } = useWorkspaces();
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -618,8 +618,16 @@ export default function Canvas() {
     x: (window.innerWidth / 2 - pan.x) / zoom,
     y: (window.innerHeight / 2 - pan.y) / zoom,
   });
+  const organiseOptions = edgeAwareLayout ? { edgeAwareLayout: true } : {};
   const organiseWorkspaceNodes = (workspace, orientation = workspace.orientation, settings = workspace.layoutSettings) =>
-    autoOrganiseNodes(workspace.nodes || [], workspace.edges || [], orientation, settings, viewportCenterWorld());
+    autoOrganiseNodes(
+      workspace.nodes || [],
+      workspace.edges || [],
+      orientation,
+      settings,
+      viewportCenterWorld(),
+      organiseOptions
+    );
   const updateWorkspaceMeta = (id, patch) => {
     const shouldOrganise =
       patch.orientation &&
@@ -660,7 +668,8 @@ export default function Canvas() {
           selectedNodeIds,
           active.orientation,
           active.layoutSettings,
-          centre
+          centre,
+          organiseOptions
         ),
       },
     });
@@ -816,6 +825,7 @@ export default function Canvas() {
         pan={pan}
         setPan={setPan}
         orientation={active.orientation}
+        edgeAwareLayout={edgeAwareLayout}
         heldConnection={
           nodePicker?.source === 'connected'
             ? {

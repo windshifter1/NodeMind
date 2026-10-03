@@ -59,6 +59,8 @@ In the app terminal: `version`, `version help`.
 
 Live URL: `https://windshifter1.github.io/NodeMind/`
 
+Edge-aware auto-organise experiment: `https://windshifter1.github.io/NodeMind/dev`
+
 After deploy, open the site and check the browser Network tab: requests should go to `/NodeMind/assets/index-*.js`, and the manifest should load from `/NodeMind/manifest.json`.
 
 ### Custom domain or different repo name

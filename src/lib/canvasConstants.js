@@ -285,21 +285,30 @@ export function socketWorld(
   return { x: node.x, y: node.y + TOP_BAR_HEIGHT / 2 };
 }
 
-export function bezierPath(x1, y1, x2, y2, reversed = false, orientation = GRAPH_ORIENTATIONS.HORIZONTAL) {
+export function bezierPath(
+  x1,
+  y1,
+  x2,
+  y2,
+  reversed = false,
+  orientation = GRAPH_ORIENTATIONS.HORIZONTAL,
+  lateral = 0
+) {
   const o = normalizeOrientation(orientation);
   // `reversed` means the path starts at an input socket (left/top) rather than an output.
   const startDir = reversed ? -1 : 1;
   const endDir = reversed ? 1 : -1;
+  const lat = Number(lateral) || 0;
 
   if (o === GRAPH_ORIENTATIONS.VERTICAL) {
     const dist = Math.abs(y2 - y1);
     const dy = Math.max(60, dist * 0.5);
     const against = (!reversed && y2 < y1) || (reversed && y2 > y1);
     if (against) {
-      const dx = Math.max(50, dist * 0.35 + 40);
-      return `M ${x1} ${y1} C ${x1 + dx} ${y1 + startDir * dy}, ${x2 + dx} ${y2 + endDir * dy}, ${x2} ${y2}`;
+      const dx = Math.max(50, dist * 0.35 + 40) + Math.abs(lat);
+      return `M ${x1} ${y1} C ${x1 + dx + lat} ${y1 + startDir * dy}, ${x2 + dx + lat} ${y2 + endDir * dy}, ${x2} ${y2}`;
     }
-    return `M ${x1} ${y1} C ${x1} ${y1 + startDir * dy}, ${x2} ${y2 + endDir * dy}, ${x2} ${y2}`;
+    return `M ${x1} ${y1} C ${x1 + lat} ${y1 + startDir * dy}, ${x2 + lat} ${y2 + endDir * dy}, ${x2} ${y2}`;
   }
 
   const dist = Math.abs(x2 - x1);
@@ -307,10 +316,10 @@ export function bezierPath(x1, y1, x2, y2, reversed = false, orientation = GRAPH
   const against = (!reversed && x2 < x1) || (reversed && x2 > x1);
   if (against) {
     // Keep socket exit/entry sides, but arc so the curve doesn’t look handle-reversed.
-    const dy = Math.max(50, dist * 0.35 + 40);
-    return `M ${x1} ${y1} C ${x1 + startDir * dx} ${y1 + dy}, ${x2 + endDir * dx} ${y2 + dy}, ${x2} ${y2}`;
+    const dy = Math.max(50, dist * 0.35 + 40) + Math.abs(lat);
+    return `M ${x1} ${y1} C ${x1 + startDir * dx} ${y1 + dy + lat}, ${x2 + endDir * dx} ${y2 + dy + lat}, ${x2} ${y2}`;
   }
-  return `M ${x1} ${y1} C ${x1 + startDir * dx} ${y1}, ${x2 + endDir * dx} ${y2}, ${x2} ${y2}`;
+  return `M ${x1} ${y1} C ${x1 + startDir * dx} ${y1 + lat}, ${x2 + endDir * dx} ${y2 + lat}, ${x2} ${y2}`;
 }
 
 export function connectedNodePositionAtSocket(
@@ -586,6 +595,7 @@ export function autoOrganiseNodes(
     fixedIds,
     preferredRootIds: options.preferredRootIds || [],
     fixComponentRoots: !!options.fixComponentRoots,
+    edgeAwareLayout: !!options.edgeAwareLayout,
   }).nodes;
 }
 
@@ -604,7 +614,8 @@ export function autoOrganiseSelectedNodes(
   selectedIds,
   orientation = GRAPH_ORIENTATIONS.HORIZONTAL,
   layoutSettings = {},
-  centre = { x: 0, y: 0 }
+  centre = { x: 0, y: 0 },
+  options = {}
 ) {
   const idSet = new Set(selectedIds);
   const selected = allNodes.filter((n) => idSet.has(n.id));
@@ -614,6 +625,7 @@ export function autoOrganiseSelectedNodes(
   const arranged = autoOrganiseNodes(selected, internalEdges, orientation, layoutSettings, centre, {
     fixComponentRoots: true,
     preferredRootIds: selectedIds,
+    edgeAwareLayout: !!options.edgeAwareLayout,
   });
   const posMap = new Map(arranged.map((n) => [n.id, { x: n.x, y: n.y }]));
   return allNodes.map((n) => (posMap.has(n.id) ? { ...n, ...posMap.get(n.id) } : n));

@@ -45,7 +45,7 @@ function layersFromAssignment(model, ids, layerById) {
   return layers.filter(Boolean);
 }
 
-function reduceCrossings(model, layers, analysis) {
+function reduceCrossings(model, layers, analysis, sweeps = 6) {
   const incoming = new Map(analysis.ids.map((id) => [id, []]));
   const outgoing = new Map(analysis.ids.map((id) => [id, []]));
   analysis.links.forEach(({ source, target }) => {
@@ -76,17 +76,17 @@ function reduceCrossings(model, layers, analysis) {
     });
   };
 
-  for (let i = 0; i < 6; i += 1) {
+  for (let i = 0; i < sweeps; i += 1) {
     sweep(true);
     sweep(false);
   }
 }
 
-export function layoutLayered(model, analysis, orientation, settings) {
+export function layoutLayered(model, analysis, orientation, settings, options = {}) {
   const vertical = orientation === 'vertical';
   const layerById = assignLayers(model, analysis);
   const layers = layersFromAssignment(model, analysis.ids, layerById);
-  reduceCrossings(model, layers, analysis);
+  reduceCrossings(model, layers, analysis, options.edgeAwareLayout ? 12 : 6);
 
   const positions = new Map();
   let primary = 0;

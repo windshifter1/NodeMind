@@ -1,4 +1,5 @@
 import { analyseGraph } from './analysis.js';
+import { reduceEdgeClutter } from './edgeAware.js';
 import { boundsForPositions, buildGraphModel } from './graphModel.js';
 import { optimiseComponent, resolveCollisions } from './optimise.js';
 import { planRoutes } from './routing.js';
@@ -126,27 +127,37 @@ export function autoOrganiseGraph(nodes, edges, orientation, settings, centre, g
 
   const model = buildGraphModel(nodes, edges, orientation, geometry.nodeSizeForLayout);
   const analyses = analyseGraph(model);
+  const edgeAware = !!geometry.edgeAwareLayout;
   const layoutOptions = {
     preferredRootIds: geometry.preferredRootIds || [],
     fixedIds: geometry.fixedIds || [],
+    edgeAwareLayout: edgeAware,
   };
   const fixedIds = collectFixedIds(model, nodes, analyses, geometry);
+  const layoutSettings = edgeAware
+    ? {
+        ...settings,
+        // Extra lane room so connection curves have space to separate.
+        horizontalSpacing: settings.horizontalSpacing * 1.15,
+        verticalSpacing: settings.verticalSpacing * 1.25,
+      }
+    : settings;
 
   const componentLayouts = analyses.map((analysis) => {
-    const initial = layoutByStrategy(model, analysis, orientation, settings, layoutOptions);
+    const initial = layoutByStrategy(model, analysis, orientation, layoutSettings, layoutOptions);
     return {
       analysis,
-      layout: optimiseComponent(model, analysis, initial, orientation, settings, fixedIds),
+      layout: optimiseComponent(model, analysis, initial, orientation, layoutSettings, fixedIds),
     };
   });
 
-  let positions = packComponents(model, componentLayouts, orientation, settings, fixedIds);
+  let positions = packComponents(model, componentLayouts, orientation, layoutSettings, fixedIds);
   const allIds = nodes.map((node) => node.id);
 
   const hasFixed = [...fixedIds].some((id) => positions.has(id));
   if (hasFixed) {
     alignToFixed(model, allIds, positions, fixedIds);
-    resolveCollisions(model, allIds, positions, settings, fixedIds);
+    resolveCollisions(model, allIds, positions, layoutSettings, fixedIds);
   } else {
     // Keep the cluster near where it already was instead of jumping to viewport centre.
     alignToPriorCentroid(model, allIds, positions);
@@ -160,6 +171,13 @@ export function autoOrganiseGraph(nodes, edges, orientation, settings, centre, g
         if (pos) positions.set(id, { x: pos.x + dx, y: pos.y + dy });
       });
     }
+  }
+
+  if (edgeAware) {
+    analyses.forEach((analysis) => {
+      reduceEdgeClutter(model, analysis, positions, orientation, layoutSettings, fixedIds);
+    });
+    resolveCollisions(model, allIds, positions, layoutSettings, fixedIds);
   }
 
   const arranged = nodes.map((node) => ({ ...node, ...(positions.get(node.id) || {}) }));

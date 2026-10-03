@@ -15,6 +15,10 @@ import {
   Wrench,
   Menu,
   X,
+  Eraser,
+  MousePointer2,
+  ImagePlus,
+  Hand,
 } from 'lucide-react';
 import BinIcon from '@/components/canvas/BinIcon';
 import { applyDocumentUiStyle, readStoredUiStyle } from '@/lib/uiStyle';
@@ -308,6 +312,7 @@ function FabMockup() {
   const [activeWs, setActiveWs] = useState('a');
   const [drawOn, setDrawOn] = useState(false);
   const [selectOn, setSelectOn] = useState(false);
+  const [drawTool, setDrawTool] = useState('pen');
   const [sheetOpen, setSheetOpen] = useState(false);
   const [hint, setHint] = useState('FAB nav — Add stays under the thumb');
 
@@ -356,28 +361,69 @@ function FabMockup() {
         </ChromeButton>
       </div>
 
-      <div className="nm-mdev__rail nm-mdev__chrome" aria-label="Workspaces">
-        {WORKSPACES.map((ws) => (
-          <button
-            key={ws.id}
-            type="button"
-            title={`Workspace ${ws.label}`}
-            className={`nm-mdev__ws-tab ${activeWs === ws.id ? 'nm-mdev__ws-tab--on' : ''}`}
-            style={{ '--mk-tab': ws.color }}
-            onClick={() => {
-              setActiveWs(ws.id);
-              flash(`Workspace ${ws.label}`);
-            }}
+      {drawOn ? (
+        <div className="nm-mdev__draw-rail nm-mdev__chrome" aria-label="Draw tools">
+          {[
+            { id: 'pan', icon: Hand, title: 'Pan' },
+            { id: 'pen', icon: Pencil, title: 'Pen' },
+            { id: 'erase', icon: Eraser, title: 'Erase' },
+            { id: 'select', icon: MousePointer2, title: 'Select' },
+            { id: 'image', icon: ImagePlus, title: 'Image' },
+          ].map(({ id, icon: Icon, title }) => (
+            <ChromeButton
+              key={id}
+              title={title}
+              active={drawTool === id}
+              className="!min-h-10 !min-w-10 !p-2"
+              onClick={() => {
+                setDrawTool(id);
+                flash(title);
+              }}
+            >
+              <Icon size={16} />
+            </ChromeButton>
+          ))}
+          <div className="nm-mdev__draw-divider" />
+          <input
+            type="color"
+            defaultValue="#334155"
+            title="Pen colour"
+            className="nm-mdev__draw-color"
+            onChange={() => flash('Colour')}
           />
-        ))}
-        <ChromeButton
-          title="New workspace"
-          className="!min-h-[34px] !min-w-[34px] !p-1.5"
-          onClick={() => flash('New workspace')}
-        >
-          <Plus size={15} />
-        </ChromeButton>
-      </div>
+          <label className="nm-mdev__draw-field" title="Pen width">
+            <span>W</span>
+            <input type="range" min={1} max={24} defaultValue={3} />
+          </label>
+          <label className="nm-mdev__draw-field" title="Glow">
+            <span>Glow</span>
+            <input type="range" min={0} max={100} defaultValue={0} />
+          </label>
+        </div>
+      ) : (
+        <div className="nm-mdev__rail nm-mdev__chrome" aria-label="Workspaces">
+          {WORKSPACES.map((ws) => (
+            <button
+              key={ws.id}
+              type="button"
+              title={`Workspace ${ws.label}`}
+              className={`nm-mdev__ws-tab ${activeWs === ws.id ? 'nm-mdev__ws-tab--on' : ''}`}
+              style={{ '--mk-tab': ws.color }}
+              onClick={() => {
+                setActiveWs(ws.id);
+                flash(`Workspace ${ws.label}`);
+              }}
+            />
+          ))}
+          <ChromeButton
+            title="New workspace"
+            className="!min-h-[34px] !min-w-[34px] !p-1.5"
+            onClick={() => flash('New workspace')}
+          >
+            <Plus size={15} />
+          </ChromeButton>
+        </div>
+      )}
 
       <div className="nm-mdev__quick">
         <ChromeButton

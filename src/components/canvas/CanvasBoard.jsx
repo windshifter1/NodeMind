@@ -20,6 +20,7 @@ import { emitTutorial } from '@/lib/tutorialEvents';
 import { graphPlotSeriesBySlot } from '@/lib/graphSlots';
 import useSpacePan from '@/hooks/useSpacePan';
 import { normalizeBackgroundArt } from '@/lib/backgroundArt';
+import { isDesktopPlatform } from '@/lib/onboarding';
 
 function clampZoom(z) {
   return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z));
@@ -76,6 +77,7 @@ export default function CanvasBoard({
 }) {
   const graphOrientation = normalizeOrientation(orientation);
   const [layoutEpoch, setLayoutEpoch] = useState(0);
+  const [isDesktop, setIsDesktop] = useState(() => isDesktopPlatform());
   const boardRef = useRef(null);
   const pointers = useRef(new Map());
   const panState = useRef({
@@ -167,7 +169,9 @@ export default function CanvasBoard({
   useEffect(() => {
     const mq = window.matchMedia?.('(hover: hover) and (pointer: fine)');
     const update = () => {
-      desktopSelection.current = mq?.matches || false;
+      const desktop = mq?.matches || false;
+      desktopSelection.current = desktop;
+      setIsDesktop(desktop);
     };
     update();
     if (!mq?.addEventListener) return undefined;
@@ -1449,7 +1453,10 @@ export default function CanvasBoard({
           style={{
             pointerEvents: 'none',
             right: 'calc(1rem + var(--safe-right))',
-            bottom: 'calc(1rem + var(--safe-bottom))',
+            // Mobile FAB nav sits above the bottom edge — keep the bin clear of it.
+            bottom: isDesktop
+              ? 'calc(1rem + var(--safe-bottom))'
+              : 'calc(5.6rem + var(--safe-bottom))',
             borderColor: overBin ? '#ef4444' : 'var(--nm-border)',
             backgroundColor: overBin ? 'rgba(239,68,68,0.2)' : 'var(--nm-bin)',
             color: overBin ? '#ef4444' : 'var(--nm-text-secondary)',

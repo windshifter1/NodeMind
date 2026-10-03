@@ -1,6 +1,6 @@
 const TARGET = 'button, [role="button"]';
 const SKIP =
-  '[data-no-liquid], [data-onboarding="toolbar"], [data-onboarding="workspace-bar"], .nm-workspace-icon-btn';
+  '[data-no-liquid], [data-onboarding="toolbar"], [data-onboarding="workspace-bar"], .nm-workspace-icon-btn, .nm-mobile__chrome, .nm-mobile__ws-tab, .nm-mobile__draw-rail';
 const MAX_PULL = 11;
 
 function clamp(n, min, max) {
@@ -20,7 +20,13 @@ export function attachLiquidButtons(root = document) {
     if (!el || el.disabled || el.getAttribute('aria-disabled') === 'true') return;
     if (el.matches(SKIP) || el.closest('[data-no-liquid]')) return;
     // Don't translate toolbar/workspace controls — pull moves them off the pointer.
-    if (el.closest('[data-onboarding="toolbar"], [data-onboarding="workspace-bar"]')) return;
+    if (
+      el.closest(
+        '[data-onboarding="toolbar"], [data-onboarding="workspace-bar"], .nm-mobile__chrome, .nm-mobile__draw-rail'
+      )
+    ) {
+      return;
+    }
     held = { el, x: e.clientX, y: e.clientY };
     el.classList.add('nm-liquid-held');
     el.classList.remove('nm-liquid-jiggle');

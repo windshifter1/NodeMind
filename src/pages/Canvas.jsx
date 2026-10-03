@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import CanvasBoard from '@/components/canvas/CanvasBoard';
 import Toolbar from '@/components/canvas/Toolbar';
+import MobileChrome from '@/components/canvas/MobileChrome';
 import NodeEditDialog from '@/components/canvas/NodeEditDialog';
 import WorkspaceBar from '@/components/canvas/WorkspaceBar';
 import WorkspaceEditDialog from '@/components/canvas/WorkspaceEditDialog';
@@ -45,7 +46,7 @@ import {
   hasInboundEdge,
 } from '@/lib/graphEdges';
 import { hasInboundEdgeOnSlot } from '@/lib/substituteSlots';
-import { shouldStartOnboarding } from '@/lib/onboarding';
+import { isDesktopPlatform, shouldStartOnboarding } from '@/lib/onboarding';
 import { readMathsCreditSeen, setMathsCreditSeen } from '@/lib/mathsCredit';
 import { emitTutorial } from '@/lib/tutorialEvents';
 import { applyDocumentTheme, persistTheme, readStoredTheme } from '@/lib/theme';
@@ -90,10 +91,21 @@ export default function Canvas() {
   const [spawnNodeIds, setSpawnNodeIds] = useState(() => new Set());
   const [spawnRipples, setSpawnRipples] = useState([]);
   const [drawMode, setDrawMode] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(() => isDesktopPlatform());
   const socketHintTimerRef = useRef(null);
   const hadCreditOpRef = useRef(null);
   const knownNodeIdsRef = useRef(null);
   const spawnTimerRef = useRef([]);
+
+  useEffect(() => {
+    const mq = window.matchMedia?.('(hover: hover) and (pointer: fine)');
+    if (!mq) return undefined;
+    const update = () => setIsDesktop(mq.matches);
+    update();
+    mq.addEventListener?.('change', update);
+    return () => mq.removeEventListener?.('change', update);
+  }, []);
+
   useEffect(() => {
     applyDocumentTheme(nodeTheme);
     persistTheme(nodeTheme);
@@ -825,52 +837,101 @@ export default function Canvas() {
         onPick={pickSelectionOp}
       />
 
-      <Toolbar
-        onExport={handleExport}
-        onImport={handleImport}
-        onClear={handleClear}
-        onTextExport={() => setTextExportOpen(true)}
-        onShareCanvas={() => setShareCanvasOpen(true)}
-        onOpenTerminal={() => setTerminalOpen(true)}
-        onAutoOrganise={autoOrganise}
-        onOrganiseSelected={organiseSelected}
-        selectedCount={selectedNodeIds.length}
-        selectionArmed={selectionArmed}
-        onToggleSelectionArm={() => setSelectionArmed((armed) => !armed)}
-        zoom={zoom}
-        onRecenter={recenterView}
-        onOpenSettings={() => setSettingsOpen(true)}
-        drawMode={drawMode}
-        onToggleDrawMode={() => setDrawMode((v) => !v)}
-        backgroundArt={normalizeBackgroundArt(active.backgroundArt)}
-        onBackgroundArtChange={(patch) =>
-          dispatch({ type: 'UPDATE_BACKGROUND_ART', patch })
-        }
-        onAddNodeCenter={(anchor) => {
-          const clientX = anchor?.clientX ?? window.innerWidth / 2;
-          const clientY = anchor?.clientY ?? 72;
-          const rect = document.querySelector('[data-canvas-board]')?.getBoundingClientRect();
-          const left = rect?.left ?? 0;
-          const top = rect?.top ?? 0;
-          openNodePicker({
-            source: 'toolbar',
-            x: -nodeWidthForTitle('') / 2,
-            y: -TOP_BAR_HEIGHT / 2,
-            worldX: (clientX - left - pan.x) / zoom,
-            worldY: (clientY - top - pan.y) / zoom,
-            clientX,
-            clientY,
-          });
-        }}
-      />
+      {isDesktop ? (
+        <>
+          <Toolbar
+            onExport={handleExport}
+            onImport={handleImport}
+            onClear={handleClear}
+            onTextExport={() => setTextExportOpen(true)}
+            onShareCanvas={() => setShareCanvasOpen(true)}
+            onOpenTerminal={() => setTerminalOpen(true)}
+            onAutoOrganise={autoOrganise}
+            onOrganiseSelected={organiseSelected}
+            selectedCount={selectedNodeIds.length}
+            selectionArmed={selectionArmed}
+            onToggleSelectionArm={() => setSelectionArmed((armed) => !armed)}
+            zoom={zoom}
+            onRecenter={recenterView}
+            onOpenSettings={() => setSettingsOpen(true)}
+            drawMode={drawMode}
+            onToggleDrawMode={() => setDrawMode((v) => !v)}
+            backgroundArt={normalizeBackgroundArt(active.backgroundArt)}
+            onBackgroundArtChange={(patch) =>
+              dispatch({ type: 'UPDATE_BACKGROUND_ART', patch })
+            }
+            onAddNodeCenter={(anchor) => {
+              const clientX = anchor?.clientX ?? window.innerWidth / 2;
+              const clientY = anchor?.clientY ?? 72;
+              const rect = document.querySelector('[data-canvas-board]')?.getBoundingClientRect();
+              const left = rect?.left ?? 0;
+              const top = rect?.top ?? 0;
+              openNodePicker({
+                source: 'toolbar',
+                x: -nodeWidthForTitle('') / 2,
+                y: -TOP_BAR_HEIGHT / 2,
+                worldX: (clientX - left - pan.x) / zoom,
+                worldY: (clientY - top - pan.y) / zoom,
+                clientX,
+                clientY,
+              });
+            }}
+          />
 
-      <WorkspaceBar
-        workspaces={state.workspaces}
-        activeId={state.activeId}
-        onSelect={selectWorkspace}
-        onCreate={() => setCreatingWorkspace(true)}
-        onEdit={() => setEditingWorkspace(true)}
-      />
+          <WorkspaceBar
+            workspaces={state.workspaces}
+            activeId={state.activeId}
+            onSelect={selectWorkspace}
+            onCreate={() => setCreatingWorkspace(true)}
+            onEdit={() => setEditingWorkspace(true)}
+          />
+        </>
+      ) : (
+        <MobileChrome
+          workspaceName={active.name}
+          workspaces={state.workspaces}
+          activeId={state.activeId}
+          onSelectWorkspace={selectWorkspace}
+          onCreateWorkspace={() => setCreatingWorkspace(true)}
+          onEditWorkspace={() => setEditingWorkspace(true)}
+          onExport={handleExport}
+          onImport={handleImport}
+          onClear={handleClear}
+          onTextExport={() => setTextExportOpen(true)}
+          onShareCanvas={() => setShareCanvasOpen(true)}
+          onOpenTerminal={() => setTerminalOpen(true)}
+          onAutoOrganise={autoOrganise}
+          onOrganiseSelected={organiseSelected}
+          selectedCount={selectedNodeIds.length}
+          selectionArmed={selectionArmed}
+          onToggleSelectionArm={() => setSelectionArmed((armed) => !armed)}
+          zoom={zoom}
+          onRecenter={recenterView}
+          onOpenSettings={() => setSettingsOpen(true)}
+          drawMode={drawMode}
+          onToggleDrawMode={() => setDrawMode((v) => !v)}
+          backgroundArt={normalizeBackgroundArt(active.backgroundArt)}
+          onBackgroundArtChange={(patch) =>
+            dispatch({ type: 'UPDATE_BACKGROUND_ART', patch })
+          }
+          onAddNodeCenter={(anchor) => {
+            const clientX = anchor?.clientX ?? window.innerWidth / 2;
+            const clientY = anchor?.clientY ?? 72;
+            const rect = document.querySelector('[data-canvas-board]')?.getBoundingClientRect();
+            const left = rect?.left ?? 0;
+            const top = rect?.top ?? 0;
+            openNodePicker({
+              source: 'toolbar',
+              x: -nodeWidthForTitle('') / 2,
+              y: -TOP_BAR_HEIGHT / 2,
+              worldX: (clientX - left - pan.x) / zoom,
+              worldY: (clientY - top - pan.y) / zoom,
+              clientX,
+              clientY,
+            });
+          }}
+        />
+      )}
 
       <NodeEditDialog
         node={editingNode}

@@ -1,0 +1,487 @@
+import React, { useRef, useState } from 'react';
+import {
+  Plus,
+  Pencil,
+  Home,
+  SquareDashed,
+  MoreHorizontal,
+  Settings,
+  Terminal,
+  Share2,
+  Copy,
+  Upload,
+  Download,
+  Trash2,
+  Wrench,
+  Menu,
+  X,
+  Eraser,
+  MousePointer2,
+  ImagePlus,
+  Hand,
+} from 'lucide-react';
+import { WORKSPACE_ICONS } from '@/lib/workspaceIcons';
+import { emitTutorial } from '@/lib/tutorialEvents';
+import { normalizeBackgroundArt } from '@/lib/backgroundArt';
+import { addBackgroundImage } from './BackgroundDrawLayer';
+import './mobileChrome.css';
+
+function ChromeButton({
+  children,
+  title,
+  active = false,
+  primary = false,
+  className = '',
+  onClick,
+  disabled = false,
+  'data-onboarding': dataOnboarding,
+  'data-selection-arm-button': selectionArmButton,
+}) {
+  return (
+    <button
+      type="button"
+      title={title}
+      aria-label={title}
+      disabled={disabled}
+      onClick={disabled ? undefined : onClick}
+      data-onboarding={dataOnboarding}
+      data-selection-arm-button={selectionArmButton ? '' : undefined}
+      className={[
+        'nm-mobile__btn',
+        active ? 'nm-mobile__btn--active' : '',
+        primary ? 'nm-mobile__btn--primary' : '',
+        className,
+      ]
+        .filter(Boolean)
+        .join(' ')}
+    >
+      {children}
+    </button>
+  );
+}
+
+function MoreSheet({ open, onClose, title, children }) {
+  if (!open) return null;
+  return (
+    <>
+      <button type="button" className="nm-mobile__sheet-backdrop" aria-label="Close sheet" onClick={onClose} />
+      <div className="nm-mobile__sheet nm-mobile__chrome" role="dialog" aria-label={title}>
+        <div className="nm-mobile__sheet-handle" />
+        <div className="nm-mobile__sheet-head">
+          <p className="nm-mobile__sheet-title">{title}</p>
+          <ChromeButton title="Close" onClick={onClose} className="nm-mobile__sheet-close">
+            <X size={16} />
+          </ChromeButton>
+        </div>
+        <div className="nm-mobile__sheet-grid">{children}</div>
+      </div>
+    </>
+  );
+}
+
+function SheetItem({ icon: Icon, label, onClick, disabled = false, dataOnboarding }) {
+  return (
+    <button
+      type="button"
+      className="nm-mobile__sheet-item"
+      onClick={onClick}
+      disabled={disabled}
+      data-onboarding={dataOnboarding}
+    >
+      <Icon size={18} />
+      <span>{label}</span>
+    </button>
+  );
+}
+
+function DrawRail({ backgroundArt, onBackgroundArtChange, imageRef }) {
+  const bg = normalizeBackgroundArt(backgroundArt);
+  const patchBg = (patch) => onBackgroundArtChange?.({ ...bg, ...patch });
+
+  return (
+    <div className="nm-mobile__draw-rail nm-mobile__chrome" data-draw-toolbar aria-label="Draw tools">
+      <ChromeButton
+        title="Pan canvas"
+        active={bg.tool === 'pan'}
+        onClick={() => patchBg({ tool: 'pan' })}
+      >
+        <Hand size={16} />
+      </ChromeButton>
+      <ChromeButton
+        title="Pen"
+        active={bg.tool === 'pen'}
+        onClick={() => patchBg({ tool: 'pen' })}
+      >
+        <Pencil size={16} />
+      </ChromeButton>
+      <ChromeButton
+        title="Erase"
+        active={bg.tool === 'erase'}
+        onClick={() => patchBg({ tool: 'erase' })}
+      >
+        <Eraser size={16} />
+      </ChromeButton>
+      <ChromeButton
+        title="Select and move"
+        active={bg.tool === 'select'}
+        onClick={() => patchBg({ tool: 'select' })}
+      >
+        <MousePointer2 size={16} />
+      </ChromeButton>
+      <ChromeButton title="Place image on background" onClick={() => imageRef.current?.click()}>
+        <ImagePlus size={16} />
+      </ChromeButton>
+
+      <div className="nm-mobile__draw-divider" />
+
+      <input
+        type="color"
+        value={bg.color}
+        onChange={(e) => patchBg({ color: e.target.value })}
+        title="Pen colour"
+        aria-label="Pen colour"
+        className="nm-mobile__draw-color"
+      />
+
+      <label className="nm-mobile__draw-field" title="Pen width">
+        <span>W</span>
+        <input
+          type="range"
+          min={1}
+          max={24}
+          value={bg.penWidth}
+          onChange={(e) => patchBg({ penWidth: Number(e.target.value) })}
+        />
+      </label>
+
+      <label className="nm-mobile__draw-field" title="Emissiveness (glow)">
+        <span>Glow</span>
+        <input
+          type="range"
+          min={0}
+          max={100}
+          value={Math.round((bg.emissiveness || 0) * 100)}
+          onChange={(e) => patchBg({ emissiveness: Number(e.target.value) / 100 })}
+        />
+      </label>
+
+      {bg.tool === 'erase' && (
+        <select
+          value={bg.eraseMode}
+          onChange={(e) => patchBg({ eraseMode: e.target.value })}
+          className="nm-mobile__draw-select"
+          title="Erase type"
+          aria-label="Erase type"
+        >
+          <option value="stroke">Stroke</option>
+          <option value="area">Area</option>
+        </select>
+      )}
+    </div>
+  );
+}
+
+export default function MobileChrome({
+  workspaceName,
+  workspaces,
+  activeId,
+  onSelectWorkspace,
+  onCreateWorkspace,
+  onEditWorkspace,
+  onExport,
+  onImport,
+  onClear,
+  onTextExport,
+  onOpenTerminal,
+  onAutoOrganise,
+  onOrganiseSelected,
+  selectedCount = 0,
+  selectionArmed = false,
+  onToggleSelectionArm,
+  zoom,
+  onRecenter,
+  onAddNodeCenter,
+  onOpenSettings,
+  drawMode = false,
+  onToggleDrawMode,
+  backgroundArt,
+  onBackgroundArtChange,
+  onShareCanvas,
+}) {
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [sheetOpenedByTools, setSheetOpenedByTools] = useState(false);
+  const fileRef = useRef(null);
+  const imageRef = useRef(null);
+  const canOrganiseSelected = selectedCount >= 2;
+  const bg = normalizeBackgroundArt(backgroundArt);
+
+  const closeSheet = () => {
+    setSheetOpen(false);
+    if (sheetOpenedByTools) {
+      setSheetOpenedByTools(false);
+      emitTutorial('toolbar.tools.close');
+    }
+  };
+
+  const openSheet = ({ fromTools = false } = {}) => {
+    setSheetOpenedByTools(fromTools);
+    setSheetOpen(true);
+  };
+
+  const patchBg = (patch) => onBackgroundArtChange?.({ ...bg, ...patch });
+
+  return (
+    <>
+      <div className="nm-mobile__top nm-mobile__chrome">
+        <ChromeButton title="Menu" active={sheetOpen} onClick={() => openSheet()} className="!min-h-10 !min-w-10">
+          <Menu size={17} />
+        </ChromeButton>
+        <div className="nm-mobile__top-center">
+          <button
+            type="button"
+            className="nm-mobile__ws-name"
+            title="Edit workspace"
+            data-onboarding="workspace-edit"
+            onClick={() => {
+              onEditWorkspace();
+              emitTutorial('workspace.edit.open');
+            }}
+          >
+            {workspaceName}
+          </button>
+          <div className="nm-mobile__zoom">{Math.round(zoom * 100)}%</div>
+        </div>
+        <ChromeButton
+          title="Settings"
+          data-onboarding="toolbar-settings"
+          className="!min-h-10 !min-w-10"
+          onClick={() => {
+            onOpenSettings();
+            emitTutorial('toolbar.settings.open');
+          }}
+        >
+          <Settings size={17} />
+        </ChromeButton>
+      </div>
+
+      {drawMode ? (
+        <DrawRail
+          backgroundArt={backgroundArt}
+          onBackgroundArtChange={onBackgroundArtChange}
+          imageRef={imageRef}
+        />
+      ) : (
+        <div className="nm-mobile__rail nm-mobile__chrome" data-onboarding="workspace-bar" aria-label="Workspaces">
+          {workspaces.map((ws) => {
+            const Icon = WORKSPACE_ICONS[ws.icon] || WORKSPACE_ICONS.note;
+            const isActive = ws.id === activeId;
+            return (
+              <button
+                key={ws.id}
+                type="button"
+                title={ws.name}
+                className={`nm-mobile__ws-tab ${isActive ? 'nm-mobile__ws-tab--on' : ''}`}
+                style={{ '--mk-tab': ws.colour || '#6366f1' }}
+                onClick={() => {
+                  if (ws.id !== activeId) emitTutorial('workspace.switch');
+                  onSelectWorkspace(ws.id);
+                }}
+              >
+                <Icon size={15} />
+              </button>
+            );
+          })}
+          <ChromeButton
+            title="New workspace"
+            data-onboarding="workspace-create"
+            className="!min-h-[34px] !min-w-[34px] !p-1.5"
+            onClick={onCreateWorkspace}
+          >
+            <Plus size={15} />
+          </ChromeButton>
+        </div>
+      )}
+
+      <div className="nm-mobile__quick">
+        <ChromeButton title="Terminal" className="nm-mobile__chrome" onClick={onOpenTerminal}>
+          <Terminal size={16} />
+        </ChromeButton>
+        <ChromeButton title="Share" className="nm-mobile__chrome" onClick={() => onShareCanvas?.()}>
+          <Share2 size={16} />
+        </ChromeButton>
+      </div>
+
+      <div data-onboarding="toolbar" className="nm-mobile__nav nm-mobile__chrome">
+        <div className="nm-mobile__nav-slot" data-onboarding="toolbar-recenter">
+          <ChromeButton
+            title="Recenter"
+            onClick={() => {
+              onRecenter();
+              emitTutorial('toolbar.recenter');
+            }}
+          >
+            <Home size={17} />
+          </ChromeButton>
+          <span className="nm-mobile__label">Home</span>
+        </div>
+        <div className="nm-mobile__nav-slot">
+          <ChromeButton
+            title="Draw"
+            active={drawMode}
+            onClick={() => {
+              if (!drawMode) {
+                patchBg({ tool: 'pen' });
+                if (selectionArmed) onToggleSelectionArm?.();
+              }
+              onToggleDrawMode?.();
+            }}
+          >
+            <Pencil size={17} />
+          </ChromeButton>
+          <span className="nm-mobile__label">Draw</span>
+        </div>
+        <div className="nm-mobile__nav-slot" data-onboarding="toolbar-add">
+          <ChromeButton
+            title="Add node"
+            primary
+            className="nm-mobile__fab"
+            onClick={(e) => {
+              const rect = e.currentTarget.getBoundingClientRect();
+              onAddNodeCenter({
+                clientX: rect.left + rect.width / 2,
+                clientY: rect.top - 8,
+              });
+            }}
+          >
+            <Plus size={22} />
+          </ChromeButton>
+          <span className="nm-mobile__label">Add</span>
+        </div>
+        <div className="nm-mobile__nav-slot" data-onboarding="toolbar-selection">
+          <ChromeButton
+            data-selection-arm-button
+            title={selectionArmed ? 'Selection Mode armed — drag on canvas' : 'Selection Mode'}
+            active={selectionArmed}
+            onClick={() => {
+              if (drawMode) onToggleDrawMode?.();
+              const next = !selectionArmed;
+              onToggleSelectionArm();
+              if (next) emitTutorial('toolbar.selection.arm');
+            }}
+          >
+            <SquareDashed size={17} />
+          </ChromeButton>
+          <span className="nm-mobile__label">Select</span>
+        </div>
+        <div className="nm-mobile__nav-slot" data-onboarding="toolbar-tools">
+          <ChromeButton
+            title="More"
+            active={sheetOpen}
+            onClick={() => openSheet({ fromTools: true })}
+          >
+            <MoreHorizontal size={18} />
+          </ChromeButton>
+          <span className="nm-mobile__label">More</span>
+        </div>
+      </div>
+
+      <MoreSheet open={sheetOpen} title="More actions" onClose={closeSheet}>
+        <SheetItem
+          icon={Wrench}
+          label="Organise all"
+          onClick={() => {
+            onAutoOrganise();
+            emitTutorial('toolbar.organise.all');
+            closeSheet();
+          }}
+        />
+        <SheetItem
+          icon={Wrench}
+          label="Organise sel."
+          disabled={!canOrganiseSelected}
+          onClick={() => {
+            onOrganiseSelected();
+            emitTutorial('toolbar.organise.selected');
+            closeSheet();
+          }}
+        />
+        <SheetItem
+          icon={Terminal}
+          label="Terminal"
+          onClick={() => {
+            onOpenTerminal();
+            closeSheet();
+          }}
+        />
+        <SheetItem
+          icon={Copy}
+          label="Copy"
+          onClick={() => {
+            onTextExport();
+            closeSheet();
+          }}
+        />
+        <SheetItem
+          icon={Upload}
+          label="Import"
+          onClick={() => {
+            fileRef.current?.click();
+            closeSheet();
+          }}
+        />
+        <SheetItem
+          icon={Download}
+          label="Export"
+          onClick={() => {
+            onExport();
+            closeSheet();
+          }}
+        />
+        <SheetItem
+          icon={Share2}
+          label="Share"
+          onClick={() => {
+            onShareCanvas?.();
+            closeSheet();
+          }}
+        />
+        <SheetItem
+          icon={Trash2}
+          label="Clear"
+          onClick={() => {
+            onClear();
+            closeSheet();
+          }}
+        />
+        <SheetItem
+          icon={Settings}
+          label="Settings"
+          onClick={() => {
+            onOpenSettings();
+            emitTutorial('toolbar.settings.open');
+            closeSheet();
+          }}
+        />
+      </MoreSheet>
+
+      <input ref={fileRef} type="file" accept="application/json" className="hidden" onChange={onImport} />
+      <input
+        ref={imageRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={async (e) => {
+          const file = e.target.files?.[0];
+          e.target.value = '';
+          if (!file) return;
+          try {
+            const next = await addBackgroundImage(bg, file);
+            onBackgroundArtChange?.(next);
+          } catch {
+            /* ignore */
+          }
+        }}
+      />
+    </>
+  );
+}

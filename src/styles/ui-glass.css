@@ -324,10 +324,16 @@ html[data-ui-family='glass'] [data-onboarding='workspace-bar'] button.nm-liquid-
   border-radius: var(--nm-radius-btn) !important;
 }
 
-html[data-ui-family='glass'] [data-onboarding='toolbar']:active,
-html[data-ui-family='glass'] [data-onboarding='workspace-bar']:active {
+html[data-ui-family='glass'] [data-onboarding='toolbar']:not([data-mobile-chrome]):active,
+html[data-ui-family='glass'] [data-onboarding='workspace-bar']:not([data-mobile-chrome]):active {
   /* Parent :active must not drop the centering translate, or the bar jumps off the pointer. */
   transform: translateX(-50%);
+  filter: none;
+}
+
+/* Mobile FAB chrome keeps its own placement — never apply the desktop centering jump. */
+html[data-ui-family='glass'] [data-mobile-chrome][data-onboarding='toolbar']:active,
+html[data-ui-family='glass'] [data-mobile-chrome][data-onboarding='workspace-bar']:active {
   filter: none;
 }
 

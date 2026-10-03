@@ -97,7 +97,8 @@
   color: var(--nm-text-muted);
 }
 
-.nm-mobile__rail {
+.nm-mobile__rail,
+.nm-mobile__rail:active {
   position: absolute;
   z-index: 50;
   left: calc(0.45rem + var(--safe-left));
@@ -146,7 +147,8 @@
     0 0 10px 1px color-mix(in srgb, var(--mk-tab) 55%, transparent);
 }
 
-.nm-mobile__draw-rail {
+.nm-mobile__draw-rail,
+.nm-mobile__draw-rail:active {
   position: absolute;
   z-index: 50;
   left: calc(0.45rem + var(--safe-left));
@@ -232,12 +234,14 @@
   text-align: center;
 }
 
-.nm-mobile__nav {
+.nm-mobile__nav,
+.nm-mobile__nav:active {
   position: absolute;
   z-index: 50;
   left: calc(0.55rem + var(--safe-left));
   right: calc(0.55rem + var(--safe-right));
   bottom: calc(0.55rem + var(--safe-bottom));
+  transform: none;
   display: flex;
   align-items: flex-end;
   justify-content: space-between;

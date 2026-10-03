@@ -1,6 +1,6 @@
 const TARGET = 'button, [role="button"]';
 const SKIP =
-  '[data-no-liquid], [data-onboarding="toolbar"], [data-onboarding="workspace-bar"], .nm-workspace-icon-btn, .nm-mobile__chrome, .nm-mobile__ws-tab, .nm-mobile__draw-rail';
+  '[data-no-liquid], [data-onboarding="toolbar"], [data-onboarding="workspace-bar"], [data-mobile-chrome], .nm-workspace-icon-btn, .nm-mobile__chrome, .nm-mobile__ws-tab, .nm-mobile__draw-rail, .nm-mobile__btn, .nm-mobile__sheet-item';
 const MAX_PULL = 11;
 
 function clamp(n, min, max) {
@@ -22,7 +22,7 @@ export function attachLiquidButtons(root = document) {
     // Don't translate toolbar/workspace controls — pull moves them off the pointer.
     if (
       el.closest(
-        '[data-onboarding="toolbar"], [data-onboarding="workspace-bar"], .nm-mobile__chrome, .nm-mobile__draw-rail'
+        '[data-onboarding="toolbar"], [data-onboarding="workspace-bar"], [data-mobile-chrome], .nm-mobile__chrome, .nm-mobile__draw-rail'
       )
     ) {
       return;

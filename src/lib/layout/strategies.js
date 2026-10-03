@@ -4,8 +4,20 @@ import { layoutOrganic } from './organicLayout.js';
 import { layoutRadial } from './radialLayout.js';
 import { layoutTree } from './treeLayout.js';
 
+function hasMultiParentNodes(analysis) {
+  return (analysis.degrees || []).some((d) => (d.in || 0) >= 2);
+}
+
 export function chooseStrategy(analysis) {
   if (analysis.type === 'floating') return 'floating';
+
+  // Spanning-tree claims a multi-parent node under its first reach, so edges
+  // from deeper parents become backward. Layered rank assignment places each
+  // node after all parents (longest-path), keeping hierarchy order.
+  if (!analysis.cyclic && hasMultiParentNodes(analysis)) {
+    return 'layered';
+  }
+
   // Tidy spanning-tree for hierarchical / near-tree / acyclic graphs.
   // True radial hubs are rare; prefer tree whenever a single root exists.
   if (

@@ -113,5 +113,5 @@ export function layoutLayered(model, analysis, orientation, settings) {
     primary += primarySize + settings.horizontalSpacing;
   });
 
-  return { positions, strategy: analysis.type };
+  return { positions, strategy: 'layered' };
 }

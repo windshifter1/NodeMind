@@ -232,24 +232,6 @@
   text-align: center;
 }
 
-.nm-mobile__quick {
-  position: absolute;
-  z-index: 48;
-  right: calc(0.75rem + var(--safe-right));
-  bottom: calc(9.1rem + var(--safe-bottom));
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-}
-
-.nm-mobile__quick .nm-mobile__btn {
-  width: 46px;
-  height: 46px;
-  min-width: 46px;
-  min-height: 46px;
-  border-radius: 0.9rem;
-}
-
 .nm-mobile__nav {
   position: absolute;
   z-index: 50;

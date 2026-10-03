@@ -1,6 +1,7 @@
-/* Chrome placement is shared across every UI style. Styles may restyle, not reposition. */
+/* Chrome placement is shared across every UI style. Styles may restyle, not reposition.
+   Mobile FAB chrome (nm-mobile_*) owns its own placement — do not override it. */
 
-[data-onboarding='toolbar'] {
+[data-onboarding='toolbar']:not([data-mobile-chrome]) {
   position: absolute !important;
   top: calc(1rem + var(--safe-top)) !important;
   bottom: auto !important;
@@ -9,7 +10,7 @@
   z-index: 50;
 }
 
-[data-onboarding='workspace-bar'] {
+[data-onboarding='workspace-bar']:not([data-mobile-chrome]) {
   position: absolute !important;
   top: auto !important;
   bottom: calc(1rem + var(--safe-bottom)) !important;
@@ -25,8 +26,13 @@
   z-index: 50;
 }
 
-html[data-ui-family='glass'] [data-onboarding='toolbar']:active,
-html[data-ui-family='glass'] [data-onboarding='workspace-bar']:active {
+/* Mobile: keep the bin above the FAB bottom nav. */
+[data-onboarding='delete-bin'][data-mobile-chrome] {
+  bottom: calc(5.6rem + var(--safe-bottom)) !important;
+}
+
+html[data-ui-family='glass'] [data-onboarding='toolbar']:not([data-mobile-chrome]):active,
+html[data-ui-family='glass'] [data-onboarding='workspace-bar']:not([data-mobile-chrome]):active {
   transform: translateX(-50%);
 }
 

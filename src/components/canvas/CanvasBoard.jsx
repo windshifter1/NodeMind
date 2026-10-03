@@ -1449,14 +1449,12 @@ export default function CanvasBoard({
         <div
           ref={binRef}
           data-onboarding="delete-bin"
+          data-mobile-chrome={!isDesktop && !drawMode ? '' : undefined}
           className="absolute z-50 overflow-visible rounded-2xl border bg-nm-bin backdrop-blur-md p-2 shadow-xl transition-all"
           style={{
             pointerEvents: 'none',
             right: 'calc(1rem + var(--safe-right))',
-            // Mobile FAB nav sits above the bottom edge — keep the bin clear of it.
-            bottom: isDesktop
-              ? 'calc(1rem + var(--safe-bottom))'
-              : 'calc(5.6rem + var(--safe-bottom))',
+            bottom: 'calc(1rem + var(--safe-bottom))',
             borderColor: overBin ? '#ef4444' : 'var(--nm-border)',
             backgroundColor: overBin ? 'rgba(239,68,68,0.2)' : 'var(--nm-bin)',
             color: overBin ? '#ef4444' : 'var(--nm-text-secondary)',

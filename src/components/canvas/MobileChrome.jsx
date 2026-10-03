@@ -94,12 +94,23 @@ function SheetItem({ icon: Icon, label, onClick, disabled = false, dataOnboardin
   );
 }
 
-function DrawRail({ backgroundArt, onBackgroundArtChange, imageRef }) {
+function DrawRail({ backgroundArt, onBackgroundArtChange, imageRef, onExit }) {
   const bg = normalizeBackgroundArt(backgroundArt);
   const patchBg = (patch) => onBackgroundArtChange?.({ ...bg, ...patch });
 
   return (
-    <div className="nm-mobile__draw-rail nm-mobile__chrome" data-draw-toolbar aria-label="Draw tools">
+    <div
+      className="nm-mobile__draw-rail nm-mobile__chrome"
+      data-draw-toolbar
+      data-mobile-chrome
+      aria-label="Draw tools"
+    >
+      <ChromeButton title="Done — exit draw mode" active onClick={onExit}>
+        <X size={16} />
+      </ChromeButton>
+
+      <div className="nm-mobile__draw-divider" />
+
       <ChromeButton
         title="Pan canvas"
         active={bg.tool === 'pan'}
@@ -230,26 +241,44 @@ export default function MobileChrome({
 
   const patchBg = (patch) => onBackgroundArtChange?.({ ...bg, ...patch });
 
+  const exitDraw = () => {
+    if (drawMode) onToggleDrawMode?.();
+  };
+
   return (
     <>
-      <div className="nm-mobile__top nm-mobile__chrome">
-        <ChromeButton title="Menu" active={sheetOpen} onClick={() => openSheet()} className="!min-h-10 !min-w-10">
+      <div className="nm-mobile__top nm-mobile__chrome" data-mobile-chrome>
+        <ChromeButton
+          title="Menu"
+          active={sheetOpen && !drawMode}
+          onClick={() => openSheet()}
+          className="!min-h-10 !min-w-10"
+        >
           <Menu size={17} />
         </ChromeButton>
         <div className="nm-mobile__top-center">
-          <button
-            type="button"
-            className="nm-mobile__ws-name"
-            title="Edit workspace"
-            data-onboarding="workspace-edit"
-            onClick={() => {
-              onEditWorkspace();
-              emitTutorial('workspace.edit.open');
-            }}
-          >
-            {workspaceName}
-          </button>
-          <div className="nm-mobile__zoom">{Math.round(zoom * 100)}%</div>
+          {drawMode ? (
+            <>
+              <div className="nm-mobile__ws-name">Draw</div>
+              <div className="nm-mobile__zoom">{Math.round(zoom * 100)}%</div>
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                className="nm-mobile__ws-name"
+                title="Edit workspace"
+                data-onboarding="workspace-edit"
+                onClick={() => {
+                  onEditWorkspace();
+                  emitTutorial('workspace.edit.open');
+                }}
+              >
+                {workspaceName}
+              </button>
+              <div className="nm-mobile__zoom">{Math.round(zoom * 100)}%</div>
+            </>
+          )}
         </div>
         <ChromeButton
           title="Settings"
@@ -269,121 +298,118 @@ export default function MobileChrome({
           backgroundArt={backgroundArt}
           onBackgroundArtChange={onBackgroundArtChange}
           imageRef={imageRef}
+          onExit={exitDraw}
         />
       ) : (
-        <div className="nm-mobile__rail nm-mobile__chrome" data-onboarding="workspace-bar" aria-label="Workspaces">
-          {workspaces.map((ws) => {
-            const Icon = WORKSPACE_ICONS[ws.icon] || WORKSPACE_ICONS.note;
-            const isActive = ws.id === activeId;
-            return (
-              <button
-                key={ws.id}
-                type="button"
-                title={ws.name}
-                className={`nm-mobile__ws-tab ${isActive ? 'nm-mobile__ws-tab--on' : ''}`}
-                style={{ '--mk-tab': ws.colour || '#6366f1' }}
+        <>
+          <div
+            className="nm-mobile__rail nm-mobile__chrome"
+            data-onboarding="workspace-bar"
+            data-mobile-chrome
+            aria-label="Workspaces"
+          >
+            {workspaces.map((ws) => {
+              const Icon = WORKSPACE_ICONS[ws.icon] || WORKSPACE_ICONS.note;
+              const isActive = ws.id === activeId;
+              return (
+                <button
+                  key={ws.id}
+                  type="button"
+                  title={ws.name}
+                  className={`nm-mobile__ws-tab ${isActive ? 'nm-mobile__ws-tab--on' : ''}`}
+                  style={{ '--mk-tab': ws.colour || '#6366f1' }}
+                  onClick={() => {
+                    if (ws.id !== activeId) emitTutorial('workspace.switch');
+                    onSelectWorkspace(ws.id);
+                  }}
+                >
+                  <Icon size={15} />
+                </button>
+              );
+            })}
+            <ChromeButton
+              title="New workspace"
+              data-onboarding="workspace-create"
+              className="!min-h-[34px] !min-w-[34px] !p-1.5"
+              onClick={onCreateWorkspace}
+            >
+              <Plus size={15} />
+            </ChromeButton>
+          </div>
+
+          <div data-onboarding="toolbar" data-mobile-chrome className="nm-mobile__nav nm-mobile__chrome">
+            <div className="nm-mobile__nav-slot" data-onboarding="toolbar-recenter">
+              <ChromeButton
+                title="Recenter"
                 onClick={() => {
-                  if (ws.id !== activeId) emitTutorial('workspace.switch');
-                  onSelectWorkspace(ws.id);
+                  onRecenter();
+                  emitTutorial('toolbar.recenter');
                 }}
               >
-                <Icon size={15} />
-              </button>
-            );
-          })}
-          <ChromeButton
-            title="New workspace"
-            data-onboarding="workspace-create"
-            className="!min-h-[34px] !min-w-[34px] !p-1.5"
-            onClick={onCreateWorkspace}
-          >
-            <Plus size={15} />
-          </ChromeButton>
-        </div>
+                <Home size={17} />
+              </ChromeButton>
+              <span className="nm-mobile__label">Home</span>
+            </div>
+            <div className="nm-mobile__nav-slot">
+              <ChromeButton
+                title="Draw"
+                active={drawMode}
+                onClick={() => {
+                  patchBg({ tool: 'pen' });
+                  if (selectionArmed) onToggleSelectionArm?.();
+                  onToggleDrawMode?.();
+                  setSheetOpen(false);
+                }}
+              >
+                <Pencil size={17} />
+              </ChromeButton>
+              <span className="nm-mobile__label">Draw</span>
+            </div>
+            <div className="nm-mobile__nav-slot" data-onboarding="toolbar-add">
+              <ChromeButton
+                title="Add node"
+                primary
+                className="nm-mobile__fab"
+                onClick={(e) => {
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  onAddNodeCenter({
+                    clientX: rect.left + rect.width / 2,
+                    clientY: rect.top - 8,
+                  });
+                }}
+              >
+                <Plus size={22} />
+              </ChromeButton>
+              <span className="nm-mobile__label">Add</span>
+            </div>
+            <div className="nm-mobile__nav-slot" data-onboarding="toolbar-selection">
+              <ChromeButton
+                data-selection-arm-button
+                title={selectionArmed ? 'Selection Mode armed — drag on canvas' : 'Selection Mode'}
+                active={selectionArmed}
+                onClick={() => {
+                  const next = !selectionArmed;
+                  onToggleSelectionArm();
+                  if (next) emitTutorial('toolbar.selection.arm');
+                }}
+              >
+                <SquareDashed size={17} />
+              </ChromeButton>
+              <span className="nm-mobile__label">Select</span>
+            </div>
+            <div className="nm-mobile__nav-slot" data-onboarding="toolbar-tools">
+              <ChromeButton
+                title="More"
+                active={sheetOpen}
+                onClick={() => openSheet({ fromTools: true })}
+              >
+                <MoreHorizontal size={18} />
+              </ChromeButton>
+              <span className="nm-mobile__label">More</span>
+            </div>
+          </div>
+        </>
       )}
-
-      <div className="nm-mobile__quick">
-        <ChromeButton title="Terminal" className="nm-mobile__chrome" onClick={onOpenTerminal}>
-          <Terminal size={16} />
-        </ChromeButton>
-        <ChromeButton title="Share" className="nm-mobile__chrome" onClick={() => onShareCanvas?.()}>
-          <Share2 size={16} />
-        </ChromeButton>
-      </div>
-
-      <div data-onboarding="toolbar" className="nm-mobile__nav nm-mobile__chrome">
-        <div className="nm-mobile__nav-slot" data-onboarding="toolbar-recenter">
-          <ChromeButton
-            title="Recenter"
-            onClick={() => {
-              onRecenter();
-              emitTutorial('toolbar.recenter');
-            }}
-          >
-            <Home size={17} />
-          </ChromeButton>
-          <span className="nm-mobile__label">Home</span>
-        </div>
-        <div className="nm-mobile__nav-slot">
-          <ChromeButton
-            title="Draw"
-            active={drawMode}
-            onClick={() => {
-              if (!drawMode) {
-                patchBg({ tool: 'pen' });
-                if (selectionArmed) onToggleSelectionArm?.();
-              }
-              onToggleDrawMode?.();
-            }}
-          >
-            <Pencil size={17} />
-          </ChromeButton>
-          <span className="nm-mobile__label">Draw</span>
-        </div>
-        <div className="nm-mobile__nav-slot" data-onboarding="toolbar-add">
-          <ChromeButton
-            title="Add node"
-            primary
-            className="nm-mobile__fab"
-            onClick={(e) => {
-              const rect = e.currentTarget.getBoundingClientRect();
-              onAddNodeCenter({
-                clientX: rect.left + rect.width / 2,
-                clientY: rect.top - 8,
-              });
-            }}
-          >
-            <Plus size={22} />
-          </ChromeButton>
-          <span className="nm-mobile__label">Add</span>
-        </div>
-        <div className="nm-mobile__nav-slot" data-onboarding="toolbar-selection">
-          <ChromeButton
-            data-selection-arm-button
-            title={selectionArmed ? 'Selection Mode armed — drag on canvas' : 'Selection Mode'}
-            active={selectionArmed}
-            onClick={() => {
-              if (drawMode) onToggleDrawMode?.();
-              const next = !selectionArmed;
-              onToggleSelectionArm();
-              if (next) emitTutorial('toolbar.selection.arm');
-            }}
-          >
-            <SquareDashed size={17} />
-          </ChromeButton>
-          <span className="nm-mobile__label">Select</span>
-        </div>
-        <div className="nm-mobile__nav-slot" data-onboarding="toolbar-tools">
-          <ChromeButton
-            title="More"
-            active={sheetOpen}
-            onClick={() => openSheet({ fromTools: true })}
-          >
-            <MoreHorizontal size={18} />
-          </ChromeButton>
-          <span className="nm-mobile__label">More</span>
-        </div>
-      </div>
 
       <MoreSheet open={sheetOpen} title="More actions" onClose={closeSheet}>
         <SheetItem

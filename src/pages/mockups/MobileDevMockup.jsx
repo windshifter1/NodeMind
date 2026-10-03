@@ -346,7 +346,7 @@ function FabMockup() {
           <Menu size={17} />
         </ChromeButton>
         <div className="nm-mdev__top-center">
-          <div className="nm-mdev__ws-name">Ideas</div>
+          <div className="nm-mdev__ws-name">{drawOn ? 'Draw' : 'Ideas'}</div>
           <div className="nm-mdev__zoom">100%</div>
         </div>
         <ChromeButton
@@ -363,6 +363,18 @@ function FabMockup() {
 
       {drawOn ? (
         <div className="nm-mdev__draw-rail nm-mdev__chrome" aria-label="Draw tools">
+          <ChromeButton
+            title="Done — exit draw mode"
+            active
+            className="!min-h-10 !min-w-10 !p-2"
+            onClick={() => {
+              setDrawOn(false);
+              flash('Draw off');
+            }}
+          >
+            <X size={16} />
+          </ChromeButton>
+          <div className="nm-mdev__draw-divider" />
           {[
             { id: 'pan', icon: Hand, title: 'Pan' },
             { id: 'pen', icon: Pencil, title: 'Pen' },
@@ -401,110 +413,94 @@ function FabMockup() {
           </label>
         </div>
       ) : (
-        <div className="nm-mdev__rail nm-mdev__chrome" aria-label="Workspaces">
-          {WORKSPACES.map((ws) => (
-            <button
-              key={ws.id}
-              type="button"
-              title={`Workspace ${ws.label}`}
-              className={`nm-mdev__ws-tab ${activeWs === ws.id ? 'nm-mdev__ws-tab--on' : ''}`}
-              style={{ '--mk-tab': ws.color }}
-              onClick={() => {
-                setActiveWs(ws.id);
-                flash(`Workspace ${ws.label}`);
-              }}
-            />
-          ))}
-          <ChromeButton
-            title="New workspace"
-            className="!min-h-[34px] !min-w-[34px] !p-1.5"
-            onClick={() => flash('New workspace')}
-          >
-            <Plus size={15} />
-          </ChromeButton>
-        </div>
+        <>
+          <div className="nm-mdev__rail nm-mdev__chrome" aria-label="Workspaces">
+            {WORKSPACES.map((ws) => (
+              <button
+                key={ws.id}
+                type="button"
+                title={`Workspace ${ws.label}`}
+                className={`nm-mdev__ws-tab ${activeWs === ws.id ? 'nm-mdev__ws-tab--on' : ''}`}
+                style={{ '--mk-tab': ws.color }}
+                onClick={() => {
+                  setActiveWs(ws.id);
+                  flash(`Workspace ${ws.label}`);
+                }}
+              />
+            ))}
+            <ChromeButton
+              title="New workspace"
+              className="!min-h-[34px] !min-w-[34px] !p-1.5"
+              onClick={() => flash('New workspace')}
+            >
+              <Plus size={15} />
+            </ChromeButton>
+          </div>
+
+          <div className="nm-mdev__bin nm-mdev__chrome" title="Bin">
+            <BinIcon open={false} size={17} />
+          </div>
+
+          <p className="nm-mdev__hint">{hint}</p>
+
+          <div className="nm-mdev__nav nm-mdev__chrome">
+            <div className="nm-mdev__nav-slot">
+              <ChromeButton title="Recenter" onClick={() => flash('Recenter')}>
+                <Home size={17} />
+              </ChromeButton>
+              <span className="nm-mdev__label">Home</span>
+            </div>
+            <div className="nm-mdev__nav-slot">
+              <ChromeButton
+                title="Draw"
+                active={drawOn}
+                onClick={() => {
+                  setDrawOn(true);
+                  setSelectOn(false);
+                  flash('Draw mode');
+                }}
+              >
+                <Pencil size={17} />
+              </ChromeButton>
+              <span className="nm-mdev__label">Draw</span>
+            </div>
+            <div className="nm-mdev__nav-slot">
+              <ChromeButton
+                title="Add node"
+                primary
+                className="nm-mdev__fab"
+                onClick={() => flash('Add node')}
+              >
+                <Plus size={22} />
+              </ChromeButton>
+              <span className="nm-mdev__label">Add</span>
+            </div>
+            <div className="nm-mdev__nav-slot">
+              <ChromeButton
+                title="Selection"
+                active={selectOn}
+                onClick={() => {
+                  setSelectOn((v) => !v);
+                  flash(selectOn ? 'Select off' : 'Selection armed');
+                }}
+              >
+                <SquareDashed size={17} />
+              </ChromeButton>
+              <span className="nm-mdev__label">Select</span>
+            </div>
+            <div className="nm-mdev__nav-slot">
+              <ChromeButton
+                title="More"
+                active={sheetOpen}
+                onClick={() => setSheetOpen(true)}
+              >
+                <MoreHorizontal size={18} />
+              </ChromeButton>
+              <span className="nm-mdev__label">More</span>
+            </div>
+          </div>
+        </>
       )}
-
-      <div className="nm-mdev__quick">
-        <ChromeButton
-          title="Terminal"
-          className="nm-mdev__chrome"
-          onClick={() => flash('Terminal')}
-        >
-          <Terminal size={16} />
-        </ChromeButton>
-        <ChromeButton
-          title="Share"
-          className="nm-mdev__chrome"
-          onClick={() => flash('Share')}
-        >
-          <Share2 size={16} />
-        </ChromeButton>
-      </div>
-
-      <div className="nm-mdev__bin nm-mdev__chrome" title="Bin">
-        <BinIcon open={false} size={17} />
-      </div>
-
-      <p className="nm-mdev__hint">{hint}</p>
-
-      <div className="nm-mdev__nav nm-mdev__chrome">
-        <div className="nm-mdev__nav-slot">
-          <ChromeButton title="Recenter" onClick={() => flash('Recenter')}>
-            <Home size={17} />
-          </ChromeButton>
-          <span className="nm-mdev__label">Home</span>
-        </div>
-        <div className="nm-mdev__nav-slot">
-          <ChromeButton
-            title="Draw"
-            active={drawOn}
-            onClick={() => {
-              setDrawOn((v) => !v);
-              setSelectOn(false);
-              flash(drawOn ? 'Draw off' : 'Draw mode');
-            }}
-          >
-            <Pencil size={17} />
-          </ChromeButton>
-          <span className="nm-mdev__label">Draw</span>
-        </div>
-        <div className="nm-mdev__nav-slot">
-          <ChromeButton
-            title="Add node"
-            primary
-            className="nm-mdev__fab"
-            onClick={() => flash('Add node')}
-          >
-            <Plus size={22} />
-          </ChromeButton>
-          <span className="nm-mdev__label">Add</span>
-        </div>
-        <div className="nm-mdev__nav-slot">
-          <ChromeButton
-            title="Selection"
-            active={selectOn}
-            onClick={() => {
-              setSelectOn((v) => !v);
-              setDrawOn(false);
-              flash(selectOn ? 'Select off' : 'Selection armed');
-            }}
-          >
-            <SquareDashed size={17} />
-          </ChromeButton>
-          <span className="nm-mdev__label">Select</span>
-        </div>
-        <div className="nm-mdev__nav-slot">
-          <ChromeButton
-            title="More"
-            active={sheetOpen}
-            onClick={() => setSheetOpen(true)}
-          >
-            <MoreHorizontal size={18} />
-          </ChromeButton>
-          <span className="nm-mdev__label">More</span>
-        </div>
-      </div>
 
       <MoreSheet
         open={sheetOpen}

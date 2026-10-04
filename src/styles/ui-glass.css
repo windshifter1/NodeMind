@@ -230,10 +230,9 @@ html[data-ui-family='glass'] .shadow-2xl {
   box-shadow: var(--nm-glass-shadow) !important;
 }
 
-html[data-ui-family='glass'] [data-onboarding='toolbar']:not([data-mobile-chrome]):not(.nm-mobile__chrome),
-html[data-ui-family='glass']
-  [data-onboarding='workspace-bar']:not([data-mobile-chrome]):not(.nm-mobile__chrome):not(.nm-mobile__btn),
-html[data-ui-family='glass'] [data-onboarding='delete-bin']:not([data-mobile-chrome]),
+html[data-ui-family='glass'] [data-onboarding='toolbar'],
+html[data-ui-family='glass'] [data-onboarding='workspace-bar'],
+html[data-ui-family='glass'] [data-onboarding='delete-bin'],
 html[data-ui-family='glass'] .bg-nm-panel.shadow-xl,
 html[data-ui-family='glass'] .bg-nm-panel.shadow-2xl,
 html[data-ui-family='glass'] .bg-nm-bin.shadow-xl,
@@ -244,52 +243,14 @@ html[data-ui-family='glass'] .bg-nm-chrome.shadow-xl {
     0 2px 8px rgba(0, 0, 0, 0.22) !important;
 }
 
-html[data-ui-family='glass'][data-theme='light']
-  [data-onboarding='toolbar']:not([data-mobile-chrome]):not(.nm-mobile__chrome),
-html[data-ui-family='glass'][data-theme='light']
-  [data-onboarding='workspace-bar']:not([data-mobile-chrome]):not(.nm-mobile__chrome):not(
-    .nm-mobile__btn
-  ),
-html[data-ui-family='glass'][data-theme='light'] [data-onboarding='delete-bin']:not([data-mobile-chrome]),
+html[data-ui-family='glass'][data-theme='light'] [data-onboarding='toolbar'],
+html[data-ui-family='glass'][data-theme='light'] [data-onboarding='workspace-bar'],
+html[data-ui-family='glass'][data-theme='light'] [data-onboarding='delete-bin'],
 html[data-ui-family='glass'][data-theme='light'] .bg-nm-panel.shadow-xl,
 html[data-ui-family='glass'][data-theme='light'] .bg-nm-panel.shadow-2xl,
 html[data-ui-family='glass'][data-theme='light'] .bg-nm-bin.shadow-xl,
 html[data-ui-family='glass'][data-theme='light'] .bg-nm-chrome.shadow-xl {
   box-shadow: 0 14px 32px rgba(30, 50, 90, 0.14) !important;
-}
-
-/* Mobile FAB chrome keeps gel/lens/acrylic material (specular + wet shadow). */
-html[data-ui-family='glass'] .nm-mobile__chrome,
-html[data-ui-family='glass'] .nm-mobile__sheet {
-  isolation: isolate;
-  background-color: var(--nm-chrome);
-  background-image: var(--nm-specular);
-  backdrop-filter: var(--nm-node-blur);
-  -webkit-backdrop-filter: var(--nm-node-blur);
-  box-shadow: var(--nm-glass-shadow) !important;
-}
-
-html[data-ui-family='glass'] .nm-mobile__top,
-html[data-ui-family='glass'] .nm-mobile__nav {
-  border-radius: var(--nm-radius-bar);
-}
-
-html[data-ui-family='glass'] .nm-mobile__sheet {
-  border-radius: var(--nm-radius-panel);
-}
-
-html[data-ui-family='glass'] .nm-mobile__btn,
-html[data-ui-family='glass'] .nm-mobile__sheet-item {
-  border-radius: var(--nm-radius-btn);
-}
-
-html[data-ui-family='glass'] .nm-mobile__sheet-handle-hit,
-html[data-ui-family='glass'] .nm-mobile__sheet-handle-hit:hover,
-html[data-ui-family='glass'] .nm-mobile__sheet-handle-hit:active,
-html[data-ui-family='glass'] .nm-mobile__sheet-handle-hit.nm-liquid-held {
-  transform: none !important;
-  border-radius: 0 !important;
-  filter: none !important;
 }
 
 html[data-ui-family='glass'] .bg-nm-header {
@@ -364,8 +325,7 @@ html[data-ui-family='glass'] [data-onboarding='workspace-bar'] button.nm-liquid-
 }
 
 html[data-ui-family='glass'] [data-onboarding='toolbar']:not([data-mobile-chrome]):active,
-html[data-ui-family='glass']
-  [data-onboarding='workspace-bar']:not([data-mobile-chrome]):not(.nm-mobile__btn):active {
+html[data-ui-family='glass'] [data-onboarding='workspace-bar']:not([data-mobile-chrome]):active {
   /* Parent :active must not drop the centering translate, or the bar jumps off the pointer. */
   transform: translateX(-50%);
   filter: none;
@@ -451,23 +411,6 @@ html[data-ui-style='gel'] [role='button']:not([aria-disabled='true']):not(.nm-wo
 html[data-ui-style='gel'] [data-onboarding='toolbar'] button:hover,
 html[data-ui-style='gel'] [data-onboarding='workspace-bar'] button:hover {
   border-radius: var(--nm-radius-btn);
-}
-
-/* Mobile FAB: keep gel blob morph (beats the desktop toolbar non-blob hover rule). */
-html[data-ui-style='gel'] .nm-mobile__nav .nm-mobile__btn:not(:disabled):hover,
-html[data-ui-style='gel'] .nm-mobile__top .nm-mobile__btn:not(:disabled):hover,
-html[data-ui-style='gel'] .nm-mobile__sheet .nm-mobile__btn:not(:disabled):hover,
-html[data-ui-style='gel'] .nm-mobile__sheet-item:not(:disabled):hover {
-  --liquid-sx: 1.08;
-  --liquid-sy: 1.08;
-  border-radius: 44% 50% 46% 52% / 50% 44% 54% 48%;
-}
-
-html[data-ui-style='gel'] .nm-mobile__nav .nm-mobile__btn:not(:disabled):active,
-html[data-ui-style='gel'] .nm-mobile__top .nm-mobile__btn:not(:disabled):active,
-html[data-ui-style='gel'] .nm-mobile__sheet .nm-mobile__btn:not(:disabled):active,
-html[data-ui-style='gel'] .nm-mobile__sheet-item:not(:disabled):active {
-  border-radius: 42% 48% 45% 50% / 48% 42% 52% 46% !important;
 }
 
 @keyframes nm-liquid-ripple {

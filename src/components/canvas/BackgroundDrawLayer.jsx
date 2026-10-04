@@ -6,11 +6,17 @@ import {
   normalizeBackgroundArt,
 } from '@/lib/backgroundArt';
 import { getBlobUrl, putFileFromFileList } from '@/lib/mediaStore';
+import {
+  eraseAreaFromStrokes,
+  pointHitsStroke,
+  pointsToPath,
+} from '@/lib/strokePath';
 
-/** ~1.5 screen-px in world units — keeps paths light when zoomed in. */
-function minPointDist(zoom) {
+/** Screen-px → world units. Smooth mode samples denser for cleaner cubics. */
+function minPointDist(zoom, smooth = false) {
   const z = Number(zoom);
-  return 1.5 / (Number.isFinite(z) && z > 0 ? z : 1);
+  const screenPx = smooth ? 0.55 : 1.5;
+  return screenPx / (Number.isFinite(z) && z > 0 ? z : 1);
 }
 
 function simplifyPoints(points, minDist) {
@@ -42,6 +48,8 @@ export default function BackgroundDrawLayer({
   pan,
   zoom,
   spacePanArmed = false,
+  /** /draw: Catmull-Rom cubics + denser capture instead of blocky polylines. */
+  smoothStrokes = false,
 }) {
   const bg = useMemo(() => normalizeBackgroundArt(art), [art]);
   const [draft, setDraft] = useState(null);
@@ -136,9 +144,7 @@ export default function BackgroundDrawLayer({
     for (let i = strokes.length - 1; i >= 0; i--) {
       const s = strokes[i];
       const tol = Math.max(8, (s.width || 3) + 4);
-      for (const p of s.points || []) {
-        if (Math.hypot(p.x - x, p.y - y) <= tol) return s;
-      }
+      if (pointHitsStroke(x, y, s, tol)) return s;
     }
     return null;
   };
@@ -161,16 +167,10 @@ export default function BackgroundDrawLayer({
     };
     if (current.eraseMode === 'area') {
       const r = Math.max(12, current.penWidth * 3);
-      const next = {
+      commit({
         ...current,
-        strokes: current.strokes
-          .map((s) => ({
-            ...s,
-            points: (s.points || []).filter((p) => Math.hypot(p.x - x, p.y - y) > r),
-          }))
-          .filter((s) => (s.points || []).length > 1),
-      };
-      commit(next);
+        strokes: eraseAreaFromStrokes(current.strokes, x, y, r, newStrokeId),
+      });
       return;
     }
     const hit = hitStroke(x, y, current.strokes);
@@ -250,13 +250,22 @@ export default function BackgroundDrawLayer({
 
   const flushDraftPoint = () => {
     draftRafRef.current = 0;
-    const w = pendingPointRef.current;
+    const pending = pendingPointRef.current;
     pendingPointRef.current = null;
     const current = draftRef.current;
-    if (!w || !current) return;
-    const last = current.points[current.points.length - 1];
-    if (last && Math.hypot(w.x - last.x, w.y - last.y) < minPointDist(zoom)) return;
-    const next = { ...current, points: [...current.points, { x: w.x, y: w.y }] };
+    if (!pending?.length || !current) return;
+    const minD = minPointDist(zoom, smoothStrokes);
+    let points = current.points;
+    let changed = false;
+    for (const w of pending) {
+      const last = points[points.length - 1];
+      if (last && Math.hypot(w.x - last.x, w.y - last.y) < minD) continue;
+      if (!changed) points = points.slice();
+      points.push({ x: w.x, y: w.y });
+      changed = true;
+    }
+    if (!changed) return;
+    const next = { ...current, points };
     draftRef.current = next;
     setDraft(next);
   };
@@ -270,7 +279,13 @@ export default function BackgroundDrawLayer({
       return;
     }
     if (draftRef.current) {
-      pendingPointRef.current = w;
+      const coalesced =
+        typeof e.getCoalescedEvents === 'function' ? e.getCoalescedEvents() : null;
+      const events = coalesced?.length ? coalesced : [e];
+      const batch = events.map((ev) => screenToWorld(ev.clientX, ev.clientY));
+      pendingPointRef.current = pendingPointRef.current
+        ? pendingPointRef.current.concat(batch)
+        : batch;
       if (!draftRafRef.current) {
         draftRafRef.current = requestAnimationFrame(flushDraftPoint);
       }
@@ -305,13 +320,13 @@ export default function BackgroundDrawLayer({
     if (draftRafRef.current) {
       cancelAnimationFrame(draftRafRef.current);
       draftRafRef.current = 0;
-      flushDraftPoint();
     }
+    flushDraftPoint();
     flushPersist();
     const current = draftRef.current;
     if (current) {
       const base = artSnapshot();
-      const points = simplifyPoints(current.points, minPointDist(zoom));
+      const points = simplifyPoints(current.points, minPointDist(zoom, smoothStrokes));
       onChange({ ...base, strokes: [...base.strokes, { ...current, points }] });
       draftRef.current = null;
       setDraft(null);
@@ -382,9 +397,10 @@ export default function BackgroundDrawLayer({
             key={s.id}
             stroke={s}
             selected={selectedKind === 'stroke' && selectedId === s.id}
+            smooth={smoothStrokes}
           />
         ))}
-        {draft && <StrokeGraphic stroke={draft} selected={false} />}
+        {draft && <StrokeGraphic stroke={draft} selected={false} smooth={smoothStrokes} />}
       </g>
     </svg>
   );
@@ -395,8 +411,8 @@ export default function BackgroundDrawLayer({
  * SVG feGaussianBlur was catastrophically expensive when the parent
  * group is scaled up (zoomed in) — huge filter intermediates.
  */
-const StrokeGraphic = memo(function StrokeGraphic({ stroke, selected }) {
-  const d = pointsToPath(stroke.points);
+const StrokeGraphic = memo(function StrokeGraphic({ stroke, selected, smooth = false }) {
+  const d = pointsToPath(stroke.points, { smooth });
   if (!d) return null;
   const color = stroke.color || '#334155';
   const width = Math.max(1, Number(stroke.width) || 3);
@@ -434,15 +450,6 @@ const StrokeGraphic = memo(function StrokeGraphic({ stroke, selected }) {
     </g>
   );
 });
-
-function pointsToPath(points) {
-  if (!points?.length) return '';
-  let d = `M${points[0].x} ${points[0].y}`;
-  for (let i = 1; i < points.length; i++) {
-    d += `L${points[i].x} ${points[i].y}`;
-  }
-  return d;
-}
 
 export async function addBackgroundImage(art, file, at = { x: 80, y: 80 }) {
   const bg = normalizeBackgroundArt(art);

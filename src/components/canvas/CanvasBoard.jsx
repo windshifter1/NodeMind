@@ -78,6 +78,7 @@ export default function CanvasBoard({
   onBackgroundArtChange,
   edgeAwareLayout = false,
   edgeCurveFan = false,
+  smoothStrokes = false,
 }) {
   const graphOrientation = normalizeOrientation(orientation);
   const edgeDisplay = edgeCurveFan
@@ -1340,6 +1341,7 @@ export default function CanvasBoard({
         pan={pan}
         zoom={zoom}
         spacePanArmed={isSpacePanArmed()}
+        smoothStrokes={smoothStrokes}
       />
       {/* Edges layer (screen-space) */}
       <svg

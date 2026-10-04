@@ -32,6 +32,11 @@ export function matchDevOrganisePath(path = getAppPath()) {
   return null;
 }
 
+/** Smooth freehand draw experiment (`/draw`). */
+export function matchDrawPath(path = getAppPath()) {
+  return path === '/draw';
+}
+
 /** @deprecated use matchDevOrganisePath */
 export function isDevOrganisePath(path = getAppPath()) {
   return matchDevOrganisePath(path) != null;

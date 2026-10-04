@@ -3,7 +3,13 @@ import Canvas from '@/pages/Canvas';
 import LandingPage from '@/components/landing/LandingPage';
 import MockupShell from '@/pages/mockups/MockupShell';
 import MobileDevMockup from '@/pages/mockups/MobileDevMockup';
-import { getAppPath, matchDevOrganisePath, matchDevPath, matchMockupPath } from '@/lib/appPath';
+import {
+  getAppPath,
+  matchDevOrganisePath,
+  matchDevPath,
+  matchDrawPath,
+  matchMockupPath,
+} from '@/lib/appPath';
 import { dismissLanding, shouldShowLanding } from '@/lib/landing';
 import { lockMobileViewport } from '@/lib/lockMobileViewport';
 
@@ -14,6 +20,7 @@ export default function App() {
   const edgeAwareMode = matchDevOrganisePath(path);
   const edgeAwareLayout = edgeAwareMode != null;
   const edgeCurveFan = edgeAwareMode === 'curve-fan';
+  const smoothDraw = matchDrawPath(path);
 
   useEffect(() => {
     return lockMobileViewport();
@@ -66,6 +73,35 @@ export default function App() {
           }}
         >
           {label}
+        </div>
+        {offline && (
+          <div
+            className="absolute z-[120] rounded-full border border-amber-500/40 bg-amber-500/15 px-3 py-1.5 text-xs font-medium text-amber-700 shadow-lg backdrop-blur dark:text-amber-100"
+            style={{
+              right: 'calc(0.75rem + var(--safe-right))',
+              bottom: 'calc(0.75rem + var(--safe-bottom))',
+            }}
+          >
+            Offline mode
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // /draw — smooth Catmull-Rom freehand strokes (production canvas stays polyline).
+  if (smoothDraw) {
+    return (
+      <div className="relative h-full w-full overflow-hidden bg-nm-canvas">
+        <Canvas smoothStrokes />
+        <div
+          className="pointer-events-none absolute z-[120] rounded-full border border-emerald-400/40 bg-emerald-500/15 px-3 py-1.5 text-xs font-medium text-emerald-100 shadow-lg backdrop-blur"
+          style={{
+            right: 'calc(0.75rem + var(--safe-right))',
+            top: 'calc(0.75rem + var(--safe-top))',
+          }}
+        >
+          /draw · smooth strokes
         </div>
         {offline && (
           <div

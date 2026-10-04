@@ -163,7 +163,7 @@ export default function NodeTypeMenu({
           ref={backdropRef}
           type="button"
           className="nm-mobile__sheet-backdrop"
-          style={{ position: 'fixed', zIndex: 1_000_000 }}
+          style={{ position: 'fixed', zIndex: 60 }}
           aria-label="Close sheet"
           onClick={closeSheet}
         />
@@ -171,7 +171,7 @@ export default function NodeTypeMenu({
           ref={sheetRef}
           data-node-type-menu
           className="nm-mobile__sheet nm-mobile__chrome"
-          style={{ position: 'fixed', zIndex: 1_000_001, maxHeight: 'min(72%, 480px)' }}
+          style={{ position: 'fixed', zIndex: 70, maxHeight: 'min(72%, 480px)' }}
           role="dialog"
           aria-label={title}
           onPointerDown={(e) => e.stopPropagation()}

@@ -335,12 +335,12 @@ export const MOBILE_TUTORIAL_SECTIONS = [
   {
     id: 'create-nodes',
     title: 'Create nodes',
-    body: 'Add ideas your way! Create nodes with the + button or place them directly on the canvas, then choose a node type.',
+    body: 'Add ideas your way! Use the + button (opens a sheet of node types) or tap the canvas, then choose a type.',
     target: 'toolbar-add',
     tasks: [
       {
         id: 'toolbar-add',
-        label: 'Tap + and pick a node type.',
+        label: 'Tap + and pick a node type from the sheet.',
         event: 'toolbar.node.create',
         target: 'toolbar-add',
       },
@@ -478,13 +478,13 @@ export const MOBILE_TUTORIAL_SECTIONS = [
   },
   {
     id: 'tools',
-    title: 'Tools drawer',
-    body: 'Use the Tools drawer to organise your workspace automatically.',
+    title: 'More actions',
+    body: 'Open More for organise, share, save, and other workspace actions.',
     target: 'toolbar-tools',
     tasks: [
       {
         id: 'tools-open',
-        label: 'Tap the Tools drawer. Tap away to close it.',
+        label: 'Tap More, then tap away or swipe down to close it.',
         event: 'toolbar.tools.close',
         target: 'toolbar-tools',
       },
@@ -493,12 +493,12 @@ export const MOBILE_TUTORIAL_SECTIONS = [
   {
     id: 'workspaces',
     title: 'Workspaces',
-    body: 'Open the menu to switch boards and customise each workspace.',
+    body: 'Use the menu (top left) to switch boards and customise each workspace.',
     target: 'workspace-bar',
     tasks: [
       {
         id: 'create',
-        label: 'Create a new workspace using +. Edit the details, then Save to create it.',
+        label: 'In the Workspaces sheet, tap + to create a board. Edit the details, then Save.',
         event: 'workspace.create.save',
         target: 'workspace-create',
       },
@@ -519,12 +519,12 @@ export const MOBILE_TUTORIAL_SECTIONS = [
   {
     id: 'settings',
     title: 'Settings',
-    body: 'Customise NodeMind and manage your tutorial settings.',
+    body: 'Open Settings from the gear (top right) to customise NodeMind and manage tutorial settings.',
     target: 'toolbar-settings',
     tasks: [
       {
         id: 'open',
-        label: 'Open Settings.',
+        label: 'Tap the Settings gear (top right).',
         event: 'toolbar.settings.open',
         target: 'toolbar-settings',
       },

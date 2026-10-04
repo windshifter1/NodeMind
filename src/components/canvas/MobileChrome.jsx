@@ -241,15 +241,28 @@ export default function MobileChrome({
   const canOrganiseSelected = selectedCount >= 2;
   const bg = normalizeBackgroundArt(backgroundArt);
 
-  // Tutorial targets live inside the workspace sheet — open it when highlighted.
+  // Tutorial targets live inside the workspace sheet — open/close with the tour.
   useEffect(() => {
     const syncFromTutorial = () => {
+      if (document.body.dataset.tutorialActive !== 'mobile') return;
       const target = document.body.dataset.tutorialHighlight || '';
-      if (target.startsWith('workspace')) setWorkspaceSheetOpen(true);
+      if (target.startsWith('workspace')) {
+        setMoreSheetOpen(false);
+        setWorkspaceSheetOpen(true);
+        return;
+      }
+      // Leave the sheet when the tour moves on (e.g. to Settings).
+      setWorkspaceSheetOpen(false);
+      if (target && target !== 'toolbar-tools') {
+        setMoreSheetOpen(false);
+      }
     };
     syncFromTutorial();
     const obs = new MutationObserver(syncFromTutorial);
-    obs.observe(document.body, { attributes: true, attributeFilter: ['data-tutorial-highlight'] });
+    obs.observe(document.body, {
+      attributes: true,
+      attributeFilter: ['data-tutorial-highlight', 'data-tutorial-active'],
+    });
     return () => obs.disconnect();
   }, []);
 
@@ -282,7 +295,11 @@ export default function MobileChrome({
 
   return (
     <>
-      <div className="nm-mobile__top nm-mobile__chrome" data-mobile-chrome>
+      <div
+        className="nm-mobile__top nm-mobile__chrome"
+        data-mobile-chrome
+        data-onboarding="mobile-top"
+      >
         <div className="nm-mobile__top-side nm-mobile__top-side--start">
           <ChromeButton
             title="Workspaces"

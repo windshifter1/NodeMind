@@ -89,7 +89,10 @@ function resolvePrimaryAvoidBox(highlightTarget) {
   const target = readTargetBox(highlightTarget);
   if (!highlightTarget || highlightTarget === 'canvas') return target;
   if (String(highlightTarget).startsWith('toolbar')) {
-    return readTargetBox('toolbar') || target;
+    const toolbar = readTargetBox('toolbar');
+    // Mobile settings live in the top bar, not the bottom nav — avoid the gear itself.
+    if (toolbar && target && overlaps(target, toolbar)) return toolbar;
+    return target || toolbar;
   }
   if (String(highlightTarget).startsWith('workspace')) {
     return readTargetBox('workspace-bar') || target;
@@ -99,10 +102,21 @@ function resolvePrimaryAvoidBox(highlightTarget) {
 
 function readChromeAvoidBoxes(highlightTarget) {
   const avoid = [];
+  const ht = String(highlightTarget || '');
   const toolbar = readTargetBox('toolbar');
   const workspace = readTargetBox('workspace-bar');
-  if (toolbar && !String(highlightTarget || '').startsWith('toolbar')) avoid.push(toolbar);
-  if (workspace && !String(highlightTarget || '').startsWith('workspace')) avoid.push(workspace);
+  const mobileTop = readTargetBox('mobile-top');
+  if (toolbar && !ht.startsWith('toolbar')) avoid.push(toolbar);
+  if (workspace && !ht.startsWith('workspace')) avoid.push(workspace);
+  // Keep the coach off the mobile top bar unless spotlighting a control there.
+  if (
+    mobileTop &&
+    ht !== 'mobile-top' &&
+    ht !== 'toolbar-settings' &&
+    ht !== 'workspace-bar'
+  ) {
+    avoid.push(mobileTop);
+  }
   return avoid;
 }
 
@@ -309,7 +323,11 @@ function InteractiveTutorial({ open, onClose, platform }) {
   );
 
   useEffect(() => {
-    if (!open) return undefined;
+    if (!open) {
+      delete document.body.dataset.tutorialActive;
+      return undefined;
+    }
+    document.body.dataset.tutorialActive = platform;
     acknowledgeOnboardingReplay();
     setSectionIndex(0);
     setTaskIndex(0);
@@ -317,8 +335,11 @@ function InteractiveTutorial({ open, onClose, platform }) {
     setBodyExpanded(false);
     advancingRef.current = false;
     const t = window.setTimeout(() => setVisible(true), 40);
-    return () => window.clearTimeout(t);
-  }, [open]);
+    return () => {
+      window.clearTimeout(t);
+      delete document.body.dataset.tutorialActive;
+    };
+  }, [open, platform]);
 
   useEffect(() => {
     if (!open || !isFinish || !currentTask || !section) return;

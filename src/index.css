@@ -296,6 +296,12 @@ body[data-tutorial-highlight] [data-onboarding] {
   transition: opacity 220ms ease, filter 220ms ease, box-shadow 220ms ease;
 }
 
+/* Spotlighted control stays crisp even when nested (mobile workspace sheet). */
+body[data-tutorial-highlight] [data-tutorial-ring] {
+  opacity: 1 !important;
+  filter: none !important;
+}
+
 body[data-tutorial-highlight='toolbar-add'] [data-onboarding='toolbar'] > :not([data-onboarding='toolbar-add']):not(.w-px),
 body[data-tutorial-highlight='toolbar-recenter'] [data-onboarding='toolbar'] > :not([data-onboarding='toolbar-recenter']):not(.w-px),
 body[data-tutorial-highlight='toolbar-selection'] [data-onboarding='toolbar'] > :not([data-onboarding='toolbar-selection']):not(.w-px),
@@ -305,8 +311,31 @@ body[data-tutorial-highlight='toolbar-settings'] [data-onboarding='toolbar'] > :
   filter: grayscale(0.15);
 }
 
+/* Mobile: settings moved to the top bar — dim the bottom nav + the menu side. */
+body[data-tutorial-highlight='toolbar-settings'] [data-onboarding='toolbar'],
+body[data-tutorial-highlight='toolbar-settings'] [data-onboarding='mobile-top'] .nm-mobile__top-side--start {
+  opacity: 0.38;
+  filter: grayscale(0.15);
+}
+
+body[data-tutorial-highlight='toolbar-settings'] [data-onboarding='toolbar-settings'] {
+  opacity: 1;
+  filter: none;
+}
+
 body[data-tutorial-highlight='workspace-create'] [data-onboarding='workspace-bar'] > :not([data-onboarding='workspace-create']):not(.w-px):not(.nm-workspace-scroll-col),
 body[data-tutorial-highlight='workspace-edit'] [data-onboarding='workspace-bar'] > :not([data-onboarding='workspace-edit']):not(.w-px):not(.nm-workspace-scroll-col) {
+  opacity: 0.4;
+  filter: grayscale(0.1);
+}
+
+/* Mobile workspace sheet nests + inside the strip — keep the strip readable enough. */
+body[data-tutorial-highlight='workspace-create'] [data-onboarding='workspace-bar'] .nm-mobile__ws-strip {
+  opacity: 1;
+  filter: none;
+}
+
+body[data-tutorial-highlight='workspace-create'] [data-onboarding='workspace-bar'] .nm-mobile__ws-tab {
   opacity: 0.4;
   filter: grayscale(0.1);
 }

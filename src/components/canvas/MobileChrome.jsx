@@ -34,6 +34,7 @@ function ChromeButton({
   onClick,
   disabled = false,
   'data-onboarding': dataOnboarding,
+  'data-mobile-chrome': dataMobileChrome,
   'data-selection-arm-button': selectionArmButton,
 }) {
   return (
@@ -44,6 +45,7 @@ function ChromeButton({
       disabled={disabled}
       onClick={disabled ? undefined : onClick}
       data-onboarding={dataOnboarding}
+      data-mobile-chrome={dataMobileChrome != null ? '' : undefined}
       data-selection-arm-button={selectionArmButton ? '' : undefined}
       className={[
         'nm-mobile__btn',
@@ -287,6 +289,7 @@ export default function MobileChrome({
             active={workspaceSheetOpen && !drawMode}
             onClick={() => (workspaceSheetOpen ? closeWorkspaceSheet() : openWorkspaceSheet())}
             className="!min-h-10 !min-w-10"
+            data-mobile-chrome
             data-onboarding={!workspaceSheetOpen ? 'workspace-bar' : undefined}
           >
             <Menu size={17} />
@@ -311,6 +314,7 @@ export default function MobileChrome({
           <ChromeButton
             title="Settings"
             data-onboarding="toolbar-settings"
+            data-mobile-chrome
             className="!min-h-10 !min-w-10"
             onClick={() => {
               onOpenSettings();

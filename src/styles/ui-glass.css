@@ -325,7 +325,8 @@ html[data-ui-family='glass'] [data-onboarding='workspace-bar'] button.nm-liquid-
 }
 
 html[data-ui-family='glass'] [data-onboarding='toolbar']:not([data-mobile-chrome]):active,
-html[data-ui-family='glass'] [data-onboarding='workspace-bar']:not([data-mobile-chrome]):active {
+html[data-ui-family='glass']
+  [data-onboarding='workspace-bar']:not([data-mobile-chrome]):not(.nm-mobile__btn):active {
   /* Parent :active must not drop the centering translate, or the bar jumps off the pointer. */
   transform: translateX(-50%);
   filter: none;

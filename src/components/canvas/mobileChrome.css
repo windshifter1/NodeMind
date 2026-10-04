@@ -66,8 +66,10 @@
 }
 
 .nm-mobile__top-side {
-  flex: 0 0 2.5rem;
-  width: 2.5rem;
+  position: relative;
+  z-index: 1;
+  flex: 0 0 2.75rem;
+  width: 2.75rem;
   display: flex;
   align-items: center;
 }
@@ -80,11 +82,18 @@
   justify-content: flex-end;
 }
 
+/* True bar-center title, independent of side control widths. */
 .nm-mobile__top-center {
-  flex: 1 1 auto;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: calc(100% - 6.5rem);
+  max-width: calc(100% - 6.5rem);
   min-width: 0;
   text-align: center;
   pointer-events: none;
+  z-index: 0;
 }
 
 .nm-mobile__ws-name {

@@ -64,7 +64,6 @@ const MORE_ACTIONS = [
   { id: 'export', label: 'Export', icon: Download },
   { id: 'share', label: 'Share', icon: Share2 },
   { id: 'clear', label: 'Clear', icon: Trash2 },
-  { id: 'settings', label: 'Settings', icon: Settings },
 ];
 
 function appHref(path) {
@@ -342,23 +341,26 @@ function FabMockup() {
       </div>
 
       <div className="nm-mdev__top nm-mdev__chrome">
-        <ChromeButton title="Menu" onClick={() => setSheetOpen(true)} className="!min-h-10 !min-w-10">
-          <Menu size={17} />
-        </ChromeButton>
+        <div className="nm-mdev__top-side nm-mdev__top-side--start">
+          <ChromeButton title="Menu" onClick={() => setSheetOpen(true)} className="!min-h-10 !min-w-10">
+            <Menu size={17} />
+          </ChromeButton>
+        </div>
         <div className="nm-mdev__top-center">
           <div className="nm-mdev__ws-name">{drawOn ? 'Draw' : 'Ideas'}</div>
           <div className="nm-mdev__zoom">100%</div>
         </div>
-        <ChromeButton
-          title="Settings"
-          onClick={() => {
-            setSheetOpen(true);
-            flash('Settings');
-          }}
-          className="!min-h-10 !min-w-10"
-        >
-          <Settings size={17} />
-        </ChromeButton>
+        <div className="nm-mdev__top-side nm-mdev__top-side--end">
+          <ChromeButton
+            title="Settings"
+            onClick={() => {
+              flash('Settings');
+            }}
+            className="!min-h-10 !min-w-10"
+          >
+            <Settings size={17} />
+          </ChromeButton>
+        </div>
       </div>
 
       {drawOn ? (

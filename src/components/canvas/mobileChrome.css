@@ -65,10 +65,26 @@
   border-radius: var(--nm-radius-bar);
 }
 
+.nm-mobile__top-side {
+  flex: 0 0 2.5rem;
+  width: 2.5rem;
+  display: flex;
+  align-items: center;
+}
+
+.nm-mobile__top-side--start {
+  justify-content: flex-start;
+}
+
+.nm-mobile__top-side--end {
+  justify-content: flex-end;
+}
+
 .nm-mobile__top-center {
   flex: 1 1 auto;
   min-width: 0;
   text-align: center;
+  pointer-events: none;
 }
 
 .nm-mobile__ws-name {

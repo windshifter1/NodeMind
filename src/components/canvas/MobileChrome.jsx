@@ -266,15 +266,17 @@ export default function MobileChrome({
   return (
     <>
       <div className="nm-mobile__top nm-mobile__chrome" data-mobile-chrome>
-        <ChromeButton
-          title="Workspaces"
-          active={workspaceSheetOpen && !drawMode}
-          onClick={() => (workspaceSheetOpen ? closeWorkspaceSheet() : openWorkspaceSheet())}
-          className="!min-h-10 !min-w-10"
-          data-onboarding={!workspaceSheetOpen ? 'workspace-bar' : undefined}
-        >
-          <Menu size={17} />
-        </ChromeButton>
+        <div className="nm-mobile__top-side nm-mobile__top-side--start">
+          <ChromeButton
+            title="Workspaces"
+            active={workspaceSheetOpen && !drawMode}
+            onClick={() => (workspaceSheetOpen ? closeWorkspaceSheet() : openWorkspaceSheet())}
+            className="!min-h-10 !min-w-10"
+            data-onboarding={!workspaceSheetOpen ? 'workspace-bar' : undefined}
+          >
+            <Menu size={17} />
+          </ChromeButton>
+        </div>
         <div className="nm-mobile__top-center">
           {drawMode ? (
             <>
@@ -290,17 +292,19 @@ export default function MobileChrome({
             </>
           )}
         </div>
-        <ChromeButton
-          title="Settings"
-          data-onboarding="toolbar-settings"
-          className="!min-h-10 !min-w-10"
-          onClick={() => {
-            onOpenSettings();
-            emitTutorial('toolbar.settings.open');
-          }}
-        >
-          <Settings size={17} />
-        </ChromeButton>
+        <div className="nm-mobile__top-side nm-mobile__top-side--end">
+          <ChromeButton
+            title="Settings"
+            data-onboarding="toolbar-settings"
+            className="!min-h-10 !min-w-10"
+            onClick={() => {
+              onOpenSettings();
+              emitTutorial('toolbar.settings.open');
+            }}
+          >
+            <Settings size={17} />
+          </ChromeButton>
+        </div>
       </div>
 
       {drawMode ? (
@@ -494,15 +498,6 @@ export default function MobileChrome({
           label="Clear"
           onClick={() => {
             onClear();
-            closeMoreSheet();
-          }}
-        />
-        <SheetItem
-          icon={Settings}
-          label="Settings"
-          onClick={() => {
-            onOpenSettings();
-            emitTutorial('toolbar.settings.open');
             closeMoreSheet();
           }}
         />

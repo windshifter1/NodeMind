@@ -33,26 +33,22 @@ export default function NodeTypeMenu({
       onClose();
     };
     const onPointer = (e) => {
-      if (!fixed) return;
       if (e.target?.closest?.('[data-node-type-menu]')) return;
       onClose();
     };
     window.addEventListener('keydown', onKey);
-    // Defer so the opening tap does not immediately dismiss a fixed menu.
+    // Defer so the opening tap does not immediately dismiss the menu.
     let removePointer = () => {};
-    let timer = 0;
-    if (fixed) {
-      timer = window.setTimeout(() => {
-        window.addEventListener('pointerdown', onPointer, true);
-        removePointer = () => window.removeEventListener('pointerdown', onPointer, true);
-      }, 0);
-    }
+    const timer = window.setTimeout(() => {
+      window.addEventListener('pointerdown', onPointer, true);
+      removePointer = () => window.removeEventListener('pointerdown', onPointer, true);
+    }, 0);
     return () => {
       window.removeEventListener('keydown', onKey);
       window.clearTimeout(timer);
       removePointer();
     };
-  }, [open, onClose, initialCategory, fixed]);
+  }, [open, onClose, initialCategory]);
 
   const mathGroups = useMemo(() => {
     if (category !== 'math') return null;

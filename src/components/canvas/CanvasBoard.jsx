@@ -625,6 +625,9 @@ export default function CanvasBoard({
         moved: false,
         suppressContextMenu: false,
         tutorialPanEmitted: false,
+        // Capture at gesture start so a tap-away that closes the picker on
+        // pointerdown does not reopen a new one on the matching pointerup.
+        pickerOpenAtStart: pickerOpenRef.current,
       };
       if (useMarquee) setMarqueeRect(null);
     } else if (pointers.current.size === 2) {
@@ -757,7 +760,9 @@ export default function CanvasBoard({
           onSelectionChange?.([]);
         } else {
           onSelectionChange?.([]);
-          if (!pickerOpenRef.current) {
+          if (panState.current.pickerOpenAtStart) {
+            onPickerClose?.();
+          } else {
             const w = screenToWorld(e.clientX, e.clientY);
             onAddNode(w.x - nodeWidthForTitle('') / 2, w.y - TOP_BAR_HEIGHT / 2, {
               clientX: e.clientX,

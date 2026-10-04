@@ -9,7 +9,7 @@ Built by **Windshifter**.
 - Infinite pan/zoom canvas with Text notes and Math CAS nodes (expand, factor, calculus, solve)
 - Multiple workspaces with custom names, colours, and icons
 - Export/import workspaces as JSON
-- Send the current workspace to another open NodeMind session on the same network
+- Send the current workspace to another open NodeMind session on this network, or outside it with a 6-character code
 - Copy workspace contents as plain text
 - Dark/light note themes
 - No login, no server — works fully offline after first load

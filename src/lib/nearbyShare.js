@@ -15,6 +15,19 @@ const COLORS = [
   '#ec4899', '#8b5cf6', '#14b8a6',
 ];
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+export const SESSION_CODE_LENGTH = 6;
+
+/** Public STUN only — ICE discovery, not a file relay. */
+export const NEARBY_ICE_SERVERS = [
+  {
+    urls: [
+      'stun:stun.l.google.com:19302',
+      'stun:stun1.l.google.com:19302',
+      'stun:global.stun.twilio.com:3478',
+      'stun:stun.cloudflare.com:3478',
+    ],
+  },
+];
 
 export function getSelfPeerId() {
   return selfId;
@@ -68,11 +81,17 @@ export function normalizeSessionCode(value) {
   return String(value || '')
     .toUpperCase()
     .replace(/[^A-Z2-9]/g, '')
-    .slice(0, 4);
+    .slice(0, SESSION_CODE_LENGTH);
+}
+
+export function formatSessionCode(value) {
+  const code = normalizeSessionCode(value);
+  if (code.length <= 3) return code;
+  return `${code.slice(0, 3)} ${code.slice(3)}`;
 }
 
 export function randomSessionCode() {
-  return Array.from({ length: 4 }, () => (
+  return Array.from({ length: SESSION_CODE_LENGTH }, () => (
     CODE_ALPHABET[Math.floor(Math.random() * CODE_ALPHABET.length)]
   )).join('');
 }
@@ -128,7 +147,13 @@ export function joinNearbyRoom({
   onPayload,
   onReceiveProgress,
 } = {}) {
-  const room = joinRoom({ appId: NEARBY_APP_ID }, roomId);
+  const room = joinRoom(
+    {
+      appId: NEARBY_APP_ID,
+      rtcConfig: { iceServers: NEARBY_ICE_SERVERS },
+    },
+    roomId
+  );
   const peers = new Map();
   const hello = room.makeAction('hello');
   const payload = room.makeAction('pack');

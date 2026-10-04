@@ -4,6 +4,7 @@ import {
   joinNearbyRoom,
   normalizeSessionCode,
   randomSessionCode,
+  SESSION_CODE_LENGTH,
   readDeviceColor,
   readDeviceName,
   resolveLanRoomId,
@@ -147,7 +148,9 @@ export function useNearbyShare({ workspaceName, enabled = true } = {}) {
 
   const joinWithCode = useCallback(async (raw) => {
     const code = normalizeSessionCode(raw);
-    if (code.length < 4) throw new Error('Enter the 4-character session code.');
+    if (code.length < SESSION_CODE_LENGTH) {
+      throw new Error(`Enter the ${SESSION_CODE_LENGTH}-character session code.`);
+    }
     await startSession(codeRoomId(code), 'code', code);
   }, [startSession]);
 

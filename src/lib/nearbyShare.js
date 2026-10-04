@@ -135,6 +135,19 @@ function snapshotPeers(map) {
   return [...map.values()].sort((a, b) => a.name.localeCompare(b.name));
 }
 
+function roomPeerIds(room) {
+  const raw = room.getPeers?.();
+  if (!raw) return [];
+  if (typeof raw.keys === 'function' && typeof raw.get === 'function') {
+    return [...raw.keys()];
+  }
+  return Object.keys(raw);
+}
+
+function readDevice(deviceOrFn) {
+  return typeof deviceOrFn === 'function' ? deviceOrFn() : deviceOrFn;
+}
+
 /**
  * Join a Trystero room and run the AirDrop-style offer / accept / payload protocol.
  * Workspace bytes travel on the WebRTC data channel, not the signaling relays.
@@ -159,34 +172,57 @@ export function joinNearbyRoom({
   const payload = room.makeAction('pack');
   let pendingReceiveFrom = null;
   let offerWaiter = null;
+  const announceRetries = new Map();
 
   const emitPeers = () => onPeers?.(snapshotPeers(peers));
 
+  const upsertPeer = (peerId, patch = {}) => {
+    const prev = peers.get(peerId) || {
+      id: peerId,
+      name: 'Nearby device',
+      color: '#6366f1',
+      workspaceName: 'Untitled',
+    };
+    peers.set(peerId, { ...prev, ...patch, id: peerId });
+    emitPeers();
+  };
+
   const announce = (target) => {
+    const current = readDevice(device) || {};
     const body = {
-      name: device.name,
-      color: device.color,
-      workspaceName: device.workspaceName || 'Untitled',
+      name: current.name,
+      color: current.color,
+      workspaceName: current.workspaceName || 'Untitled',
     };
     hello.send(body, target ? { target } : undefined).catch(() => {});
   };
 
+  const greet = (peerId) => {
+    upsertPeer(peerId);
+    announce(peerId);
+    if (announceRetries.has(peerId)) return;
+    const delays = [400, 1200, 3000];
+    const timers = delays.map((ms) => setTimeout(() => announce(peerId), ms));
+    announceRetries.set(peerId, timers);
+  };
+
   hello.onMessage = (data, { peerId }) => {
     if (!data || typeof data !== 'object') return;
-    peers.set(peerId, {
-      id: peerId,
+    upsertPeer(peerId, {
       name: String(data.name || 'Nearby device').slice(0, 32),
       color: typeof data.color === 'string' ? data.color : '#6366f1',
       workspaceName: String(data.workspaceName || 'Untitled').slice(0, 80),
     });
-    emitPeers();
   };
 
   room.onPeerJoin = (peerId) => {
-    announce(peerId);
+    greet(peerId);
   };
 
   room.onPeerLeave = (peerId) => {
+    const timers = announceRetries.get(peerId);
+    timers?.forEach((id) => clearTimeout(id));
+    announceRetries.delete(peerId);
     peers.delete(peerId);
     emitPeers();
     if (pendingReceiveFrom === peerId) pendingReceiveFrom = null;
@@ -233,6 +269,13 @@ export function joinNearbyRoom({
   };
 
   announce();
+  roomPeerIds(room).forEach((peerId) => greet(peerId));
+  const syncTimer = setInterval(() => {
+    roomPeerIds(room).forEach((peerId) => {
+      if (!peers.has(peerId)) greet(peerId);
+    });
+    if (peers.size) announce();
+  }, 2500);
 
   return {
     roomId,
@@ -240,10 +283,11 @@ export function joinNearbyRoom({
     announce,
     getPeers: () => snapshotPeers(peers),
     requestSend(peerId, meta) {
+      const current = readDevice(device) || {};
       return offer.request(
         {
-          fromName: device.name,
-          workspaceName: meta?.workspaceName || device.workspaceName || 'Untitled',
+          fromName: current.name,
+          workspaceName: meta?.workspaceName || current.workspaceName || 'Untitled',
         },
         { target: peerId, timeoutMs: 90_000 }
       );
@@ -255,6 +299,9 @@ export function joinNearbyRoom({
       });
     },
     leave() {
+      clearInterval(syncTimer);
+      announceRetries.forEach((timers) => timers.forEach((id) => clearTimeout(id)));
+      announceRetries.clear();
       if (offerWaiter) {
         offerWaiter.resolve({ ok: false, reason: 'left' });
         offerWaiter = null;

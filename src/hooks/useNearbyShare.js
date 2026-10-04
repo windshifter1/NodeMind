@@ -65,7 +65,7 @@ export function useNearbyShare({ workspaceName, enabled = true } = {}) {
     try {
       const session = joinNearbyRoom({
         roomId,
-        device: deviceRef.current,
+        device: () => deviceRef.current,
         onPeers: (list) => {
           if (gen !== genRef.current) return;
           setPeers(list);

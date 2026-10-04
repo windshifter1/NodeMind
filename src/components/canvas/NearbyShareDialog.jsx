@@ -134,7 +134,7 @@ export default function NearbyShareDialog({
           <p className="mt-1 text-xs text-nm-text-secondary">{statusLine}</p>
 
           <div className="mt-3 min-h-[7.5rem] rounded-2xl border border-nm-border bg-nm-option p-3">
-            {nearby.status === 'connecting' ? (
+            {nearby.status === 'connecting' && !nearby.peers.length ? (
               <div className="flex h-24 items-center justify-center gap-2 text-sm text-nm-text-muted">
                 <Loader2 size={16} className="animate-spin" />
                 Connecting…

@@ -1,6 +1,7 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import NoteNode from './NoteNode';
 import NodeTypeMenu from './NodeTypeMenu';
+import { consumeNodePickerOpenSuppressed } from '@/lib/nodePickerGesture';
 import BinIcon from './BinIcon';
 import BackgroundDrawLayer from './BackgroundDrawLayer';
 import {
@@ -761,7 +762,10 @@ export default function CanvasBoard({
           onSelectionChange?.([]);
         } else {
           onSelectionChange?.([]);
-          if (panState.current.pickerOpenAtStart) {
+          // pickerOpenAtStart can miss when the menu closes in a window
+          // capture listener before this gesture records state — also honour
+          // the suppress flag set by NodeTypeMenu on tap-away.
+          if (panState.current.pickerOpenAtStart || consumeNodePickerOpenSuppressed()) {
             onPickerClose?.();
           } else {
             const w = screenToWorld(e.clientX, e.clientY);
@@ -1489,7 +1493,7 @@ export default function CanvasBoard({
             edges={edges}
           />
         ))}
-        {!nodePicker?.fixed && (
+        {!nodePicker?.fixed && !nodePicker?.sheet && (
           <NodeTypeMenu
             key={nodePicker ? `${nodePicker.source}-${nodePicker.worldX}-${nodePicker.worldY}` : 'closed'}
             open={!!nodePicker}
@@ -1505,7 +1509,21 @@ export default function CanvasBoard({
         )}
       </div>
 
-      {nodePicker?.fixed && (
+      {nodePicker?.sheet && (
+        <NodeTypeMenu
+          key={`sheet-${nodePicker.source}`}
+          open
+          sheet
+          onClose={onPickerClose}
+          onSelect={onPickerSelect}
+          allowedMathKinds={nodePicker?.allowedMathKinds ?? null}
+          initialCategory={nodePicker?.initialCategory ?? 'text'}
+          hideValueSources={!!nodePicker?.hideValueSources}
+          valuesOnly={!!nodePicker?.valuesOnly}
+        />
+      )}
+
+      {nodePicker?.fixed && !nodePicker?.sheet && (
         <NodeTypeMenu
           key={`fixed-${nodePicker.source}-${nodePicker.clientX}-${nodePicker.clientY}`}
           open

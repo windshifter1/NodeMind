@@ -21,6 +21,7 @@ import {
 import { WORKSPACE_ICONS } from '@/lib/workspaceIcons';
 import { emitTutorial } from '@/lib/tutorialEvents';
 import { normalizeBackgroundArt } from '@/lib/backgroundArt';
+import { useSheetDragDismiss } from '@/hooks/useSheetDragDismiss';
 import { addBackgroundImage } from './BackgroundDrawLayer';
 import './mobileChrome.css';
 
@@ -59,12 +60,26 @@ function ChromeButton({
 }
 
 function MoreSheet({ open, onClose, title, children, layout = 'grid' }) {
+  const { sheetRef, backdropRef, handleProps } = useSheetDragDismiss(onClose, { open });
   if (!open) return null;
   return (
     <>
-      <button type="button" className="nm-mobile__sheet-backdrop" aria-label="Close sheet" onClick={onClose} />
-      <div className="nm-mobile__sheet nm-mobile__chrome" role="dialog" aria-label={title}>
-        <div className="nm-mobile__sheet-handle" />
+      <button
+        ref={backdropRef}
+        type="button"
+        className="nm-mobile__sheet-backdrop"
+        aria-label="Close sheet"
+        onClick={onClose}
+      />
+      <div
+        ref={sheetRef}
+        className="nm-mobile__sheet nm-mobile__chrome"
+        role="dialog"
+        aria-label={title}
+      >
+        <div className="nm-mobile__sheet-handle-hit" {...handleProps}>
+          <div className="nm-mobile__sheet-handle" />
+        </div>
         <div className="nm-mobile__sheet-head">
           <p className="nm-mobile__sheet-title">{title}</p>
           <ChromeButton title="Close" onClick={onClose} className="nm-mobile__sheet-close">
@@ -349,12 +364,10 @@ export default function MobileChrome({
               title="Add node"
               primary
               className="nm-mobile__fab"
-              onClick={(e) => {
-                const rect = e.currentTarget.getBoundingClientRect();
-                onAddNodeCenter({
-                  clientX: rect.left + rect.width / 2,
-                  clientY: rect.top - 8,
-                });
+              onClick={() => {
+                setWorkspaceSheetOpen(false);
+                setMoreSheetOpen(false);
+                onAddNodeCenter();
               }}
             >
               <Plus size={20} />

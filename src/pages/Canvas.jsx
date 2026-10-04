@@ -1041,26 +1041,12 @@ function CanvasReady({
             dispatch({ type: 'UPDATE_BACKGROUND_ART', patch })
           }
           onAddNodeCenter={() => {
-            const menuW = Math.min(300, window.innerWidth - 16);
-            const menuH = Math.min(420, window.innerHeight * 0.7);
-            const clientX = Math.max(8, (window.innerWidth - menuW) / 2);
-            // Sit above the bottom nav; keep the full menu on-screen.
-            const clientY = Math.max(
-              72,
-              Math.min((window.innerHeight - menuH) / 2, window.innerHeight - menuH - 96)
-            );
-            const rect = document.querySelector('[data-canvas-board]')?.getBoundingClientRect();
-            const left = rect?.left ?? 0;
-            const top = rect?.top ?? 0;
+            // Bottom sheet (same chrome as More actions); node spawns at view center.
             openNodePicker({
               source: 'toolbar',
-              fixed: true,
+              sheet: true,
               x: -nodeWidthForTitle('') / 2,
               y: -TOP_BAR_HEIGHT / 2,
-              worldX: (clientX - left - pan.x) / zoom,
-              worldY: (clientY - top - pan.y) / zoom,
-              clientX,
-              clientY,
             });
           }}
         />

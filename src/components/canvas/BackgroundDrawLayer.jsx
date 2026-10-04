@@ -64,6 +64,10 @@ export default function BackgroundDrawLayer({
   const persistRafRef = useRef(0);
   const pendingPersistRef = useRef(null);
   const liveBgRef = useRef(null);
+  /** Active touch/pen pointers — 2+ means pinch, not draw. */
+  const activePointersRef = useRef(new Set());
+  /** Pointer that owns the current stroke / erase / drag, if any. */
+  const strokePointerIdRef = useRef(null);
   const [imageUrls, setImageUrls] = useState({});
 
   useEffect(() => {
@@ -182,11 +186,42 @@ export default function BackgroundDrawLayer({
   // Pan tool (or space-pan): let the board receive gestures.
   const passThrough = !enabled || spacePanArmed || bg.tool === 'pan';
 
+  const cancelStrokeGesture = (layer) => {
+    if (draftRafRef.current) {
+      cancelAnimationFrame(draftRafRef.current);
+      draftRafRef.current = 0;
+    }
+    pendingPointRef.current = null;
+    const captureId = strokePointerIdRef.current;
+    draftRef.current = null;
+    setDraft(null);
+    dragRef.current = null;
+    capturingRef.current = false;
+    strokePointerIdRef.current = null;
+    boardRectRef.current = null;
+    liveBgRef.current = null;
+    if (layer && captureId != null) {
+      try {
+        layer.releasePointerCapture?.(captureId);
+      } catch {
+        /* ignore */
+      }
+    }
+  };
+
   const onPointerDown = (e) => {
     if (!enabled || passThrough) return;
     if (e.button !== 0) return;
 
     const layer = e.currentTarget;
+    activePointersRef.current.add(e.pointerId);
+
+    // Pinch / multi-touch: discard any in-progress stroke so zoom doesn't paint.
+    if (activePointersRef.current.size >= 2) {
+      cancelStrokeGesture(layer);
+      return;
+    }
+
     boardRectRef.current = layer.parentElement?.getBoundingClientRect?.() || null;
     liveBgRef.current = bg;
     const w = screenToWorld(e.clientX, e.clientY);
@@ -196,6 +231,7 @@ export default function BackgroundDrawLayer({
       if (img) {
         e.stopPropagation();
         capturingRef.current = true;
+        strokePointerIdRef.current = e.pointerId;
         layer.setPointerCapture?.(e.pointerId);
         setSelectedId(img.id);
         setSelectedKind('image');
@@ -206,6 +242,7 @@ export default function BackgroundDrawLayer({
       if (stroke) {
         e.stopPropagation();
         capturingRef.current = true;
+        strokePointerIdRef.current = e.pointerId;
         layer.setPointerCapture?.(e.pointerId);
         setSelectedId(stroke.id);
         setSelectedKind('stroke');
@@ -228,6 +265,7 @@ export default function BackgroundDrawLayer({
 
     e.stopPropagation();
     capturingRef.current = true;
+    strokePointerIdRef.current = e.pointerId;
     layer.setPointerCapture?.(e.pointerId);
 
     if (bg.tool === 'erase') {
@@ -272,6 +310,9 @@ export default function BackgroundDrawLayer({
 
   const onPointerMove = (e) => {
     if (!enabled) return;
+    // Ignore sibling fingers and any move once a pinch is in progress.
+    if (activePointersRef.current.size >= 2) return;
+    if (strokePointerIdRef.current != null && e.pointerId !== strokePointerIdRef.current) return;
     if (!capturingRef.current && !draftRef.current && !dragRef.current) return;
     const w = screenToWorld(e.clientX, e.clientY);
     if (bg.tool === 'erase' && e.buttons === 1 && capturingRef.current) {
@@ -316,7 +357,22 @@ export default function BackgroundDrawLayer({
     }
   };
 
-  const onPointerUp = () => {
+  const onPointerUp = (e) => {
+    activePointersRef.current.delete(e.pointerId);
+
+    // Extra finger lifted after a pinch — nothing to commit for draw.
+    if (strokePointerIdRef.current != null && e.pointerId !== strokePointerIdRef.current) {
+      return;
+    }
+    // Pinch already cancelled the stroke; just clear pointer bookkeeping.
+    if (strokePointerIdRef.current == null && !draftRef.current && !dragRef.current) {
+      if (activePointersRef.current.size === 0) {
+        boardRectRef.current = null;
+        liveBgRef.current = null;
+      }
+      return;
+    }
+
     if (draftRafRef.current) {
       cancelAnimationFrame(draftRafRef.current);
       draftRafRef.current = 0;
@@ -333,6 +389,7 @@ export default function BackgroundDrawLayer({
     }
     dragRef.current = null;
     capturingRef.current = false;
+    strokePointerIdRef.current = null;
     boardRectRef.current = null;
     liveBgRef.current = null;
   };

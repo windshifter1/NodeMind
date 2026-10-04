@@ -7,6 +7,7 @@ import WorkspaceBar from '@/components/canvas/WorkspaceBar';
 import WorkspaceEditDialog from '@/components/canvas/WorkspaceEditDialog';
 import TextExportDialog from '@/components/canvas/TextExportDialog';
 import ShareCanvasDialog from '@/components/canvas/ShareCanvasDialog';
+import ActionMenuDialog from '@/components/canvas/ActionMenuDialog';
 import TerminalDialog from '@/components/canvas/TerminalDialog';
 import SettingsDialog from '@/components/canvas/SettingsDialog';
 import NearbyShareDialog from '@/components/canvas/NearbyShareDialog';
@@ -16,6 +17,15 @@ import MathsCreditDialog from '@/components/canvas/MathsCreditDialog';
 import OnboardingTour from '@/components/onboarding/OnboardingTour';
 import { useWorkspaces } from '@/hooks/useWorkspaces';
 import { useNearbyShare } from '@/hooks/useNearbyShare';
+import {
+  Copy,
+  Download,
+  Globe,
+  Save,
+  Share2,
+  Upload,
+  Wifi,
+} from 'lucide-react';
 import {
   LAYOUT_ON_ORIENTATION_CHANGE,
   MIN_ZOOM,
@@ -67,8 +77,9 @@ import { downloadBlob } from '@/lib/shareCanvas';
 import {
   backupFileName,
   downloadFileName,
-  packBackupExport,
   packWorkspaceExport,
+  packZipBackupExport,
+  prepareBackupImport,
   prepareImportedWorkspaces,
 } from '@/lib/workspaceBackup';
 
@@ -111,9 +122,13 @@ function CanvasReady({
   const [editingWorkspace, setEditingWorkspace] = useState(false);
   const [creatingWorkspace, setCreatingWorkspace] = useState(false);
   const [textExportOpen, setTextExportOpen] = useState(false);
+  const [shareMenuOpen, setShareMenuOpen] = useState(false);
+  const [saveMenuOpen, setSaveMenuOpen] = useState(false);
   const [shareCanvasOpen, setShareCanvasOpen] = useState(false);
   const [nearbyShareOpen, setNearbyShareOpen] = useState(false);
+  const [nearbyShareScope, setNearbyShareScope] = useState('lan');
   const nearby = useNearbyShare({ workspaceName: active.name, enabled: true });
+  const importFileRef = useRef(null);
   const [terminalOpen, setTerminalOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [selectedNodeIds, setSelectedNodeIds] = useState([]);
@@ -748,9 +763,8 @@ function CanvasReady({
 
   const handleExportAll = async () => {
     try {
-      const payload = await packBackupExport(state);
-      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-      await downloadBlob(blob, backupFileName(), 'application/json');
+      const blob = await packZipBackupExport(state);
+      await downloadBlob(blob, backupFileName(), 'application/zip');
     } catch (err) {
       alert(err?.message || 'Backup failed.');
     }
@@ -791,6 +805,31 @@ function CanvasReady({
       dispatch({ type: 'IMPORT_WORKSPACES', workspaces: imported.workspaces });
     } catch (err) {
       alert(err?.message || 'Invalid JSON file.');
+    }
+  };
+
+  const handleImportBackup = async (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (e.target) e.target.value = '';
+    if (!file) return;
+    try {
+      const imported = await prepareBackupImport(file, state.workspaces);
+      if (!imported.workspaces.length) {
+        alert(
+          imported.skipped
+            ? `Nothing new to import — ${imported.skipped} workspace${imported.skipped === 1 ? '' : 's'} already present.`
+            : 'Backup contains no workspaces.'
+        );
+        return;
+      }
+      dispatch({ type: 'IMPORT_WORKSPACES', workspaces: imported.workspaces });
+      if (imported.skipped) {
+        alert(
+          `Imported ${imported.workspaces.length} workspace${imported.workspaces.length === 1 ? '' : 's'}. Skipped ${imported.skipped} duplicate${imported.skipped === 1 ? '' : 's'} (same name and contents).`
+        );
+      }
+    } catch (err) {
+      alert(err?.message || 'Could not import backup.');
     }
   };
 
@@ -918,12 +957,9 @@ function CanvasReady({
       {isDesktop ? (
         <>
           <Toolbar
-            onExport={handleExport}
-            onImport={handleImport}
             onClear={handleClear}
-            onTextExport={() => setTextExportOpen(true)}
-            onShareCanvas={() => setShareCanvasOpen(true)}
-            onSendToDevice={() => setNearbyShareOpen(true)}
+            onOpenShare={() => setShareMenuOpen(true)}
+            onOpenSave={() => setSaveMenuOpen(true)}
             onOpenTerminal={() => setTerminalOpen(true)}
             onAutoOrganise={autoOrganise}
             onOrganiseSelected={organiseSelected}
@@ -973,12 +1009,9 @@ function CanvasReady({
           onSelectWorkspace={selectWorkspace}
           onCreateWorkspace={() => setCreatingWorkspace(true)}
           onEditWorkspace={() => setEditingWorkspace(true)}
-          onExport={handleExport}
-          onImport={handleImport}
           onClear={handleClear}
-          onTextExport={() => setTextExportOpen(true)}
-          onShareCanvas={() => setShareCanvasOpen(true)}
-          onSendToDevice={() => setNearbyShareOpen(true)}
+          onOpenShare={() => setShareMenuOpen(true)}
+          onOpenSave={() => setSaveMenuOpen(true)}
           onOpenTerminal={() => setTerminalOpen(true)}
           onAutoOrganise={autoOrganise}
           onOrganiseSelected={organiseSelected}
@@ -1060,6 +1093,87 @@ function CanvasReady({
         edges={active.edges}
       />
 
+      <ActionMenuDialog
+        open={shareMenuOpen}
+        onClose={() => setShareMenuOpen(false)}
+        title="Share"
+        icon={Share2}
+        description="Send this workspace to another device, or share a canvas image."
+        actions={[
+          {
+            id: 'nearby',
+            label: 'Nearby devices',
+            description: 'Share to NodeMind sessions on your local network',
+            icon: Wifi,
+            onClick: () => {
+              setNearbyShareScope('lan');
+              setNearbyShareOpen(true);
+            },
+          },
+          {
+            id: 'anywhere',
+            label: 'Any device',
+            description: 'Connect with a joining code over the internet',
+            icon: Globe,
+            onClick: () => {
+              setNearbyShareScope('anywhere');
+              setNearbyShareOpen(true);
+            },
+          },
+          {
+            id: 'system',
+            label: isDesktop ? 'Share image' : 'Device share',
+            description: isDesktop
+              ? 'Capture as JPEG, PNG, PDF, or SVG'
+              : 'Open the system share sheet with a canvas image',
+            icon: Share2,
+            onClick: () => setShareCanvasOpen(true),
+          },
+        ]}
+      />
+
+      <ActionMenuDialog
+        open={saveMenuOpen}
+        onClose={() => setSaveMenuOpen(false)}
+        title="Save"
+        icon={Save}
+        description="Import or export this workspace as a NodeMind file."
+        actions={[
+          {
+            id: 'import',
+            label: 'Import',
+            description: 'Load a workspace or backup from a file',
+            icon: Upload,
+            onClick: () => importFileRef.current?.click(),
+          },
+          {
+            id: 'export',
+            label: 'Export',
+            description: 'Download this workspace as a JSON file',
+            icon: Download,
+            onClick: () => {
+              void handleExport();
+            },
+          },
+          {
+            id: 'copy',
+            label: 'Copy text',
+            description: 'Copy a text outline of this workspace',
+            icon: Copy,
+            onClick: () => setTextExportOpen(true),
+          },
+        ]}
+      />
+
+      <input
+        ref={importFileRef}
+        type="file"
+        accept="application/json"
+        className="hidden"
+        data-workspace-import
+        onChange={handleImport}
+      />
+
       <ShareCanvasDialog
         open={shareCanvasOpen}
         onClose={() => setShareCanvasOpen(false)}
@@ -1121,13 +1235,14 @@ function CanvasReady({
         onDeleteAllWorkspaces={deleteAllWorkspaces}
         persistStatus={persistStatus}
         onExportAll={handleExportAll}
-        onImportBackup={handleImport}
+        onImportBackup={handleImportBackup}
         deviceName={nearby.deviceName}
         onDeviceNameChange={nearby.setDeviceName}
       />
 
       <NearbyShareDialog
         open={nearbyShareOpen}
+        scope={nearbyShareScope}
         onClose={() => {
           setNearbyShareOpen(false);
           nearby.clearOutgoing();
@@ -1152,8 +1267,7 @@ function CanvasReady({
         onArrange={autoOrganise}
         onExport={handleExport}
         onImport={() => {
-          const input = document.querySelector('input[type="file"][accept="application/json"]');
-          input?.click();
+          importFileRef.current?.click();
         }}
         onTutorialStart={beginTerminalTutorialWorkspace}
         onTutorialEnd={endTerminalTutorialWorkspace}

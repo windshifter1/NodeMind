@@ -155,6 +155,7 @@ export default function FileConverterNodeBody({ node, darkNodes, onUpdate, dataR
             {url ? (
               <a
                 href={url}
+                download={node.outputFileName || 'file'}
                 target="_blank"
                 rel="noreferrer"
                 className={darkNodes ? 'text-indigo-300 underline' : 'text-indigo-700 underline'}

@@ -8,10 +8,7 @@ import {
   Settings,
   Terminal,
   Share2,
-  MonitorSmartphone,
-  Copy,
-  Upload,
-  Download,
+  Save,
   Trash2,
   Wrench,
   Menu,
@@ -202,10 +199,7 @@ export default function MobileChrome({
   onSelectWorkspace,
   onCreateWorkspace,
   onEditWorkspace,
-  onExport,
-  onImport,
   onClear,
-  onTextExport,
   onOpenTerminal,
   onAutoOrganise,
   onOrganiseSelected,
@@ -220,13 +214,12 @@ export default function MobileChrome({
   onToggleDrawMode,
   backgroundArt,
   onBackgroundArtChange,
-  onShareCanvas,
-  onSendToDevice,
+  onOpenShare,
+  onOpenSave,
 }) {
   const [workspaceSheetOpen, setWorkspaceSheetOpen] = useState(false);
   const [moreSheetOpen, setMoreSheetOpen] = useState(false);
   const [moreOpenedByTools, setMoreOpenedByTools] = useState(false);
-  const fileRef = useRef(null);
   const imageRef = useRef(null);
   const canOrganiseSelected = selectedCount >= 2;
   const bg = normalizeBackgroundArt(backgroundArt);
@@ -481,42 +474,18 @@ export default function MobileChrome({
           }}
         />
         <SheetItem
-          icon={Copy}
-          label="Copy"
-          onClick={() => {
-            onTextExport();
-            closeMoreSheet();
-          }}
-        />
-        <SheetItem
-          icon={Upload}
-          label="Import"
-          onClick={() => {
-            fileRef.current?.click();
-            closeMoreSheet();
-          }}
-        />
-        <SheetItem
-          icon={Download}
-          label="Export"
-          onClick={() => {
-            onExport();
-            closeMoreSheet();
-          }}
-        />
-        <SheetItem
           icon={Share2}
           label="Share"
           onClick={() => {
-            onShareCanvas?.();
+            onOpenShare?.();
             closeMoreSheet();
           }}
         />
         <SheetItem
-          icon={MonitorSmartphone}
-          label="Send to device"
+          icon={Save}
+          label="Save"
           onClick={() => {
-            onSendToDevice?.();
+            onOpenSave?.();
             closeMoreSheet();
           }}
         />
@@ -539,7 +508,6 @@ export default function MobileChrome({
         />
       </MoreSheet>
 
-      <input ref={fileRef} type="file" accept="application/json" className="hidden" onChange={onImport} />
       <input
         ref={imageRef}
         type="file"

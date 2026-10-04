@@ -213,8 +213,9 @@ export default function SettingsDialog({
                 <div>
                   <h3 className="text-sm font-semibold text-nm-text">Storage</h3>
                   <p className="mt-1 text-xs text-nm-text-muted">
-                    Workspaces stay on this device in IndexedDB. Export a backup before clearing
-                    browser data.
+                    Workspaces stay on this device in IndexedDB. Export a zip backup (workspaces and
+                    loaded files) before clearing browser data. Import skips workspaces that already
+                    match by name and contents.
                   </p>
                 </div>
 
@@ -269,7 +270,7 @@ export default function SettingsDialog({
                     className="flex w-full items-center justify-center gap-2 rounded-xl border border-nm-border bg-nm-option px-3 py-2.5 text-sm font-medium text-nm-text transition hover:bg-nm-hover"
                   >
                     <Download size={16} />
-                    Export all workspaces
+                    Export backup
                   </button>
                   <button
                     type="button"
@@ -283,7 +284,7 @@ export default function SettingsDialog({
                 <input
                   ref={backupInputRef}
                   type="file"
-                  accept="application/json,.json"
+                  accept="application/zip,.zip,application/json,.json"
                   className="hidden"
                   onChange={onImportBackup}
                 />

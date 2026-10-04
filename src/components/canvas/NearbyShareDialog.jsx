@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ArrowLeft, Loader2, MonitorSmartphone, Radio, X } from 'lucide-react';
+import { ArrowLeft, Globe, Loader2, MonitorSmartphone, Radio, X } from 'lucide-react';
 import {
   formatSessionCode,
   normalizeSessionCode,
@@ -32,10 +32,13 @@ export default function NearbyShareDialog({
   workspaceName,
   nearby,
   onSend,
+  /** 'lan' = devices on this network; 'anywhere' = joining-code flow */
+  scope = 'lan',
 }) {
   const [codeInput, setCodeInput] = useState('');
   const [codeError, setCodeError] = useState(null);
   const [busyCode, setBusyCode] = useState(false);
+  const anywhere = scope === 'anywhere';
 
   useEffect(() => {
     if (open) return undefined;
@@ -50,6 +53,8 @@ export default function NearbyShareDialog({
   const hosting = nearby.mode === 'code' && nearby.codeRole !== 'join';
   const joining = nearby.mode === 'code' && nearby.codeRole === 'join';
   const codeReady = normalizeSessionCode(codeInput).length >= SESSION_CODE_LENGTH;
+  const title = anywhere ? 'Any device' : 'Nearby devices';
+  const TitleIcon = anywhere ? Globe : MonitorSmartphone;
 
   const statusLine =
     nearby.status === 'connecting'
@@ -57,7 +62,9 @@ export default function NearbyShareDialog({
         ? 'Opening a code session…'
         : joining
           ? 'Joining with that code…'
-          : 'Looking for NodeMind sessions on this network…'
+          : anywhere
+            ? 'Preparing a joining-code session…'
+            : 'Looking for NodeMind sessions on this network…'
       : nearby.status === 'error'
         ? nearby.statusError
         : nearby.peers.length
@@ -66,7 +73,9 @@ export default function NearbyShareDialog({
             ? 'Waiting for the other device to enter this joining code…'
             : joining
               ? 'Waiting for the other device…'
-              : 'No other NodeMind session on this network yet.';
+              : anywhere
+                ? 'Create a joining code, or enter one from the other device.'
+                : 'No other NodeMind session on this network yet.';
 
   const joinCode = async (event) => {
     event?.preventDefault?.();
@@ -110,8 +119,8 @@ export default function NearbyShareDialog({
         onPointerDown={(e) => e.stopPropagation()}
       >
         <div className="flex items-center gap-2 border-b border-nm-border bg-nm-header px-3 py-3 sm:px-4">
-          <MonitorSmartphone size={16} className="text-nm-text-muted" />
-          <h2 className="text-sm font-semibold text-nm-text">Send to device</h2>
+          <TitleIcon size={16} className="text-nm-text-muted" />
+          <h2 className="text-sm font-semibold text-nm-text">{title}</h2>
           <div className="flex-1" />
           <button
             type="button"
@@ -125,11 +134,12 @@ export default function NearbyShareDialog({
         <div className="overflow-auto p-4">
           <p className="text-xs text-nm-text-muted">
             Send <span className="font-medium text-nm-text">{workspaceName || 'this workspace'}</span> to
-            another open NodeMind session. The other device must accept.
+            another open NodeMind session
+            {anywhere ? ' using a joining code' : ' on this network'}. The other device must accept.
           </p>
 
           <h3 className="mt-4 text-xs font-semibold uppercase tracking-wide text-nm-text-muted">
-            {hosting || joining ? 'Connected devices' : 'On this network'}
+            {hosting || joining ? 'Connected devices' : anywhere ? 'Devices' : 'On this network'}
           </h3>
           <p className="mt-1 text-xs text-nm-text-secondary">{statusLine}</p>
 
@@ -180,14 +190,14 @@ export default function NearbyShareDialog({
             </div>
           )}
 
-          {hosting ? (
+          {anywhere && hosting ? (
             <div className="mt-4 rounded-2xl border border-nm-border bg-nm-option p-3">
               <h3 className="text-xs font-semibold uppercase tracking-wide text-nm-text-muted">
-                Send outside this network
+                Joining code
               </h3>
               <p className="mt-1 text-xs text-nm-text-muted">
-                On the other device, open Send to device and type this joining code. Do not create a
-                second code.
+                On the other device, open Share → Any device and type this code. Do not create a second
+                code.
               </p>
               <p className="mt-3 text-center font-mono text-2xl tracking-[0.28em] text-nm-text">
                 {formatSessionCode(nearby.sessionCode)}
@@ -199,10 +209,10 @@ export default function NearbyShareDialog({
                 className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm text-nm-text-secondary transition hover:bg-nm-hover hover:text-nm-text disabled:opacity-50"
               >
                 <ArrowLeft size={14} />
-                Back to this network
+                End code session
               </button>
             </div>
-          ) : joining ? (
+          ) : anywhere && joining ? (
             <div className="mt-4 rounded-2xl border border-nm-border bg-nm-option p-3">
               <h3 className="text-xs font-semibold uppercase tracking-wide text-nm-text-muted">
                 Joining code
@@ -217,18 +227,18 @@ export default function NearbyShareDialog({
                 className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm text-nm-text-secondary transition hover:bg-nm-hover hover:text-nm-text disabled:opacity-50"
               >
                 <ArrowLeft size={14} />
-                Back to this network
+                End code session
               </button>
             </div>
-          ) : (
+          ) : anywhere ? (
             <>
               <button
                 type="button"
                 disabled={busyCode || nearby.status === 'connecting'}
                 onClick={createCode}
-                className="mt-4 w-full rounded-xl border border-nm-border px-3 py-2 text-sm text-nm-text-secondary transition hover:bg-nm-hover hover:text-nm-text disabled:opacity-50"
+                className="mt-4 w-full rounded-xl border border-nm-border px-3 py-2.5 text-sm font-medium text-nm-text transition hover:bg-nm-hover disabled:opacity-50"
               >
-                Send outside this network
+                Create joining code
               </button>
 
               <form
@@ -237,7 +247,7 @@ export default function NearbyShareDialog({
               >
                 <label htmlFor="nearby-joining-code" className="block">
                   <span className="text-xs font-semibold uppercase tracking-wide text-nm-text">
-                    Joining code
+                    Enter joining code
                   </span>
                   <span className="mt-1 block text-xs text-nm-text-muted">
                     If the other device showed you a code, enter it here.
@@ -267,7 +277,7 @@ export default function NearbyShareDialog({
                 {codeError && <p className="mt-2 text-xs text-rose-300">{codeError}</p>}
               </form>
             </>
-          )}
+          ) : null}
 
           <p className="mt-4 text-[11px] leading-relaxed text-nm-text-faint">
             This device is {nearby.deviceName}. You can rename it in Settings → Data.

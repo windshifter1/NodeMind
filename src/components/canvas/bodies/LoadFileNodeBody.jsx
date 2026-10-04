@@ -1,5 +1,7 @@
 import React, { useMemo, useState } from 'react';
-import { putFileFromFileList } from '@/lib/mediaStore';
+import { Download } from 'lucide-react';
+import { getBlobRecord, putFileFromFileList } from '@/lib/mediaStore';
+import { downloadBlob } from '@/lib/shareCanvas';
 import FilePreviewPanel, { formatFileSize, useBlobPreview } from './FilePreviewPanel';
 
 function inputClass(darkNodes, color) {
@@ -17,6 +19,7 @@ export default function LoadFileNodeBody({ node, darkNodes, onUpdate }) {
   const fieldLooks = useMemo(() => inputClass(darkNodes, node.color), [darkNodes, node.color]);
   const { url, textPreview, err: loadErr } = useBlobPreview(node.fileId);
   const [busy, setBusy] = useState(false);
+  const [dlBusy, setDlBusy] = useState(false);
   const [err, setErr] = useState(null);
 
   const onPick = async (e) => {
@@ -41,8 +44,29 @@ export default function LoadFileNodeBody({ node, darkNodes, onUpdate }) {
     }
   };
 
+  const onDownload = async () => {
+    if (!node.fileId) return;
+    setDlBusy(true);
+    setErr(null);
+    try {
+      const record = await getBlobRecord(node.fileId);
+      if (!record?.blob) throw new Error('File missing from storage');
+      const name = record.name || node.fileName || 'file';
+      await downloadBlob(record.blob, name, record.mime || node.fileMime);
+      // Keep node label in sync if media meta was restored without a name earlier.
+      if ((!node.fileName || node.fileName === 'file') && record.name && record.name !== 'file') {
+        onUpdate({ fileName: record.name, fileMime: record.mime || node.fileMime });
+      }
+    } catch (ex) {
+      setErr(ex?.message || 'Download failed');
+    } finally {
+      setDlBusy(false);
+    }
+  };
+
   const collapsed = Boolean(node.previewCollapsed);
   const displayErr = err || loadErr;
+  const displayName = node.fileName || 'file';
 
   return (
     <div className="flex flex-col gap-2 px-3 pb-3 pt-1" onPointerDown={(e) => e.stopPropagation()}>
@@ -55,17 +79,35 @@ export default function LoadFileNodeBody({ node, darkNodes, onUpdate }) {
           {url ? (
             <a
               href={url}
+              download={displayName}
               target="_blank"
               rel="noreferrer"
               className={darkNodes ? 'text-indigo-300 underline' : 'text-indigo-700 underline'}
             >
-              Open {node.fileName || 'file'}
+              Open {displayName}
             </a>
           ) : (
-            <span>{node.fileName || 'file'}</span>
+            <span>{displayName}</span>
           )}
           {node.fileSize ? ` · ${formatFileSize(node.fileSize)}` : ''}
         </div>
+      )}
+      {node.fileId && (
+        <button
+          type="button"
+          disabled={dlBusy}
+          onClick={onDownload}
+          className={`inline-flex items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-sm font-medium transition ${
+            dlBusy
+              ? 'cursor-not-allowed opacity-50'
+              : darkNodes
+                ? 'bg-nm-hover text-nm-text hover:bg-nm-hover-strong'
+                : 'bg-slate-100 text-slate-800 hover:bg-slate-200'
+          }`}
+        >
+          <Download size={14} />
+          {dlBusy ? 'Saving…' : 'Download file'}
+        </button>
       )}
       {displayErr && (
         <p className={`text-xs ${darkNodes ? 'text-amber-200' : 'text-amber-800'}`}>{displayErr}</p>
@@ -83,7 +125,7 @@ export default function LoadFileNodeBody({ node, darkNodes, onUpdate }) {
         <FilePreviewPanel
           url={url}
           mime={node.fileMime}
-          name={node.fileName}
+          name={displayName}
           textPreview={textPreview}
           darkNodes={darkNodes}
         />

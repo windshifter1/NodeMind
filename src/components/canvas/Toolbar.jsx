@@ -1,13 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  Download,
-  Upload,
   Trash2,
   Plus,
-  Copy,
   Terminal,
   Share2,
-  MonitorSmartphone,
+  Save,
   Wrench,
   Settings,
   Home,
@@ -210,10 +207,7 @@ function ToolbarGroup({ icon: Icon, title, options, dataOnboarding }) {
 }
 
 export default function Toolbar({
-  onExport,
-  onImport,
   onClear,
-  onTextExport,
   onOpenTerminal,
   onAutoOrganise,
   onOrganiseSelected,
@@ -228,10 +222,9 @@ export default function Toolbar({
   onToggleDrawMode,
   backgroundArt,
   onBackgroundArtChange,
-  onShareCanvas,
-  onSendToDevice,
+  onOpenShare,
+  onOpenSave,
 }) {
-  const fileRef = useRef(null);
   const imageRef = useRef(null);
   const canOrganiseSelected = selectedCount >= 2;
   const [showMobileSelection, setShowMobileSelection] = useState(false);
@@ -493,27 +486,20 @@ export default function Toolbar({
         <ToolbarButton onClick={onOpenTerminal} title="Terminal" className="shrink-0 !p-2 sm:!p-3">
           <Terminal size={16} />
         </ToolbarButton>
-        <ToolbarGroup
-          icon={Share2}
-          title="Import and export"
-          options={[
-            { label: 'Copy', icon: Copy, action: onTextExport },
-            { label: 'Import', icon: Upload, action: () => fileRef.current && fileRef.current.click() },
-            { label: 'Export', icon: Download, action: onExport },
-            {
-              label: 'Share…',
-              icon: Share2,
-              action: () => onShareCanvas?.(),
-              title: 'Share as JPEG, PNG, PDF, or SVG',
-            },
-            {
-              label: 'Send to device',
-              icon: MonitorSmartphone,
-              action: () => onSendToDevice?.(),
-              title: 'Send this workspace to another NodeMind session on the network',
-            },
-          ]}
-        />
+        <ToolbarButton
+          onClick={() => onOpenShare?.()}
+          title="Share"
+          className="shrink-0 !p-2 sm:!p-3"
+        >
+          <Share2 size={16} />
+        </ToolbarButton>
+        <ToolbarButton
+          onClick={() => onOpenSave?.()}
+          title="Save"
+          className="shrink-0 !p-2 sm:!p-3"
+        >
+          <Save size={16} />
+        </ToolbarButton>
         <ToolbarButton onClick={onClear} title="Clear all" className="shrink-0 !p-2 sm:!p-3">
           <Trash2 size={16} />
         </ToolbarButton>
@@ -530,7 +516,6 @@ export default function Toolbar({
             <Settings size={16} />
           </ToolbarButton>
         </span>
-        <input ref={fileRef} type="file" accept="application/json" className="hidden" onChange={onImport} />
       </div>
     </>
   );

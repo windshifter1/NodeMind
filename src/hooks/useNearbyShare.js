@@ -22,6 +22,7 @@ export function useNearbyShare({ workspaceName, enabled = true } = {}) {
   const [statusError, setStatusError] = useState(null);
   const [mode, setMode] = useState('lan');
   const [sessionCode, setSessionCode] = useState('');
+  const [codeRole, setCodeRole] = useState(null);
   const [peers, setPeers] = useState([]);
   const [incoming, setIncoming] = useState(null);
   const [incomingProgress, setIncomingProgress] = useState(0);
@@ -45,19 +46,22 @@ export function useNearbyShare({ workspaceName, enabled = true } = {}) {
     }
   }, []);
 
-  const startSession = useCallback(async (roomId, nextMode, nextCode) => {
+  const startSession = useCallback(async (roomId, nextMode, nextCode, nextRole = null) => {
     const gen = ++genRef.current;
     await stopSession();
     if (!roomId) {
       if (gen !== genRef.current) return;
       setStatus('error');
-      setStatusError('Could not find this network. Use a session code instead.');
+      setStatusError('Could not find this network. Enter a joining code instead.');
       setPeers([]);
       return;
     }
     setStatus('connecting');
     setStatusError(null);
     setPeers([]);
+    setMode(nextMode);
+    setSessionCode(nextCode || '');
+    setCodeRole(nextMode === 'code' ? nextRole || 'host' : null);
     try {
       const session = joinNearbyRoom({
         roomId,
@@ -97,8 +101,6 @@ export function useNearbyShare({ workspaceName, enabled = true } = {}) {
         return;
       }
       sessionRef.current = session;
-      setMode(nextMode);
-      setSessionCode(nextCode || '');
       setStatus('ready');
     } catch (error) {
       if (gen !== genRef.current) return;
@@ -119,10 +121,10 @@ export function useNearbyShare({ workspaceName, enabled = true } = {}) {
     (async () => {
       const lanId = await resolveLanRoomId();
       if (cancelled) return;
-      if (lanId) await startSession(lanId, 'lan', '');
+      if (lanId) await startSession(lanId, 'lan', '', null);
       else {
         const code = randomSessionCode();
-        await startSession(codeRoomId(code), 'code', code);
+        await startSession(codeRoomId(code), 'code', code, 'host');
       }
     })();
     return () => {
@@ -142,21 +144,21 @@ export function useNearbyShare({ workspaceName, enabled = true } = {}) {
 
   const hostWithCode = useCallback(async () => {
     const code = randomSessionCode();
-    await startSession(codeRoomId(code), 'code', code);
+    await startSession(codeRoomId(code), 'code', code, 'host');
     return code;
   }, [startSession]);
 
   const joinWithCode = useCallback(async (raw) => {
     const code = normalizeSessionCode(raw);
     if (code.length < SESSION_CODE_LENGTH) {
-      throw new Error(`Enter the ${SESSION_CODE_LENGTH}-character session code.`);
+      throw new Error(`Enter the ${SESSION_CODE_LENGTH}-character joining code.`);
     }
-    await startSession(codeRoomId(code), 'code', code);
+    await startSession(codeRoomId(code), 'code', code, 'join');
   }, [startSession]);
 
   const returnToLan = useCallback(async () => {
     const lanId = await resolveLanRoomId();
-    await startSession(lanId, 'lan', '');
+    await startSession(lanId, 'lan', '', null);
   }, [startSession]);
 
   const sendToPeer = useCallback(async (peer, packWorkspace) => {
@@ -221,6 +223,7 @@ export function useNearbyShare({ workspaceName, enabled = true } = {}) {
     statusError,
     mode,
     sessionCode,
+    codeRole,
     peers,
     incoming,
     incomingProgress,

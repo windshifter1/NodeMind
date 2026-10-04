@@ -36,39 +36,40 @@ export default function NearbyShareDialog({
   const [codeInput, setCodeInput] = useState('');
   const [codeError, setCodeError] = useState(null);
   const [busyCode, setBusyCode] = useState(false);
-  const [outsideOpen, setOutsideOpen] = useState(false);
 
   useEffect(() => {
     if (open) return undefined;
     setCodeInput('');
     setCodeError(null);
-    setOutsideOpen(false);
     return undefined;
   }, [open]);
 
   if (!open) return null;
 
   const sending = nearby.outgoing.phase === 'waiting' || nearby.outgoing.phase === 'sending';
-  const onCode = nearby.mode === 'code';
-  const showOutside = onCode || outsideOpen;
+  const hosting = nearby.mode === 'code' && nearby.codeRole !== 'join';
+  const joining = nearby.mode === 'code' && nearby.codeRole === 'join';
   const codeReady = normalizeSessionCode(codeInput).length >= SESSION_CODE_LENGTH;
 
   const statusLine =
     nearby.status === 'connecting'
-      ? onCode
+      ? hosting
         ? 'Opening a code session…'
-        : 'Looking for NodeMind sessions on this network…'
+        : joining
+          ? 'Joining with that code…'
+          : 'Looking for NodeMind sessions on this network…'
       : nearby.status === 'error'
         ? nearby.statusError
-        : onCode
-          ? nearby.peers.length
-            ? 'Tap a device to send this workspace.'
-            : 'Waiting for the other device to join this code…'
-          : nearby.peers.length
-            ? 'Tap a device to send this workspace.'
-            : 'No other NodeMind session on this network yet.';
+        : nearby.peers.length
+          ? 'Tap a device to send this workspace.'
+          : hosting
+            ? 'Waiting for the other device to enter this joining code…'
+            : joining
+              ? 'Waiting for the other device…'
+              : 'No other NodeMind session on this network yet.';
 
-  const joinCode = async () => {
+  const joinCode = async (event) => {
+    event?.preventDefault?.();
     setBusyCode(true);
     setCodeError(null);
     try {
@@ -87,7 +88,7 @@ export default function NearbyShareDialog({
     try {
       await nearby.hostWithCode();
     } catch (error) {
-      setCodeError(error?.message || 'Could not create a session code.');
+      setCodeError(error?.message || 'Could not create a joining code.');
     } finally {
       setBusyCode(false);
     }
@@ -128,7 +129,7 @@ export default function NearbyShareDialog({
           </p>
 
           <h3 className="mt-4 text-xs font-semibold uppercase tracking-wide text-nm-text-muted">
-            {onCode ? 'On this code' : 'On this network'}
+            {hosting || joining ? 'Connected devices' : 'On this network'}
           </h3>
           <p className="mt-1 text-xs text-nm-text-secondary">{statusLine}</p>
 
@@ -148,7 +149,11 @@ export default function NearbyShareDialog({
               <div className="flex h-24 flex-col items-center justify-center gap-1 text-center">
                 <Radio size={18} className="text-nm-text-faint" />
                 <p className="text-xs text-nm-text-muted">
-                  {onCode ? 'Waiting for the other device…' : 'Waiting for another session…'}
+                  {hosting
+                    ? 'The other device has not joined yet…'
+                    : joining
+                      ? 'Waiting for the other device…'
+                      : 'Waiting for another session…'}
                 </p>
               </div>
             )}
@@ -175,74 +180,93 @@ export default function NearbyShareDialog({
             </div>
           )}
 
-          {showOutside ? (
+          {hosting ? (
             <div className="mt-4 rounded-2xl border border-nm-border bg-nm-option p-3">
               <h3 className="text-xs font-semibold uppercase tracking-wide text-nm-text-muted">
                 Send outside this network
               </h3>
               <p className="mt-1 text-xs text-nm-text-muted">
-                Share a 6-character code with a NodeMind session on another network. The workspace
-                goes directly between the two browsers.
+                On the other device, open Send to device and type this joining code. Do not create a
+                second code.
               </p>
-
-              {onCode && nearby.sessionCode ? (
-                <p className="mt-3 text-center font-mono text-2xl tracking-[0.28em] text-nm-text">
-                  {formatSessionCode(nearby.sessionCode)}
-                </p>
-              ) : (
-                <button
-                  type="button"
-                  disabled={busyCode || nearby.status === 'connecting'}
-                  onClick={createCode}
-                  className="mt-3 w-full rounded-xl border border-nm-border bg-nm-panel px-3 py-2 text-sm text-nm-text transition hover:bg-nm-hover disabled:opacity-50"
-                >
-                  Get a code
-                </button>
-              )}
-
-              <div className="mt-3 flex gap-2">
-                <input
-                  value={formatSessionCode(codeInput)}
-                  onChange={(e) => setCodeInput(normalizeSessionCode(e.target.value))}
-                  placeholder="Enter code"
-                  autoComplete="off"
-                  spellCheck={false}
-                  inputMode="text"
-                  maxLength={7}
-                  className="min-w-0 flex-1 rounded-xl border border-nm-border bg-nm-panel px-3 py-2 font-mono text-sm uppercase tracking-widest text-nm-text outline-none"
-                />
-                <button
-                  type="button"
-                  disabled={busyCode || !codeReady}
-                  onClick={joinCode}
-                  className="rounded-xl bg-indigo-500 px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
-                >
-                  Join
-                </button>
-              </div>
-              {codeError && <p className="mt-2 text-xs text-rose-300">{codeError}</p>}
-
+              <p className="mt-3 text-center font-mono text-2xl tracking-[0.28em] text-nm-text">
+                {formatSessionCode(nearby.sessionCode)}
+              </p>
               <button
                 type="button"
                 disabled={busyCode}
-                onClick={() => {
-                  if (onCode) nearby.returnToLan();
-                  else setOutsideOpen(false);
-                }}
+                onClick={() => nearby.returnToLan()}
                 className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm text-nm-text-secondary transition hover:bg-nm-hover hover:text-nm-text disabled:opacity-50"
               >
                 <ArrowLeft size={14} />
-                {onCode ? 'Back to this network' : 'Cancel'}
+                Back to this network
+              </button>
+            </div>
+          ) : joining ? (
+            <div className="mt-4 rounded-2xl border border-nm-border bg-nm-option p-3">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-nm-text-muted">
+                Joining code
+              </h3>
+              <p className="mt-1 text-xs text-nm-text-muted">
+                Joined {formatSessionCode(nearby.sessionCode)}. The other device should appear above.
+              </p>
+              <button
+                type="button"
+                disabled={busyCode}
+                onClick={() => nearby.returnToLan()}
+                className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm text-nm-text-secondary transition hover:bg-nm-hover hover:text-nm-text disabled:opacity-50"
+              >
+                <ArrowLeft size={14} />
+                Back to this network
               </button>
             </div>
           ) : (
-            <button
-              type="button"
-              onClick={() => setOutsideOpen(true)}
-              className="mt-4 w-full rounded-xl border border-nm-border px-3 py-2 text-sm text-nm-text-secondary transition hover:bg-nm-hover hover:text-nm-text"
-            >
-              Send outside this network
-            </button>
+            <>
+              <button
+                type="button"
+                disabled={busyCode || nearby.status === 'connecting'}
+                onClick={createCode}
+                className="mt-4 w-full rounded-xl border border-nm-border px-3 py-2 text-sm text-nm-text-secondary transition hover:bg-nm-hover hover:text-nm-text disabled:opacity-50"
+              >
+                Send outside this network
+              </button>
+
+              <form
+                className="mt-4 rounded-2xl border border-indigo-500/30 bg-nm-option p-3"
+                onSubmit={joinCode}
+              >
+                <label htmlFor="nearby-joining-code" className="block">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-nm-text">
+                    Joining code
+                  </span>
+                  <span className="mt-1 block text-xs text-nm-text-muted">
+                    If the other device showed you a code, enter it here.
+                  </span>
+                </label>
+                <div className="mt-3 flex gap-2">
+                  <input
+                    id="nearby-joining-code"
+                    value={formatSessionCode(codeInput)}
+                    onChange={(e) => setCodeInput(normalizeSessionCode(e.target.value))}
+                    placeholder="XXX XXX"
+                    autoComplete="off"
+                    spellCheck={false}
+                    inputMode="text"
+                    maxLength={7}
+                    aria-label="Joining code"
+                    className="min-w-0 flex-1 rounded-xl border border-nm-border bg-nm-panel px-3 py-2 font-mono text-sm uppercase tracking-widest text-nm-text outline-none focus:border-indigo-400"
+                  />
+                  <button
+                    type="submit"
+                    disabled={busyCode || !codeReady}
+                    className="rounded-xl bg-indigo-500 px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
+                  >
+                    Join
+                  </button>
+                </div>
+                {codeError && <p className="mt-2 text-xs text-rose-300">{codeError}</p>}
+              </form>
+            </>
           )}
 
           <p className="mt-4 text-[11px] leading-relaxed text-nm-text-faint">

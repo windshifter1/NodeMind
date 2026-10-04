@@ -4,8 +4,7 @@
   border: 1px solid var(--nm-border);
   background: var(--nm-chrome);
   box-shadow: var(--nm-glass-shadow);
-  backdrop-filter: var(--nm-node-blur, blur(22px) saturate(1.7));
-  -webkit-backdrop-filter: var(--nm-node-blur, blur(22px) saturate(1.7));
+  backdrop-filter: blur(22px) saturate(1.7);
 }
 
 .nm-mobile__btn {
@@ -20,8 +19,7 @@
   transition: transform 0.12s ease, background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
 }
 
-/* Glass/gel owns liquid squash; keep a light fallback for non-glass styles. */
-html:not([data-ui-family='glass']) .nm-mobile__btn:active {
+.nm-mobile__btn:active {
   transform: scale(0.95);
 }
 

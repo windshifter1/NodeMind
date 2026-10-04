@@ -2,9 +2,18 @@ import { useCallback, useEffect, useRef } from 'react';
 
 const DISMISS_DISTANCE = 88;
 const DISMISS_VELOCITY = 0.85; // px / ms
+const UP_STRETCH_MAX = 52;
+const UP_STRETCH_GAIN = 42;
+
+/** Rubber-band pull upward (negative translate). */
+function stretchUp(pullPx) {
+  const pull = Math.max(0, pullPx);
+  return -UP_STRETCH_MAX * (1 - Math.exp(-pull / UP_STRETCH_GAIN));
+}
 
 /**
  * Drag the sheet handle downward to dismiss (mobile bottom sheets).
+ * Dragging up applies a light stretch that springs back.
  * Attach `sheetRef` to the sheet panel and `{...handleProps}` to the handle hit target.
  */
 export function useSheetDragDismiss(onClose, { open = true } = {}) {
@@ -60,7 +69,8 @@ export function useSheetDragDismiss(onClose, { open = true } = {}) {
     const drag = dragRef.current;
     if (!drag || e.pointerId !== drag.pointerId) return;
     const now = performance.now();
-    const dy = Math.max(0, e.clientY - drag.startY);
+    const raw = e.clientY - drag.startY;
+    const dy = raw >= 0 ? raw : stretchUp(-raw);
     const dt = Math.max(1, now - drag.lastT);
     drag.vy = (e.clientY - drag.lastY) / dt;
     drag.lastY = e.clientY;
@@ -72,7 +82,9 @@ export function useSheetDragDismiss(onClose, { open = true } = {}) {
     }
     const backdrop = backdropRef.current;
     if (backdrop) {
-      backdrop.style.opacity = String(Math.max(0.15, 1 - dy / 280));
+      // Only fade backdrop when dragging down to dismiss.
+      const down = Math.max(0, dy);
+      backdrop.style.opacity = String(Math.max(0.15, 1 - down / 280));
     }
   };
 
@@ -82,7 +94,9 @@ export function useSheetDragDismiss(onClose, { open = true } = {}) {
     dragRef.current = null;
     const sheet = sheetRef.current;
     const backdrop = backdropRef.current;
-    const shouldClose = drag.dy >= DISMISS_DISTANCE || drag.vy >= DISMISS_VELOCITY;
+    const pulledDown = drag.dy > 0;
+    const shouldClose =
+      pulledDown && (drag.dy >= DISMISS_DISTANCE || drag.vy >= DISMISS_VELOCITY);
     if (shouldClose) {
       if (sheet) {
         sheet.style.transition = 'transform 0.2s ease-out, opacity 0.2s ease-out';
@@ -99,8 +113,9 @@ export function useSheetDragDismiss(onClose, { open = true } = {}) {
       }, 200);
       return;
     }
+    // Spring back from dismiss drag or upward stretch.
     if (sheet) {
-      sheet.style.transition = 'transform 0.22s ease-out';
+      sheet.style.transition = 'transform 0.28s cubic-bezier(0.22, 1.4, 0.36, 1)';
       sheet.style.transform = '';
     }
     if (backdrop) {

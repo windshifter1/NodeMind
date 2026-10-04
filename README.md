@@ -64,9 +64,6 @@ Edge-aware auto-organise experiments:
 - Curve-fan: `https://windshifter1.github.io/NodeMind/dev`
 - Node-spread: `https://windshifter1.github.io/NodeMind/dev2`
 
-Smooth freehand draw experiment:
-- `/draw`: `https://windshifter1.github.io/NodeMind/draw`
-
 After deploy, open the site and check the browser Network tab: requests should go to `/NodeMind/assets/index-*.js`, and the manifest should load from `/NodeMind/manifest.json`.
 
 ### Custom domain or different repo name

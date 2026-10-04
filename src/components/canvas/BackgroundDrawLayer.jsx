@@ -48,7 +48,7 @@ export default function BackgroundDrawLayer({
   pan,
   zoom,
   spacePanArmed = false,
-  /** /draw: Catmull-Rom cubics + denser capture instead of blocky polylines. */
+  /** Catmull-Rom cubics + denser capture instead of blocky polylines. */
   smoothStrokes = false,
 }) {
   const bg = useMemo(() => normalizeBackgroundArt(art), [art]);

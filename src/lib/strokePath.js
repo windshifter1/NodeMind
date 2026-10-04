@@ -1,6 +1,6 @@
 /**
  * Freehand stroke path helpers.
- * Production draw uses polylines; /draw uses Catmull-Rom → cubic Bézier
+ * Smooth mode uses Catmull-Rom → cubic Bézier
  * (same approach as MockupShell pencil paths / zoom-stable edge cubics).
  */
 

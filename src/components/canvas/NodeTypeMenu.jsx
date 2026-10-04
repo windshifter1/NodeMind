@@ -192,57 +192,32 @@ export default function NodeTypeMenu({
               <X size={16} />
             </button>
           </div>
-          {!mathOnly && (
-            <div className="mb-2 flex gap-1 overflow-x-auto px-0.5 pb-1">
-              {visibleCategories.map((cat) => (
-                <button
-                  key={cat.id}
-                  type="button"
-                  onClick={() => setCategory(cat.id)}
-                  className={`shrink-0 rounded-xl px-3 py-2 text-sm font-medium transition ${
-                    category === cat.id
-                      ? 'bg-indigo-500/35 text-indigo-100 shadow-[0_0_0_1px_rgba(165,180,252,0.45)]'
-                      : 'text-nm-text-secondary hover:bg-nm-hover hover:text-nm-text'
-                  }`}
-                >
-                  {cat.label}
-                </button>
-              ))}
-            </div>
-          )}
-          <div className="nm-mobile__sheet-stack min-h-0 flex-1 overflow-y-auto">
-            {types?.map((type) => (
-              <button
-                key={type.id}
-                type="button"
-                className="nm-mobile__sheet-item !min-h-0 !flex-row !justify-start gap-2 px-3 py-3"
-                onClick={() => onSelect(type.id)}
-              >
-                <span className="text-sm font-medium text-nm-text-secondary">{type.label}</span>
-              </button>
-            ))}
-            {emptyMath && (
-              <p className="px-3 py-2 text-sm text-nm-text-faint">No operations apply to this expression.</p>
-            )}
-            {mathGroups?.map((group) => (
-              <div key={group.id} className="pb-1">
-                <p className="px-3 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-wider text-nm-text-faint">
-                  {group.label}
-                </p>
-                <div className="flex flex-col gap-1">
-                  {group.types.map((type) => (
+          {/* Same two-column layout as the floating add-node menu. */}
+          <div className="flex min-h-[200px] max-h-[min(52vh,360px)] overflow-hidden rounded-xl border border-nm-divider bg-nm-option/40">
+            {!mathOnly && (
+              <>
+                <div className="flex w-[92px] shrink-0 flex-col gap-1 overflow-y-auto p-2">
+                  {visibleCategories.map((cat) => (
                     <button
-                      key={type.id}
+                      key={cat.id}
                       type="button"
-                      className="nm-mobile__sheet-item !min-h-0 !flex-row !justify-start gap-2 px-3 py-3"
-                      onClick={() => onSelect(type.id)}
+                      onClick={() => setCategory(cat.id)}
+                      className={`rounded-xl px-3 py-2.5 text-sm font-medium transition ${
+                        category === cat.id
+                          ? 'bg-indigo-500/35 text-indigo-100 shadow-[0_0_0_1px_rgba(165,180,252,0.45)]'
+                          : 'text-nm-text-secondary hover:bg-nm-hover hover:text-nm-text'
+                      }`}
                     >
-                      <span className="text-sm font-medium text-nm-text-secondary">{type.label}</span>
+                      {cat.label}
                     </button>
                   ))}
                 </div>
-              </div>
-            ))}
+                <div className="w-px self-stretch bg-nm-divider" />
+              </>
+            )}
+            <div className="flex min-w-0 flex-1 flex-col gap-1 overflow-y-auto p-2">
+              <TypeList types={types} mathGroups={mathGroups} emptyMath={emptyMath} onSelect={onSelect} />
+            </div>
           </div>
         </div>
       </>

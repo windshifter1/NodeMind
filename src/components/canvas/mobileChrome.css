@@ -320,8 +320,9 @@
   align-items: center;
   justify-content: center;
   width: calc(100% + 1.5rem);
-  margin: -0.45rem -0.75rem 0.15rem;
-  padding: 0.55rem 0.75rem 0.65rem;
+  min-height: 48px;
+  margin: -0.65rem -0.75rem 0.05rem;
+  padding: 0.85rem 0.75rem 0.75rem;
   cursor: grab;
   touch-action: none;
   -webkit-user-select: none;
@@ -333,8 +334,8 @@
 }
 
 .nm-mobile__sheet-handle {
-  width: 36px;
-  height: 4px;
+  width: 44px;
+  height: 5px;
   border-radius: 999px;
   background: var(--nm-divider);
   pointer-events: none;

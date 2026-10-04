@@ -143,8 +143,7 @@ function CanvasReady({
   const [socketHint, setSocketHint] = useState(null);
   const [spawnNodeIds, setSpawnNodeIds] = useState(() => new Set());
   const [spawnRipples, setSpawnRipples] = useState([]);
-  const [drawMode, setDrawMode] = useState(() => !!smoothStrokes);
-  const drawPrototypeBooted = useRef(false);
+  const [drawMode, setDrawMode] = useState(false);
   const [isDesktop, setIsDesktop] = useState(() => isDesktopPlatform());
   const socketHintTimerRef = useRef(null);
   const hadCreditOpRef = useRef(null);
@@ -159,16 +158,6 @@ function CanvasReady({
     mq.addEventListener?.('change', update);
     return () => mq.removeEventListener?.('change', update);
   }, []);
-
-  // /draw prototype: enter draw mode with the pen armed once on boot.
-  useEffect(() => {
-    if (!smoothStrokes || drawPrototypeBooted.current) return;
-    drawPrototypeBooted.current = true;
-    setDrawMode(true);
-    const bg = normalizeBackgroundArt(active.backgroundArt);
-    if (bg.tool === 'pen') return;
-    dispatch({ type: 'UPDATE_BACKGROUND_ART', patch: { ...bg, tool: 'pen' } });
-  }, [smoothStrokes, active.backgroundArt, dispatch]);
 
   useEffect(() => {
     applyDocumentTheme(nodeTheme);

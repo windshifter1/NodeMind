@@ -1,6 +1,6 @@
 const TARGET = 'button, [role="button"]';
 const SKIP =
-  '[data-no-liquid], [data-onboarding="toolbar"], [data-onboarding="workspace-bar"], [data-mobile-chrome], .nm-workspace-icon-btn, .nm-mobile__chrome, .nm-mobile__ws-tab, .nm-mobile__draw-rail, .nm-mobile__btn, .nm-mobile__sheet-item';
+  '[data-no-liquid], [data-onboarding="toolbar"], [data-onboarding="workspace-bar"], [data-mobile-chrome], .nm-workspace-icon-btn, .nm-mobile__chrome, .nm-mobile__ws-tab, .nm-mobile__draw-rail, .nm-mobile__btn, .nm-mobile__sheet-item, .nm-mobile__sheet-handle-hit';
 const MAX_PULL = 11;
 
 function clamp(n, min, max) {

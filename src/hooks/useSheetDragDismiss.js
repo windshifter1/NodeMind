@@ -2,13 +2,28 @@ import { useCallback, useEffect, useRef } from 'react';
 
 const DISMISS_DISTANCE = 88;
 const DISMISS_VELOCITY = 0.85; // px / ms
-const UP_STRETCH_MAX = 52;
-const UP_STRETCH_GAIN = 42;
+const UP_STRETCH_MAX = 64;
+const UP_STRETCH_GAIN = 38;
+const UP_SCALE_MAX = 0.045; // extra scaleY while stretched up
 
 /** Rubber-band pull upward (negative translate). */
 function stretchUp(pullPx) {
   const pull = Math.max(0, pullPx);
   return -UP_STRETCH_MAX * (1 - Math.exp(-pull / UP_STRETCH_GAIN));
+}
+
+function applySheetTransform(sheet, dy) {
+  if (!sheet) return;
+  if (dy >= 0) {
+    sheet.style.transformOrigin = '';
+    sheet.style.transform = `translate3d(0, ${dy}px, 0)`;
+    return;
+  }
+  // Slight vertical stretch while pulling up (origin at bottom edge).
+  const t = Math.min(1, -dy / UP_STRETCH_MAX);
+  const scaleY = 1 + UP_SCALE_MAX * t;
+  sheet.style.transformOrigin = '50% 100%';
+  sheet.style.transform = `translate3d(0, ${dy}px, 0) scaleY(${scaleY})`;
 }
 
 /**
@@ -29,6 +44,7 @@ export function useSheetDragDismiss(onClose, { open = true } = {}) {
     if (sheet) {
       sheet.style.transition = '';
       sheet.style.transform = '';
+      sheet.style.transformOrigin = '';
       sheet.style.opacity = '';
     }
     if (backdrop) {
@@ -76,13 +92,9 @@ export function useSheetDragDismiss(onClose, { open = true } = {}) {
     drag.lastY = e.clientY;
     drag.lastT = now;
     drag.dy = dy;
-    const sheet = sheetRef.current;
-    if (sheet) {
-      sheet.style.transform = `translate3d(0, ${dy}px, 0)`;
-    }
+    applySheetTransform(sheetRef.current, dy);
     const backdrop = backdropRef.current;
     if (backdrop) {
-      // Only fade backdrop when dragging down to dismiss.
       const down = Math.max(0, dy);
       backdrop.style.opacity = String(Math.max(0.15, 1 - down / 280));
     }
@@ -99,6 +111,7 @@ export function useSheetDragDismiss(onClose, { open = true } = {}) {
       pulledDown && (drag.dy >= DISMISS_DISTANCE || drag.vy >= DISMISS_VELOCITY);
     if (shouldClose) {
       if (sheet) {
+        sheet.style.transformOrigin = '';
         sheet.style.transition = 'transform 0.2s ease-out, opacity 0.2s ease-out';
         sheet.style.transform = 'translate3d(0, 110%, 0)';
         sheet.style.opacity = '0';
@@ -113,10 +126,11 @@ export function useSheetDragDismiss(onClose, { open = true } = {}) {
       }, 200);
       return;
     }
-    // Spring back from dismiss drag or upward stretch.
     if (sheet) {
-      sheet.style.transition = 'transform 0.28s cubic-bezier(0.22, 1.4, 0.36, 1)';
+      sheet.style.transition =
+        'transform 0.32s cubic-bezier(0.22, 1.45, 0.36, 1), opacity 0.2s ease-out';
       sheet.style.transform = '';
+      sheet.style.transformOrigin = '';
     }
     if (backdrop) {
       backdrop.style.transition = 'opacity 0.22s ease-out';
@@ -136,6 +150,7 @@ export function useSheetDragDismiss(onClose, { open = true } = {}) {
       tabIndex: 0,
       'aria-label': 'Drag down to close',
       title: 'Drag down to close',
+      'data-no-liquid': '',
     },
   };
 }

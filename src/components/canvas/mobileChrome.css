@@ -4,7 +4,8 @@
   border: 1px solid var(--nm-border);
   background: var(--nm-chrome);
   box-shadow: var(--nm-glass-shadow);
-  backdrop-filter: blur(22px) saturate(1.7);
+  backdrop-filter: var(--nm-node-blur, blur(22px) saturate(1.7));
+  -webkit-backdrop-filter: var(--nm-node-blur, blur(22px) saturate(1.7));
 }
 
 .nm-mobile__btn {
@@ -19,7 +20,8 @@
   transition: transform 0.12s ease, background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
 }
 
-.nm-mobile__btn:active {
+/* Glass/gel owns liquid squash; keep a light fallback for non-glass styles. */
+html:not([data-ui-family='glass']) .nm-mobile__btn:active {
   transform: scale(0.95);
 }
 
@@ -320,21 +322,25 @@
   align-items: center;
   justify-content: center;
   width: calc(100% + 1.5rem);
-  min-height: 48px;
-  margin: -0.65rem -0.75rem 0.05rem;
-  padding: 0.85rem 0.75rem 0.75rem;
+  min-height: 56px;
+  margin: -0.85rem -0.75rem 0;
+  padding: 1rem 0.75rem 0.85rem;
   cursor: grab;
   touch-action: none;
   -webkit-user-select: none;
   user-select: none;
+  /* Keep gel/liquid transforms from fighting the drag gesture. */
+  transform: none !important;
+  filter: none !important;
 }
 
 .nm-mobile__sheet-handle-hit:active {
   cursor: grabbing;
+  transform: none !important;
 }
 
 .nm-mobile__sheet-handle {
-  width: 44px;
+  width: 48px;
   height: 5px;
   border-radius: 999px;
   background: var(--nm-divider);

@@ -557,6 +557,7 @@ export default function CanvasBoard({
     (edgeId, e) => {
       if (!isPrimaryPointerStart(e) || shouldSuppressPrimaryPointer(e, 'down')) return;
       e.stopPropagation();
+      if (pickerOpenRef.current) onPickerClose?.();
 
       clearEdgeClickListeners();
       edgeClickRef.current = {
@@ -589,7 +590,7 @@ export default function CanvasBoard({
       window.addEventListener('pointerup', onFinish);
       window.addEventListener('pointercancel', onFinish);
     },
-    [clearEdgeClickListeners, finishEdgeClick, transferEdgeClickToCanvas]
+    [clearEdgeClickListeners, finishEdgeClick, onPickerClose, transferEdgeClickToCanvas]
   );
 
   // --- Background pan / click-to-add / pinch ---
@@ -627,8 +628,8 @@ export default function CanvasBoard({
         moved: false,
         suppressContextMenu: false,
         tutorialPanEmitted: false,
-        // Capture at gesture start so a tap-away that closes the picker on
-        // pointerdown does not reopen a new one on the matching pointerup.
+        // Snapshot at gesture start so an empty-canvas tap closes the menu
+        // instead of opening a new one at the same spot.
         pickerOpenAtStart: pickerOpenRef.current,
       };
       if (useMarquee) setMarqueeRect(null);
@@ -758,24 +759,23 @@ export default function CanvasBoard({
         emitTutorial('canvas.select.marquee');
       } else if (panState.current.button === 0 && !moved && !pinch.current.active) {
         const hasSelection = selectedNodeIdsRef.current.length > 0;
+        // Honour suppress if Escape/X closed the menu mid-gesture.
+        const pickerWasOpen =
+          panState.current.pickerOpenAtStart || consumeNodePickerOpenSuppressed();
         if (hasSelection) {
           onSelectionChange?.([]);
-        } else {
-          onSelectionChange?.([]);
-          // pickerOpenAtStart can miss when the menu closes in a window
-          // capture listener before this gesture records state — also honour
-          // the suppress flag set by NodeTypeMenu on tap-away.
-          if (panState.current.pickerOpenAtStart || consumeNodePickerOpenSuppressed()) {
-            onPickerClose?.();
-          } else {
-            const w = screenToWorld(e.clientX, e.clientY);
-            onAddNode(w.x - nodeWidthForTitle('') / 2, w.y - TOP_BAR_HEIGHT / 2, {
-              clientX: e.clientX,
-              clientY: e.clientY,
-              worldX: w.x,
-              worldY: w.y,
-            });
-          }
+        }
+        // Empty-canvas tap closes the add-node menu; pan/zoom/UI must not.
+        if (pickerWasOpen) {
+          onPickerClose?.();
+        } else if (!hasSelection) {
+          const w = screenToWorld(e.clientX, e.clientY);
+          onAddNode(w.x - nodeWidthForTitle('') / 2, w.y - TOP_BAR_HEIGHT / 2, {
+            clientX: e.clientX,
+            clientY: e.clientY,
+            worldX: w.x,
+            worldY: w.y,
+          });
         }
       }
       panState.current.panning = false;
@@ -833,6 +833,7 @@ export default function CanvasBoard({
   const selectNode = useCallback(
     (nodeId, e) => {
       if (e && !isPrimaryPointerStart(e)) return;
+      if (pickerOpenRef.current) onPickerClose?.();
       const shiftKey = e?.shiftKey;
       const currentSelection = selectedNodeIdsRef.current;
       // Selection mode (mobile) toggles membership like Shift on desktop.
@@ -854,7 +855,7 @@ export default function CanvasBoard({
       }
       onBringToFront(nodeId);
     },
-    [onBringToFront, onSelectionChange]
+    [onBringToFront, onPickerClose, onSelectionChange]
   );
 
   const startNodeDrag = useCallback(
@@ -864,6 +865,8 @@ export default function CanvasBoard({
       if (isSpacePanArmed()) return;
       const node = nodes.find((n) => n.id === nodeId);
       if (!node) return;
+      // Tapping/dragging a node dismisses the add-node menu.
+      if (pickerOpenRef.current) onPickerClose?.();
 
       const shiftKey = e.shiftKey;
       const currentSelection = selectedNodeIdsRef.current;
@@ -929,7 +932,7 @@ export default function CanvasBoard({
       draggingNodeRef.current = nextDrag;
       setDraggingNode(nextDrag);
     },
-    [nodes, onBringToFront, onSelectionChange, isSpacePanArmed]
+    [nodes, onBringToFront, onPickerClose, onSelectionChange, isSpacePanArmed]
   );
 
   const armNodeDrag = useCallback(
@@ -1206,6 +1209,7 @@ export default function CanvasBoard({
       if (isSpacePanArmed()) return;
       const node = nodes.find((n) => n.id === nodeId);
       if (!node) return;
+      if (pickerOpenRef.current) onPickerClose?.();
       const point = socketWorld(node, type, graphOrientation, nodeSizeForLayout(node), {
         inputSlot,
         edges: edgesRef.current,
@@ -1217,7 +1221,7 @@ export default function CanvasBoard({
       pendingRef.current = p;
       setPending(p);
     },
-    [graphOrientation, nodes, isSpacePanArmed]
+    [graphOrientation, nodes, isSpacePanArmed, onPickerClose]
   );
 
   useEffect(() => {

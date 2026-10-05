@@ -86,29 +86,11 @@ export default function NodeTypeMenu({
       e.preventDefault();
       dismissAway(onClose);
     };
-    // Sheet uses its own backdrop; skip global pointer dismiss there.
-    if (sheet) {
-      window.addEventListener('keydown', onKey);
-      return () => window.removeEventListener('keydown', onKey);
-    }
-    const onPointer = (e) => {
-      if (e.target?.closest?.('[data-node-type-menu]')) return;
-      // Mobile chrome / sheets should also count as "away" and just close.
-      dismissAway(onClose);
-    };
+    // Do not dismiss on pan/zoom/UI taps. CanvasBoard closes the floating
+    // menu on empty-canvas or node taps; sheets use their own backdrop.
     window.addEventListener('keydown', onKey);
-    // Defer so the opening tap does not immediately dismiss the menu.
-    let removePointer = () => {};
-    const timer = window.setTimeout(() => {
-      window.addEventListener('pointerdown', onPointer, true);
-      removePointer = () => window.removeEventListener('pointerdown', onPointer, true);
-    }, 0);
-    return () => {
-      window.removeEventListener('keydown', onKey);
-      window.clearTimeout(timer);
-      removePointer();
-    };
-  }, [open, onClose, initialCategory, sheet]);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open, onClose, initialCategory]);
 
   const mathGroups = useMemo(() => {
     if (category !== 'math') return null;

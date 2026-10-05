@@ -2,7 +2,7 @@ import React from 'react';
 import { MonitorSmartphone } from 'lucide-react';
 
 export default function NearbyOfferDialog({ offer, progress = 0 }) {
-  if (!offer) return null;
+  if (!offer || offer.received) return null;
 
   const receiving = offer.receiving;
 

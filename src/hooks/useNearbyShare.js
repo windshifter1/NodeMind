@@ -15,7 +15,7 @@ function emptyTransfer() {
   return { peerId: null, peerName: '', progress: 0, phase: 'idle', error: null };
 }
 
-export function useNearbyShare({ workspaceName, enabled = true } = {}) {
+export function useNearbyShare({ workspaceName, enabled = true, getPack } = {}) {
   const [deviceName, setDeviceNameState] = useState(() => readDeviceName());
   const [deviceColor] = useState(() => readDeviceColor());
   const [status, setStatus] = useState(enabled ? 'connecting' : 'idle');
@@ -33,6 +33,11 @@ export function useNearbyShare({ workspaceName, enabled = true } = {}) {
   const genRef = useRef(0);
   const deviceRef = useRef({ name: deviceName, color: deviceColor, workspaceName });
   deviceRef.current = { name: deviceName, color: deviceColor, workspaceName };
+  const getPackRef = useRef(getPack);
+  getPackRef.current = getPack;
+  const codeRoleRef = useRef(null);
+  const sendToPeerRef = useRef(null);
+  const autoSendIdsRef = useRef(new Set());
 
   const stopSession = useCallback(async () => {
     const session = sessionRef.current;
@@ -61,7 +66,10 @@ export function useNearbyShare({ workspaceName, enabled = true } = {}) {
     setPeers([]);
     setMode(nextMode);
     setSessionCode(nextCode || '');
-    setCodeRole(nextMode === 'code' ? nextRole || 'host' : null);
+    const role = nextMode === 'code' ? nextRole || 'host' : null;
+    setCodeRole(role);
+    codeRoleRef.current = role;
+    autoSendIdsRef.current = new Set();
     try {
       const session = joinNearbyRoom({
         roomId,
@@ -69,10 +77,37 @@ export function useNearbyShare({ workspaceName, enabled = true } = {}) {
         onPeers: (list) => {
           if (gen !== genRef.current) return;
           setPeers(list);
+          if (role !== 'host') return;
+          list.forEach((peer) => {
+            if (!peer?.id || autoSendIdsRef.current.has(peer.id)) return;
+            autoSendIdsRef.current.add(peer.id);
+            window.setTimeout(() => {
+              const send = sendToPeerRef.current;
+              const pack = getPackRef.current;
+              if (!send || !pack) {
+                autoSendIdsRef.current.delete(peer.id);
+                return;
+              }
+              send(peer, pack).then((result) => {
+                if (!result?.ok && result?.reason !== 'declined') {
+                  autoSendIdsRef.current.delete(peer.id);
+                }
+              });
+            }, 500);
+          });
         },
         onIncomingOffer: (offer) => {
           if (gen !== genRef.current) return;
           setIncomingProgress(0);
+          if (codeRoleRef.current === 'join') {
+            offer.accept();
+            setIncoming({
+              receiving: true,
+              fromName: offer.fromName,
+              workspaceName: offer.workspaceName,
+            });
+            return;
+          }
           setIncoming({
             ...offer,
             accept: () => {
@@ -87,8 +122,11 @@ export function useNearbyShare({ workspaceName, enabled = true } = {}) {
         },
         onPayload: (pack) => {
           if (gen !== genRef.current) return;
-          setIncoming(null);
-          setIncomingProgress(0);
+          setIncoming({
+            received: true,
+            workspaceName: pack?.workspace?.name || 'Workspace',
+          });
+          setIncomingProgress(1);
           setReceivedPack(pack);
         },
         onReceiveProgress: (percent) => {
@@ -210,6 +248,8 @@ export function useNearbyShare({ workspaceName, enabled = true } = {}) {
       return { ok: false, reason: 'error' };
     }
   }, [workspaceName]);
+
+  sendToPeerRef.current = sendToPeer;
 
   const clearOutgoing = useCallback(() => setOutgoing(emptyTransfer()), []);
   const clearReceived = useCallback(() => setReceivedPack(null), []);

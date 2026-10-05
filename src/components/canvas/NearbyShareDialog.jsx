@@ -6,14 +6,9 @@ import {
   SESSION_CODE_LENGTH,
 } from '@/lib/nearbyShare';
 
-function PeerOrb({ peer, disabled, onSend }) {
-  return (
-    <button
-      type="button"
-      disabled={disabled}
-      onClick={() => onSend(peer)}
-      className="flex w-24 flex-col items-center gap-2 rounded-2xl p-2 text-center transition hover:bg-nm-hover disabled:opacity-50"
-    >
+function PeerOrb({ peer, disabled, onSend, interactive = true }) {
+  const inner = (
+    <>
       <span
         className="flex h-14 w-14 items-center justify-center rounded-full text-lg font-semibold text-white shadow-lg"
         style={{ backgroundColor: peer.color || '#6366f1' }}
@@ -22,6 +17,23 @@ function PeerOrb({ peer, disabled, onSend }) {
       </span>
       <span className="w-full truncate text-xs font-medium text-nm-text">{peer.name}</span>
       <span className="w-full truncate text-[10px] text-nm-text-muted">{peer.workspaceName}</span>
+    </>
+  );
+  if (!interactive) {
+    return (
+      <div className="flex w-24 flex-col items-center gap-2 rounded-2xl p-2 text-center">
+        {inner}
+      </div>
+    );
+  }
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={() => onSend(peer)}
+      className="flex w-24 flex-col items-center gap-2 rounded-2xl p-2 text-center transition hover:bg-nm-hover disabled:opacity-50"
+    >
+      {inner}
     </button>
   );
 }
@@ -67,12 +79,24 @@ export default function NearbyShareDialog({
             : 'Looking for NodeMind sessions on this network…'
       : nearby.status === 'error'
         ? nearby.statusError
-        : nearby.peers.length
-          ? 'Tap a device to send this workspace.'
-          : hosting
-            ? 'Waiting for the other device to enter this joining code…'
-            : joining
-              ? 'Waiting for the other device…'
+        : hosting
+          ? nearby.outgoing.phase === 'sending' || nearby.outgoing.phase === 'waiting'
+            ? `Sending to ${nearby.outgoing.peerName || 'the other device'}…`
+            : nearby.outgoing.phase === 'sent'
+              ? `Sent to ${nearby.outgoing.peerName}.`
+              : nearby.peers.length
+                ? 'Connected — sending this workspace…'
+                : 'Waiting for the other device to enter this joining code…'
+          : joining
+            ? nearby.incoming?.received
+              ? 'Workspace added.'
+              : nearby.incoming?.receiving
+                ? 'Receiving the workspace…'
+                : nearby.peers.length
+                  ? 'Connected — the workspace is on its way.'
+                  : 'Waiting to receive the workspace…'
+            : nearby.peers.length
+              ? 'Tap a device to send this workspace.'
               : anywhere
                 ? 'Create a joining code, or enter one from the other device.'
                 : 'No other NodeMind session on this network yet.';
@@ -135,7 +159,10 @@ export default function NearbyShareDialog({
           <p className="text-xs text-nm-text-muted">
             Send <span className="font-medium text-nm-text">{workspaceName || 'this workspace'}</span> to
             another open NodeMind session
-            {anywhere ? ' using a joining code' : ' on this network'}. The other device must accept.
+            {anywhere
+              ? '. Entering the joining code sends this workspace — no device tap needed'
+              : ' on this network. The other device must accept'}
+            .
           </p>
 
           <h3 className="mt-4 text-xs font-semibold uppercase tracking-wide text-nm-text-muted">
@@ -152,7 +179,13 @@ export default function NearbyShareDialog({
             ) : nearby.peers.length ? (
               <div className="flex flex-wrap justify-center gap-2">
                 {nearby.peers.map((peer) => (
-                  <PeerOrb key={peer.id} peer={peer} disabled={sending} onSend={onSend} />
+                  <PeerOrb
+                    key={peer.id}
+                    peer={peer}
+                    disabled={sending}
+                    onSend={onSend}
+                    interactive={!hosting && !joining}
+                  />
                 ))}
               </div>
             ) : (
@@ -160,19 +193,28 @@ export default function NearbyShareDialog({
                 <Radio size={18} className="text-nm-text-faint" />
                 <p className="text-xs text-nm-text-muted">
                   {hosting
-                    ? 'The other device has not joined yet…'
+                    ? 'Waiting for them to enter the code…'
                     : joining
-                      ? 'Waiting for the other device…'
+                      ? 'Waiting to receive the workspace…'
                       : 'Waiting for another session…'}
                 </p>
               </div>
             )}
           </div>
 
-          {nearby.outgoing.phase !== 'idle' && (
+          {(nearby.outgoing.phase !== 'idle' || (joining && nearby.incoming?.receiving)) && (
             <div className="mt-3 rounded-xl border border-nm-border px-3 py-2 text-xs">
+              {joining && nearby.incoming?.receiving && (
+                <p className="text-nm-text">
+                  Receiving… {Math.round((nearby.incomingProgress || 0) * 100)}%
+                </p>
+              )}
               {nearby.outgoing.phase === 'waiting' && (
-                <p className="text-nm-text">Waiting for {nearby.outgoing.peerName} to accept…</p>
+                <p className="text-nm-text">
+                  {hosting
+                    ? `Sending to ${nearby.outgoing.peerName}…`
+                    : `Waiting for ${nearby.outgoing.peerName} to accept…`}
+                </p>
               )}
               {nearby.outgoing.phase === 'sending' && (
                 <p className="text-nm-text">
@@ -196,8 +238,8 @@ export default function NearbyShareDialog({
                 Joining code
               </h3>
               <p className="mt-1 text-xs text-nm-text-muted">
-                On the other device, open Share → Any device and type this code. Do not create a second
-                code.
+                On the other device, open Share → Any device and type this code. The workspace sends
+                as soon as they join.
               </p>
               <p className="mt-3 text-center font-mono text-2xl tracking-[0.28em] text-nm-text">
                 {formatSessionCode(nearby.sessionCode)}
@@ -218,7 +260,8 @@ export default function NearbyShareDialog({
                 Joining code
               </h3>
               <p className="mt-1 text-xs text-nm-text-muted">
-                Joined {formatSessionCode(nearby.sessionCode)}. The other device should appear above.
+                Joined {formatSessionCode(nearby.sessionCode)}. The workspace is coming from the other
+                device — you do not need to pick anyone.
               </p>
               <button
                 type="button"

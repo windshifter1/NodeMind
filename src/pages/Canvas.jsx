@@ -128,7 +128,11 @@ function CanvasReady({
   const [shareCanvasOpen, setShareCanvasOpen] = useState(false);
   const [nearbyShareOpen, setNearbyShareOpen] = useState(false);
   const [nearbyShareScope, setNearbyShareScope] = useState('lan');
-  const nearby = useNearbyShare({ workspaceName: active.name, enabled: true });
+  const nearby = useNearbyShare({
+    workspaceName: active.name,
+    enabled: true,
+    getPack: () => packWorkspaceExport(active),
+  });
   const importFileRef = useRef(null);
   const [terminalOpen, setTerminalOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);

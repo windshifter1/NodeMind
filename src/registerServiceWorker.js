@@ -1,5 +1,7 @@
 export function registerServiceWorker() {
   if (!('serviceWorker' in navigator) || !import.meta.env.PROD) return;
+  // Native wrapper already ships the built assets; do not fetch updates.
+  if (typeof window !== 'undefined' && window.Capacitor?.isNativePlatform?.()) return;
 
   window.addEventListener('load', () => {
     const baseUrl = import.meta.env.BASE_URL || '/';

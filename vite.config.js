@@ -49,7 +49,7 @@ const gitBranch =
   gitBranchCurrent === 'unavailable' ? git(['rev-parse', '--abbrev-ref', 'HEAD']) : gitBranchCurrent;
 
 export default defineConfig({
-  base: '/NodeMind/',
+  base: process.env.VITE_BASE || '/NodeMind/',
   plugins: [react()],
   resolve: {
     alias: {

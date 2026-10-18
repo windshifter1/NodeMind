@@ -29,3 +29,6 @@ dist-ssr
 
 .env
 .vite
+
+# Local Android wrapper output (APK + generated Capacitor project)
+/Android/

@@ -2,16 +2,14 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from '@/App.jsx'
 import '@/index.css'
+import '@/styles/tokens.css'
 import '@/styles/ui-chrome-layout.css'
-import '@/styles/ui-glass.css'
-import '@/styles/ui-clay-soft.css'
-import '@/styles/ui-sketch.css'
-import { applyDocumentTheme, readStoredTheme } from '@/lib/theme'
-import { applyDocumentUiStyle, readStoredUiStyle } from '@/lib/uiStyle'
+import '@/styles/gen-ii.css'
+import { applyDensity, applyDocumentTheme, readStoredDensity, readStoredTheme } from '@/lib/theme'
 import { registerServiceWorker } from '@/registerServiceWorker'
 
 applyDocumentTheme(readStoredTheme())
-applyDocumentUiStyle(readStoredUiStyle())
+applyDensity(readStoredDensity())
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <App />

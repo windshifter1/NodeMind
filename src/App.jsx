@@ -1,6 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Canvas from '@/pages/Canvas';
-import LandingPage from '@/components/landing/LandingPage';
 import MockupShell from '@/pages/mockups/MockupShell';
 import MobileDevMockup from '@/pages/mockups/MobileDevMockup';
 import {
@@ -9,13 +8,11 @@ import {
   matchDevPath,
   matchMockupPath,
 } from '@/lib/appPath';
-import { dismissLanding, shouldShowLanding } from '@/lib/landing';
 import { lockMobileViewport } from '@/lib/lockMobileViewport';
 
 export default function App() {
   const [offline, setOffline] = useState(() => typeof navigator !== 'undefined' && !navigator.onLine);
   const [path, setPath] = useState(() => getAppPath());
-  const [showLanding, setShowLanding] = useState(() => shouldShowLanding());
   const edgeAwareMode = matchDevOrganisePath(path);
   const edgeAwareLayout = edgeAwareMode != null;
   const edgeCurveFan = edgeAwareMode === 'curve-fan';
@@ -38,11 +35,6 @@ export default function App() {
       window.removeEventListener('online', update);
       window.removeEventListener('offline', update);
     };
-  }, []);
-
-  const enterApp = useCallback(() => {
-    dismissLanding();
-    setShowLanding(false);
   }, []);
 
   const mockupN = matchMockupPath(path);
@@ -91,10 +83,6 @@ export default function App() {
   const devN = matchDevPath(path);
   if (devN) {
     return <MobileDevMockup n={devN} />;
-  }
-
-  if (showLanding) {
-    return <LandingPage onEnter={enterApp} />;
   }
 
   return (

@@ -1,14 +1,14 @@
 {
-  "name": "NodeMind",
-  "short_name": "NodeMind",
-  "description": "A local-first mind map canvas for organising connected ideas and workspaces.",
+  "name": "Noded",
+  "short_name": "Noded",
+  "description": "A local graph for thinking.",
   "id": ".",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#0c101c",
-  "theme_color": "#4f46e5",
+  "background_color": "#f4f4f6",
+  "theme_color": "#f4f4f6",
   "icons": [
     {
       "src": "./icon-192.png",

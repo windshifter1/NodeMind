@@ -1,29 +1,24 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { AlertTriangle, Download, Moon, RotateCcw, Sparkles, Sun, Trash2, Upload, X } from 'lucide-react';
+import { AlertTriangle, Download, Monitor, Moon, RotateCcw, Sun, Trash2, Upload, X } from 'lucide-react';
 import OptionHelpRow from './OptionHelpRow';
-import { readLandingAlways, setLandingAlways } from '@/lib/landing';
 import {
   readOnboardingReplayPending,
   setOnboardingCompleted,
   setOnboardingReplayPending,
 } from '@/lib/onboarding';
 import { emitTutorial } from '@/lib/tutorialEvents';
-import { UI_STYLE_OPTIONS } from '@/lib/uiStyle';
 import { estimateStorage, formatBytes } from '@/lib/workspaceStore';
 
 const REPLAY_HELP =
   'Resets the first-run flag. After the tour shows again, this option turns itself off automatically.';
-
-const LANDING_ALWAYS_HELP =
-  'When on, the landing page appears every time you open NodeMind. When off, it only shows on the first visit to this device.';
 
 export default function SettingsDialog({
   open,
   onClose,
   nodeTheme,
   onThemeChange,
-  uiStyle,
-  onUiStyleChange,
+  density = 'default',
+  onDensityChange,
   workspaceCount = 1,
   onDeleteAllWorkspaces,
   persistStatus = {},
@@ -34,7 +29,6 @@ export default function SettingsDialog({
 }) {
   const [section, setSection] = useState('style');
   const [replayPending, setReplayPending] = useState(() => readOnboardingReplayPending());
-  const [landingAlways, setLandingAlwaysState] = useState(() => readLandingAlways());
   const [confirmWipe, setConfirmWipe] = useState(false);
   const [estimate, setEstimate] = useState(null);
   const backupInputRef = useRef(null);
@@ -42,7 +36,6 @@ export default function SettingsDialog({
   useEffect(() => {
     if (!open) return;
     setReplayPending(readOnboardingReplayPending());
-    setLandingAlwaysState(readLandingAlways());
     setConfirmWipe(false);
   }, [open]);
 
@@ -64,8 +57,9 @@ export default function SettingsDialog({
   if (!open) return null;
 
   const themeOptions = [
-    { value: 'light', label: 'Light Theme', icon: Sun },
-    { value: 'dark', label: 'Dark Theme', icon: Moon },
+    { value: 'light', label: 'Light', icon: Sun },
+    { value: 'dark', label: 'Dark', icon: Moon },
+    { value: 'system', label: 'System', icon: Monitor },
   ];
 
   const setReplay = (enabled) => {
@@ -74,11 +68,6 @@ export default function SettingsDialog({
     if (enabled) {
       setOnboardingCompleted(false);
     }
-  };
-
-  const setAlwaysLanding = (enabled) => {
-    setLandingAlwaysState(enabled);
-    setLandingAlways(enabled);
   };
 
   const wipeLabel =
@@ -144,41 +133,10 @@ export default function SettingsDialog({
           <section className="overflow-auto p-4">
             {section === 'style' && (
               <div className="space-y-6">
-                <div data-onboarding="settings-ui-style">
-                  <h3 className="text-sm font-semibold text-nm-text">Interface style</h3>
-                  <p className="mt-1 text-xs text-nm-text-muted">
-                    Complete chrome overhauls. Glass styles share liquid motion; the rest are independent materials.
-                  </p>
-                  <div className="mt-4 grid gap-2">
-                    {UI_STYLE_OPTIONS.map(({ value, label, blurb }) => {
-                      const selected = uiStyle === value;
-                      return (
-                        <button
-                          key={value}
-                          type="button"
-                          onClick={() => {
-                            if (value !== uiStyle) emitTutorial('settings.ui-style');
-                            onUiStyleChange(value);
-                          }}
-                          className="flex flex-col items-start gap-0.5 rounded-xl border px-3 py-3 text-left transition hover:bg-nm-hover"
-                          style={{
-                            backgroundColor: selected ? 'rgba(99,102,241,0.18)' : 'var(--nm-option)',
-                            borderColor: selected ? '#818cf8' : 'var(--nm-border)',
-                            color: selected ? 'var(--nm-text)' : 'var(--nm-option-text)',
-                          }}
-                        >
-                          <span className="text-sm font-medium">{label}</span>
-                          <span className="text-[11px] leading-snug opacity-75">{blurb}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
                 <div data-onboarding="settings-theme">
                   <h3 className="text-sm font-semibold text-nm-text">Theme</h3>
                   <p className="mt-1 text-xs text-nm-text-muted">
-                    Light or dark colour palette. Each interface style keeps its own material.
+                    Light is the default. System follows this device.
                   </p>
                   <div className="mt-4 grid gap-2">
                     {themeOptions.map(({ value, label, icon: Icon }) => {
@@ -191,15 +149,42 @@ export default function SettingsDialog({
                             if (value !== nodeTheme) emitTutorial('settings.theme');
                             onThemeChange(value);
                           }}
-                          className="flex items-center gap-3 rounded-xl border px-3 py-3 text-left transition hover:bg-nm-hover"
+                          className="flex min-h-11 items-center gap-3 rounded-lg border px-3 py-3 text-left transition hover:bg-nm-hover"
                           style={{
-                            backgroundColor: selected ? 'rgba(99,102,241,0.18)' : 'var(--nm-option)',
-                            borderColor: selected ? '#818cf8' : 'var(--nm-border)',
-                            color: selected ? 'var(--nm-text)' : 'var(--nm-option-text)',
+                            backgroundColor: selected ? 'color-mix(in srgb, var(--nm-accent) 16%, transparent)' : 'var(--nm-option)',
+                            borderColor: selected ? 'var(--nm-accent)' : 'var(--nm-border)',
+                            color: 'var(--nm-text)',
                           }}
                         >
-                          <Icon size={18} />
+                          <Icon size={18} strokeWidth={1.75} />
                           <span className="text-sm font-medium">{label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-nm-text">Density</h3>
+                  <p className="mt-1 text-xs text-nm-text-muted">Compact tightens chrome and panels.</p>
+                  <div className="mt-4 grid grid-cols-2 gap-2">
+                    {[
+                      { value: 'default', label: 'Default' },
+                      { value: 'compact', label: 'Compact' },
+                    ].map(({ value, label }) => {
+                      const selected = density === value;
+                      return (
+                        <button
+                          key={value}
+                          type="button"
+                          onClick={() => onDensityChange?.(value)}
+                          className="min-h-11 rounded-lg border px-3 py-2 text-sm font-medium"
+                          style={{
+                            backgroundColor: selected ? 'color-mix(in srgb, var(--nm-accent) 16%, transparent)' : 'var(--nm-option)',
+                            borderColor: selected ? 'var(--nm-accent)' : 'var(--nm-border)',
+                            color: 'var(--nm-text)',
+                          }}
+                        >
+                          {label}
                         </button>
                       );
                     })}
@@ -222,7 +207,7 @@ export default function SettingsDialog({
                 <div>
                   <h3 className="text-sm font-semibold text-nm-text">This device</h3>
                   <p className="mt-1 text-xs text-nm-text-muted">
-                    Nearby NodeMind sessions see this name when you send a workspace.
+                    Nearby Noded sessions see this name when you send a workspace.
                   </p>
                   <input
                     value={deviceName}
@@ -302,14 +287,6 @@ export default function SettingsDialog({
                 </p>
 
                 <div className="mt-4 space-y-2">
-                  <OptionHelpRow
-                    icon={Sparkles}
-                    label="Always Show Landing Page"
-                    compactLabel
-                    selected={landingAlways}
-                    onToggle={() => setAlwaysLanding(!landingAlways)}
-                    helpText={LANDING_ALWAYS_HELP}
-                  />
                   <OptionHelpRow
                     icon={RotateCcw}
                     label="Replay Onboarding on Next Reload"

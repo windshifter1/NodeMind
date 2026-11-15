@@ -1,0 +1,150 @@
+/*
+ * Gen II tokens. Three inputs: base, accent, contrast.
+ * Light is the default first paint. Dark overrides via data-theme.
+ */
+
+:root,
+html[data-theme='light'] {
+  --nm-base: oklch(0.985 0.002 260);
+  --nm-accent: oklch(0.55 0.12 275);
+  --nm-accent-ink: #ffffff;
+  --nm-contrast: 1;
+
+  --nm-page: oklch(0.97 0.003 260);
+  --nm-canvas: oklch(0.965 0.003 260);
+  --nm-canvas-dot: oklch(0.45 0.02 260 / 0.28);
+  --nm-panel: oklch(1 0 0);
+  --nm-chrome: oklch(0.995 0.002 260);
+  --nm-header: oklch(0.96 0.004 260);
+  --nm-sidebar: oklch(0.975 0.003 260);
+  --nm-hover: oklch(0.2 0.01 260 / 0.06);
+  --nm-hover-strong: oklch(0.2 0.01 260 / 0.1);
+  --nm-border: oklch(0.25 0.01 260 / 0.12);
+  --nm-border-strong: oklch(0.25 0.01 260 / 0.2);
+  --nm-divider: oklch(0.25 0.01 260 / 0.1);
+  --nm-text: oklch(0.22 0.01 260);
+  --nm-text-secondary: oklch(0.32 0.012 260);
+  --nm-text-muted: oklch(0.48 0.012 260);
+  --nm-text-faint: oklch(0.4 0.012 260);
+  --nm-text-subtle: oklch(0.55 0.01 260 / 0.55);
+  --nm-label: oklch(0.4 0.012 260);
+  --nm-overlay: oklch(0.2 0.02 260 / 0.4);
+  --nm-edge: oklch(0.62 0.02 260);
+  --nm-input: oklch(0.97 0.003 260);
+  --nm-option: oklch(0.97 0.003 260);
+  --nm-option-text: oklch(0.32 0.012 260);
+  --nm-tooltip: oklch(0.22 0.01 260);
+  --nm-tooltip-text: oklch(0.98 0.002 260);
+  --nm-terminal-bg: oklch(0.98 0.003 260);
+  --nm-terminal-text: oklch(0.28 0.012 260);
+  --nm-terminal-prompt: var(--nm-accent);
+  --nm-bin: oklch(0.995 0.002 260);
+  --nm-shadow: 0 12px 32px oklch(0.2 0.02 260 / 0.12);
+  --nm-node-bg: oklch(1 0 0);
+  --nm-node-bar: transparent;
+  --nm-glass-shadow: 0 1px 2px oklch(0.2 0.02 260 / 0.06);
+  --nm-canvas-glow-a: transparent;
+  --nm-canvas-glow-b: transparent;
+  --nm-canvas-glow-c: transparent;
+  --nm-node-blur: none;
+  --nm-specular: none;
+  --nm-radius-bar: 0px;
+  --nm-radius-btn: 6px;
+  --nm-radius-node: 8px;
+  --nm-radius-panel: 8px;
+  --nm-edge-dash: none;
+  --nm-edge-width: 1.75px;
+  --nm-success: oklch(0.55 0.12 155);
+  --nm-warning: oklch(0.7 0.14 75);
+  --nm-danger: oklch(0.55 0.18 25);
+
+  --background: 240 6% 97%;
+  --foreground: 240 8% 12%;
+  --card: 0 0% 100%;
+  --card-foreground: 240 8% 12%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 240 8% 12%;
+  --primary: 252 48% 52%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 240 6% 94%;
+  --secondary-foreground: 240 8% 12%;
+  --muted: 240 6% 94%;
+  --muted-foreground: 240 4% 40%;
+  --accent: 252 48% 52%;
+  --accent-foreground: 0 0% 100%;
+  --destructive: 0 72% 48%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 240 6% 88%;
+  --input: 240 6% 92%;
+  --ring: 252 48% 52%;
+  --radius: 0.5rem;
+  --font-heading: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-body: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+html[data-theme='dark'] {
+  --nm-base: oklch(0.16 0.006 260);
+  --nm-accent: oklch(0.68 0.11 275);
+  --nm-accent-ink: #0c0d12;
+
+  --nm-page: oklch(0.16 0.006 260);
+  --nm-canvas: oklch(0.155 0.006 260);
+  --nm-canvas-dot: oklch(0.85 0.01 260 / 0.16);
+  --nm-panel: oklch(0.2 0.008 260);
+  --nm-chrome: oklch(0.18 0.007 260);
+  --nm-header: oklch(0.22 0.008 260);
+  --nm-sidebar: oklch(0.17 0.006 260);
+  --nm-hover: oklch(1 0 0 / 0.06);
+  --nm-hover-strong: oklch(1 0 0 / 0.1);
+  --nm-border: oklch(1 0 0 / 0.1);
+  --nm-border-strong: oklch(1 0 0 / 0.16);
+  --nm-divider: oklch(1 0 0 / 0.1);
+  --nm-text: oklch(0.96 0.004 260);
+  --nm-text-secondary: oklch(0.86 0.008 260);
+  --nm-text-muted: oklch(0.7 0.01 260);
+  --nm-text-faint: oklch(0.78 0.01 260);
+  --nm-text-subtle: oklch(1 0 0 / 0.28);
+  --nm-label: oklch(0.82 0.008 260);
+  --nm-overlay: oklch(0.08 0.01 260 / 0.62);
+  --nm-edge: oklch(0.62 0.02 260);
+  --nm-input: oklch(0.22 0.008 260);
+  --nm-option: oklch(0.22 0.008 260);
+  --nm-option-text: oklch(0.86 0.008 260);
+  --nm-tooltip: oklch(0.24 0.008 260);
+  --nm-tooltip-text: oklch(0.97 0.004 260);
+  --nm-terminal-bg: oklch(0.14 0.006 260);
+  --nm-terminal-text: oklch(0.9 0.008 260);
+  --nm-terminal-prompt: var(--nm-accent);
+  --nm-bin: oklch(0.2 0.008 260);
+  --nm-shadow: 0 16px 40px oklch(0 0 0 / 0.45);
+  --nm-node-bg: oklch(0.22 0.008 260);
+  --nm-glass-shadow: none;
+
+  --background: 240 6% 8%;
+  --foreground: 0 0% 96%;
+  --card: 240 6% 12%;
+  --card-foreground: 0 0% 96%;
+  --popover: 240 6% 12%;
+  --popover-foreground: 0 0% 96%;
+  --primary: 252 55% 72%;
+  --primary-foreground: 240 10% 8%;
+  --secondary: 240 5% 16%;
+  --secondary-foreground: 0 0% 96%;
+  --muted: 240 5% 16%;
+  --muted-foreground: 240 5% 70%;
+  --accent: 252 55% 72%;
+  --accent-foreground: 240 10% 8%;
+  --destructive: 0 62% 48%;
+  --destructive-foreground: 0 0% 98%;
+  --border: 240 4% 20%;
+  --input: 240 4% 18%;
+  --ring: 252 55% 72%;
+}
+
+html[data-density='compact'] {
+  --nm-radius-btn: 4px;
+  --nm-radius-node: 6px;
+  --nm-radius-panel: 6px;
+}

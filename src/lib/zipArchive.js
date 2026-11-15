@@ -162,7 +162,7 @@ export async function readZipEntries(input) {
         );
 
   const eocd = findEndOfCentralDirectory(bytes);
-  if (eocd < 0) throw new Error('Not a valid NodeMind backup zip');
+  if (eocd < 0) throw new Error('Not a valid Noded backup zip');
 
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   const entriesCount = view.getUint16(eocd + 10, true);

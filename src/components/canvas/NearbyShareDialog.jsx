@@ -76,7 +76,7 @@ export default function NearbyShareDialog({
           ? 'Joining with that code…'
           : anywhere
             ? 'Preparing a joining-code session…'
-            : 'Looking for NodeMind sessions on this network…'
+            : 'Looking for Noded sessions on this network…'
       : nearby.status === 'error'
         ? nearby.statusError
         : hosting
@@ -99,7 +99,7 @@ export default function NearbyShareDialog({
               ? 'Tap a device to send this workspace.'
               : anywhere
                 ? 'Create a joining code, or enter one from the other device.'
-                : 'No other NodeMind session on this network yet.';
+                : 'No other Noded session on this network yet.';
 
   const joinCode = async (event) => {
     event?.preventDefault?.();
@@ -158,7 +158,7 @@ export default function NearbyShareDialog({
         <div className="overflow-auto p-4">
           <p className="text-xs text-nm-text-muted">
             Send <span className="font-medium text-nm-text">{workspaceName || 'this workspace'}</span> to
-            another open NodeMind session
+            another open Noded session
             {anywhere
               ? '. Entering the joining code sends this workspace — no device tap needed'
               : ' on this network. The other device must accept'}

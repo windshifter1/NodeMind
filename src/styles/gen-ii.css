@@ -1,0 +1,201 @@
+/* Gen II chrome. Layout may differ from earlier floating glass bars. */
+
+html, body, #root {
+  font-family: var(--font-body);
+}
+
+.nm-appbar {
+  position: absolute;
+  z-index: 50;
+  top: 0;
+  right: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: calc(48px + var(--safe-top));
+  padding: var(--safe-top) calc(0.4rem + var(--safe-right)) 0 calc(0.6rem + var(--safe-left));
+  border-bottom: 1px solid var(--nm-border);
+  background: var(--nm-chrome);
+}
+
+.nm-brand {
+  order: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex: 0 0 auto;
+  margin-right: 0.25rem;
+  color: var(--nm-text);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.nm-brand svg {
+  display: block;
+}
+
+.nm-appbar [data-onboarding='toolbar']:not([data-mobile-chrome]),
+.nm-appbar [data-onboarding='workspace-bar']:not([data-mobile-chrome]) {
+  position: static !important;
+  top: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  left: auto !important;
+  transform: none !important;
+  width: auto !important;
+  max-width: none !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  padding: 0 !important;
+}
+
+.nm-appbar [data-onboarding='workspace-bar'] {
+  order: 1;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.nm-appbar [data-onboarding='toolbar']:not([data-draw-toolbar]) {
+  order: 2;
+  flex: 0 1 auto;
+  justify-content: flex-end;
+}
+
+.nm-appbar [data-draw-toolbar] {
+  position: absolute !important;
+  top: calc(100% + 8px) !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  width: min(96vw, 42rem) !important;
+  border: 1px solid var(--nm-border) !important;
+  border-radius: 8px !important;
+  background: var(--nm-panel) !important;
+  box-shadow: var(--nm-shadow) !important;
+  padding: 0.4rem !important;
+}
+
+.nm-ws-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  height: 32px;
+  max-width: 11rem;
+  padding: 0 0.55rem;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  color: var(--nm-text-muted);
+  background: transparent;
+}
+
+.nm-ws-chip:hover {
+  color: var(--nm-text);
+  background: var(--nm-hover);
+}
+
+.nm-ws-chip--on {
+  color: var(--nm-text);
+  background: var(--nm-hover-strong);
+  border-color: var(--nm-border);
+}
+
+.nm-ws-chip span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.nm-toolbar button,
+.nm-appbar [data-onboarding='workspace-create'],
+.nm-appbar [data-onboarding='workspace-edit'] {
+  min-width: 32px;
+  min-height: 32px;
+}
+
+[class*='bg-indigo-'] {
+  background-color: var(--nm-accent) !important;
+  box-shadow: none !important;
+}
+
+[class*='text-indigo-'] {
+  color: var(--nm-accent) !important;
+}
+
+[class*='bg-indigo-'][class*='text-indigo-'],
+button[class*='bg-indigo-'] {
+  color: var(--nm-accent-ink) !important;
+}
+
+[class*='border-indigo-'] {
+  border-color: color-mix(in srgb, var(--nm-accent) 65%, transparent) !important;
+}
+
+[class*='ring-indigo-'] {
+  --tw-ring-color: var(--nm-accent) !important;
+}
+
+.bg-nm-chrome,
+.bg-nm-panel,
+.nm-mobile__chrome {
+  backdrop-filter: none !important;
+}
+
+.fixed .rounded-2xl,
+.fixed .rounded-xl {
+  border-radius: var(--nm-radius-panel);
+}
+
+.nm-mobile__chrome {
+  box-shadow: none;
+  border-radius: 0;
+}
+
+.nm-mobile__top {
+  border-radius: 0;
+  border-left: 0;
+  border-right: 0;
+  border-top: 0;
+}
+
+.nm-mobile__btn--active,
+.nm-mobile__btn--primary {
+  color: var(--nm-accent-ink);
+  background: var(--nm-accent);
+  box-shadow: none;
+}
+
+.nm-mobile__ws-tab,
+.nm-mobile__ws-tab--on {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  border: 1px solid var(--nm-border);
+  color: var(--nm-text-secondary);
+  background: transparent;
+  box-shadow: none;
+}
+
+.nm-mobile__ws-tab--on {
+  color: var(--nm-accent-ink);
+  background: var(--nm-text);
+  border-color: var(--nm-text);
+}
+
+@media (max-width: 768px) {
+  .nm-mobile__btn,
+  .nm-mobile__ws-edit {
+    min-width: 44px !important;
+    min-height: 44px !important;
+  }
+
+  .nm-mobile__top-side {
+    flex-basis: 48px;
+    width: 48px;
+  }
+}

@@ -445,7 +445,6 @@ export default function MobileChrome({
                   type="button"
                   title={ws.name}
                   className={`nm-mobile__ws-tab ${isActive ? 'nm-mobile__ws-tab--on' : ''}`}
-                  style={{ '--mk-tab': ws.colour || '#6366f1' }}
                   onClick={() => {
                     if (ws.id !== activeId) emitTutorial('workspace.switch');
                     onSelectWorkspace(ws.id);

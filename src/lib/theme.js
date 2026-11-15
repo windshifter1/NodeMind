@@ -2,21 +2,56 @@ const STORAGE_KEY = 'thoughts-canvas-node-theme-v2';
 
 export function readStoredTheme() {
   try {
-    return localStorage.getItem(STORAGE_KEY) === 'light' ? 'light' : 'dark';
+    const value = localStorage.getItem(STORAGE_KEY);
+    if (value === 'light' || value === 'dark' || value === 'system') return value;
   } catch {
-    return 'dark';
+    /* ignore */
+  }
+  return 'light';
+}
+
+export function resolveTheme(pref) {
+  if (pref === 'system' && typeof window !== 'undefined') {
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+  return pref === 'dark' ? 'dark' : 'light';
+}
+
+export function applyDocumentTheme(pref) {
+  const value = resolveTheme(pref);
+  document.documentElement.setAttribute('data-theme', value);
+  document.documentElement.setAttribute('data-theme-pref', pref || 'light');
+  document.documentElement.classList.toggle('dark', value === 'dark');
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute('content', value === 'dark' ? '#121318' : '#f4f4f6');
+}
+
+export function persistTheme(pref) {
+  const value = pref === 'dark' || pref === 'system' ? pref : 'light';
+  try {
+    localStorage.setItem(STORAGE_KEY, value);
+  } catch {
+    /* ignore */
   }
 }
 
-export function applyDocumentTheme(theme) {
-  const value = theme === 'light' ? 'light' : 'dark';
-  document.documentElement.setAttribute('data-theme', value);
-  document.documentElement.classList.toggle('dark', value === 'dark');
+const DENSITY_KEY = 'noded-density';
+
+export function readStoredDensity() {
+  try {
+    return localStorage.getItem(DENSITY_KEY) === 'compact' ? 'compact' : 'default';
+  } catch {
+    return 'default';
+  }
 }
 
-export function persistTheme(theme) {
+export function applyDensity(density) {
+  document.documentElement.setAttribute('data-density', density === 'compact' ? 'compact' : 'default');
+}
+
+export function persistDensity(density) {
   try {
-    localStorage.setItem(STORAGE_KEY, theme === 'light' ? 'light' : 'dark');
+    localStorage.setItem(DENSITY_KEY, density === 'compact' ? 'compact' : 'default');
   } catch {
     /* ignore */
   }

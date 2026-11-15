@@ -67,7 +67,7 @@ export function completeOnboarding() {
 export const DESKTOP_TUTORIAL_SECTIONS = [
   {
     id: 'welcome',
-    title: 'Welcome to NodeMind',
+    title: 'Welcome to Noded',
     body: 'A sleek mind map canvas for organising ideas visually. This quick tour will guide you through the basics — complete each task to unlock the next step.',
     target: null,
     tasks: [
@@ -273,7 +273,7 @@ export const DESKTOP_TUTORIAL_SECTIONS = [
   {
     id: 'settings',
     title: 'Settings',
-    body: 'Customise NodeMind and manage your tutorial settings.',
+    body: 'Customise Noded and manage your tutorial settings.',
     target: 'toolbar-settings',
     tasks: [
       {
@@ -299,7 +299,7 @@ export const DESKTOP_TUTORIAL_SECTIONS = [
   {
     id: 'finish',
     title: "You're ready!",
-    body: "You've learned the basics of NodeMind. Start building your ideas — everything stays on this device.",
+    body: "You've learned the basics of Noded. Start building your ideas — everything stays on this device.",
     target: null,
     tasks: [
       {
@@ -319,7 +319,7 @@ export const DESKTOP_TUTORIAL_SECTIONS = [
 export const MOBILE_TUTORIAL_SECTIONS = [
   {
     id: 'welcome',
-    title: 'Welcome to NodeMind',
+    title: 'Welcome to Noded',
     body: 'A sleek mind map canvas for organising ideas visually. This quick tour will guide you through the basics — complete each task to unlock the next step.',
     target: null,
     tasks: [
@@ -519,7 +519,7 @@ export const MOBILE_TUTORIAL_SECTIONS = [
   {
     id: 'settings',
     title: 'Settings',
-    body: 'Open Settings from the gear (top right) to customise NodeMind and manage tutorial settings.',
+    body: 'Open Settings from the gear (top right) to customise Noded and manage tutorial settings.',
     target: 'toolbar-settings',
     tasks: [
       {
@@ -545,7 +545,7 @@ export const MOBILE_TUTORIAL_SECTIONS = [
   {
     id: 'finish',
     title: "You're ready!",
-    body: "You've learned the basics of NodeMind. Start building your ideas — everything stays on this device.",
+    body: "You've learned the basics of Noded. Start building your ideas — everything stays on this device.",
     target: null,
     tasks: [
       {

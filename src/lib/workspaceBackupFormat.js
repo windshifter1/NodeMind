@@ -44,7 +44,7 @@ export function buildBackupPayload(state) {
 
 export function parseImportPayload(data) {
   if (!data || typeof data !== 'object') {
-    throw new Error('Unrecognized NodeMind file');
+    throw new Error('Unrecognized Noded file');
   }
 
   if (data.format === BACKUP_FORMAT || (Array.isArray(data.workspaces) && !data.nodes)) {
@@ -71,7 +71,7 @@ export function parseImportPayload(data) {
     };
   }
 
-  throw new Error('Unrecognized NodeMind file');
+  throw new Error('Unrecognized Noded file');
 }
 
 export function applyFileIdMap(workspaces, idMap) {
@@ -152,5 +152,5 @@ export function downloadFileName(name, fallback = 'workspace') {
 
 export function backupFileName(date = new Date()) {
   const stamp = date.toISOString().slice(0, 10);
-  return `NodeMind_backup_${stamp}.zip`;
+  return `Noded_backup_${stamp}.zip`;
 }

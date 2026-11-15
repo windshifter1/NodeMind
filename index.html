@@ -1,18 +1,21 @@
 <!doctype html>
-<html lang="en" data-theme="dark">
+<html lang="en" data-theme="light">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <meta name="description" content="NodeMind — a local-first mind map canvas by Windshifter" />
-    <meta name="application-name" content="NodeMind" />
-    <meta name="theme-color" content="#4f46e5" />
+    <meta name="description" content="Noded — a local graph for thinking." />
+    <meta name="application-name" content="Noded" />
+    <meta name="theme-color" content="#f4f4f6" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-title" content="NodeMind" />
+    <meta name="apple-mobile-web-app-title" content="Noded" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <link rel="manifest" href="./manifest.json" />
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" sizes="any" />
     <link rel="apple-touch-icon" href="./icon-180.png" />
-    <title>NodeMind</title>
+    <title>Noded</title>
     <script>
       // Pre-paint: measure fixed inset:0 fill (avoids short 100vh/100svh bands).
       (function () {
@@ -49,6 +52,14 @@
             document.documentElement.style.setProperty('--app-frame-width', Math.round(width) + 'px');
           }
         } catch (e) {}
+        try {
+          var theme = localStorage.getItem('thoughts-canvas-node-theme-v2');
+          var dark =
+            theme === 'dark' ||
+            (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+          document.documentElement.classList.toggle('dark', dark);
+        } catch (e2) {}
       })();
     </script>
   </head>

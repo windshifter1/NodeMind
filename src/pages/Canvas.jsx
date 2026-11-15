@@ -65,14 +65,15 @@ import { hasInboundEdgeOnSlot } from '@/lib/substituteSlots';
 import { isDesktopPlatform, shouldStartOnboarding } from '@/lib/onboarding';
 import { readMathsCreditSeen, setMathsCreditSeen } from '@/lib/mathsCredit';
 import { emitTutorial } from '@/lib/tutorialEvents';
-import { applyDocumentTheme, persistTheme, readStoredTheme } from '@/lib/theme';
 import {
-  applyDocumentUiStyle,
-  persistUiStyle,
-  readStoredUiStyle,
-  usesLiquidMotion,
-} from '@/lib/uiStyle';
-import { attachLiquidButtons } from '@/lib/liquidButtons';
+  applyDensity,
+  applyDocumentTheme,
+  persistDensity,
+  persistTheme,
+  readStoredDensity,
+  readStoredTheme,
+} from '@/lib/theme';
+import { PRODUCT_NAME } from '@/lib/brand';
 import { downloadBlob } from '@/lib/shareCanvas';
 import {
   backupFileName,
@@ -139,7 +140,7 @@ function CanvasReady({
   const [selectedNodeIds, setSelectedNodeIds] = useState([]);
   const [selectionArmed, setSelectionArmed] = useState(false);
   const [nodeTheme, setNodeTheme] = useState(() => readStoredTheme());
-  const [uiStyle, setUiStyle] = useState(() => readStoredUiStyle());
+  const [density, setDensity] = useState(() => readStoredDensity());
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [mathsCreditOpen, setMathsCreditOpen] = useState(false);
   const [nodePicker, setNodePicker] = useState(null);
@@ -166,17 +167,17 @@ function CanvasReady({
   useEffect(() => {
     applyDocumentTheme(nodeTheme);
     persistTheme(nodeTheme);
+    if (nodeTheme !== 'system') return undefined;
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    const sync = () => applyDocumentTheme('system');
+    mq.addEventListener?.('change', sync);
+    return () => mq.removeEventListener?.('change', sync);
   }, [nodeTheme]);
 
   useEffect(() => {
-    applyDocumentUiStyle(uiStyle);
-    persistUiStyle(uiStyle);
-  }, [uiStyle]);
-
-  useEffect(() => {
-    if (!usesLiquidMotion(uiStyle)) return undefined;
-    return attachLiquidButtons();
-  }, [uiStyle]);
+    applyDensity(density);
+    persistDensity(density);
+  }, [density]);
 
   // Plop animation + subtle ripples when nodes appear.
   useEffect(() => {
@@ -961,7 +962,16 @@ function CanvasReady({
       />
 
       {isDesktop ? (
-        <>
+        <header className="nm-appbar">
+          <div className="nm-brand" aria-label={PRODUCT_NAME}>
+            <svg width="16" height="16" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+              <path d="M16 6v9.5M16 15.5 8 24M16 15.5l8 8.5" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
+              <circle cx="16" cy="5.5" r="2.25" fill="currentColor" />
+              <circle cx="7.6" cy="24.6" r="2.25" fill="currentColor" />
+              <circle cx="24.4" cy="24.6" r="2.25" fill="currentColor" />
+            </svg>
+            {PRODUCT_NAME}
+          </div>
           <Toolbar
             onClear={handleClear}
             onOpenShare={() => setShareMenuOpen(true)}
@@ -1006,7 +1016,7 @@ function CanvasReady({
             onCreate={() => setCreatingWorkspace(true)}
             onEdit={() => setEditingWorkspace(true)}
           />
-        </>
+        </header>
       ) : (
         <MobileChrome
           workspaceName={active.name}
@@ -1095,7 +1105,7 @@ function CanvasReady({
           {
             id: 'nearby',
             label: 'Nearby devices',
-            description: 'Share to NodeMind sessions on your local network',
+            description: 'Share to Noded sessions on your local network',
             icon: Wifi,
             onClick: () => {
               setNearbyShareScope('lan');
@@ -1129,7 +1139,7 @@ function CanvasReady({
         onClose={() => setSaveMenuOpen(false)}
         title="Save"
         icon={Save}
-        description="Import or export this workspace as a NodeMind file."
+        description="Import or export this workspace as a Noded file."
         actions={[
           {
             id: 'import',
@@ -1221,8 +1231,8 @@ function CanvasReady({
         onClose={() => setSettingsOpen(false)}
         nodeTheme={nodeTheme}
         onThemeChange={setNodeTheme}
-        uiStyle={uiStyle}
-        onUiStyleChange={setUiStyle}
+        density={density}
+        onDensityChange={setDensity}
         workspaceCount={state.workspaces.length}
         onDeleteAllWorkspaces={deleteAllWorkspaces}
         persistStatus={persistStatus}

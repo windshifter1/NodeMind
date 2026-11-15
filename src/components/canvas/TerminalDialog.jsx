@@ -511,7 +511,7 @@ export default function TerminalDialog({
   }, [cwdId, nodes]);
 
   const welcome = useMemo(
-    () => [`NodeMind Terminal`, `Type help for commands, or tutorial to learn by doing.`, ''],
+    () => [`Noded terminal`, `A local graph for thinking.`, `Type help for commands, or tutorial to learn by doing.`, ''],
     []
   );
 
@@ -1029,7 +1029,7 @@ export default function TerminalDialog({
       >
         <div className="flex items-center gap-2 border-b border-nm-border bg-nm-header px-3 py-3 sm:px-4">
           <Terminal size={16} className="text-nm-terminal-prompt" />
-          <h2 className="text-sm font-semibold text-nm-text">NodeMind Terminal</h2>
+          <h2 className="text-sm font-semibold text-nm-text">Noded</h2>
           <div className="flex-1" />
           <button
             type="button"

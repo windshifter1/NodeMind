@@ -242,7 +242,7 @@ export default function Toolbar({
   const patchBg = (patch) => onBackgroundArtChange?.({ ...bg, ...patch });
 
   const chromeClass =
-    'absolute left-1/2 z-50 flex w-[min(96vw,calc(100%-1rem-var(--safe-left)-var(--safe-right)))] max-w-3xl -translate-x-1/2 flex-wrap items-center justify-center gap-x-0.5 gap-y-1 overflow-visible rounded-2xl border border-nm-border bg-nm-chrome px-1.5 py-1.5 shadow-xl backdrop-blur-md sm:w-auto sm:max-w-[min(96vw,calc(100%-2rem-var(--safe-left)-var(--safe-right)))] sm:gap-x-1 sm:px-3 sm:py-2.5';
+    'nm-toolbar relative z-50 flex min-w-0 flex-wrap items-center justify-end gap-0.5';
 
   if (drawMode) {
     return (
@@ -396,7 +396,6 @@ export default function Toolbar({
       <div
         data-onboarding="toolbar"
         className={chromeClass}
-        style={{ top: 'calc(1rem + var(--safe-top))' }}
       >
         <span data-onboarding="toolbar-add" className="inline-flex shrink-0">
           <ToolbarButton

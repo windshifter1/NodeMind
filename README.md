@@ -56,7 +56,8 @@ In the app terminal: `version`, `version help`.
 1. Run `npm install` locally and commit `package-lock.json` (required for `npm ci` in CI).
 2. Push this repo to GitHub as **`NodeMind`** (must match the Vite `base` path).
 3. **Critical:** In the repo go to **Settings → Pages → Build and deployment** and set **Source** to **GitHub Actions** — not "Deploy from a branch". If branch deploy is enabled, GitHub serves the raw source files instead of Vite's built `dist/` output and the page stays blank.
-4. Push to `gen-ii` — the workflow builds `dist/` and publishes that folder only. GitHub Pages tracks the `gen-ii` branch.
+4. **Critical (branch allowlist):** Go to **Settings → Environments → `github-pages` → Deployment branches** and allow **`gen-ii`** (or “All branches”). If only `dev` is listed, pushes to `gen-ii` build successfully but the **deploy** job fails with *“Branch gen-ii is not allowed to deploy to github-pages”*.
+5. Push to `gen-ii` — the workflow builds `dist/` and publishes that folder only.
 
 Live URL: `https://windshifter1.github.io/NodeMind/`
 

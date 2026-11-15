@@ -68,7 +68,7 @@ export default function SelectionOpMenu({ open, x = 0, y = 0, ops = [], onClose,
   return (
     <div
       data-selection-op-menu
-      className="fixed overflow-hidden rounded-2xl border border-nm-border bg-nm-chrome shadow-xl backdrop-blur-md"
+      className="fixed overflow-hidden rounded-lg border border-nm-border bg-nm-panel shadow-sm"
       style={{ left, top, width: MENU_WIDTH, zIndex: 1_000_001, maxHeight: 'min(420px, 70vh)' }}
       onPointerDown={(e) => e.stopPropagation()}
       onPointerUp={(e) => e.stopPropagation()}

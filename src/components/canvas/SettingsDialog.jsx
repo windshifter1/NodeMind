@@ -74,35 +74,24 @@ export default function SettingsDialog({
     workspaceCount === 1 ? '1 workspace' : `${workspaceCount} workspaces`;
 
   return (
-    <div
-      className="fixed inset-0 z-[210] flex items-center justify-center"
-      style={{
-        paddingTop: 'calc(1rem + var(--safe-top))',
-        paddingRight: 'calc(1rem + var(--safe-right))',
-        paddingBottom: 'calc(1rem + var(--safe-bottom))',
-        paddingLeft: 'calc(1rem + var(--safe-left))',
-      }}
-    >
-      <div className="absolute inset-0 bg-nm-overlay backdrop-blur-md" onClick={onClose} />
+    <div className="nm-dialog-root">
+      <div className="nm-dialog-overlay" onClick={onClose} />
       <div
-        className="relative flex max-h-[88vh] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-nm-border bg-nm-panel shadow-2xl"
+        className="nm-dialog-panel max-w-md"
         onPointerDown={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center gap-2 border-b border-nm-border bg-nm-header px-3 py-3 sm:px-4">
-          <h2 className="text-sm font-semibold text-nm-text">Settings</h2>
+        <div className="nm-dialog-head">
+          <h2>Settings</h2>
           <div className="flex-1" />
-          <button
-            onClick={onClose}
-            className="rounded-lg p-2 text-nm-text-faint transition hover:bg-nm-hover hover:text-nm-text active:scale-95"
-          >
-            <X size={18} />
+          <button type="button" onClick={onClose} className="nm-dialog-close" title="Close">
+            <X size={16} strokeWidth={1.75} />
           </button>
         </div>
 
         <div className="grid min-h-64 grid-cols-[8rem_1fr] overflow-hidden">
           <aside className="border-r border-nm-border bg-nm-sidebar p-3">
             {[
-              { id: 'style', label: 'Style' },
+              { id: 'style', label: 'Appearance' },
               { id: 'data', label: 'Data' },
               { id: 'help', label: 'Help' },
               { id: 'danger', label: 'Danger' },
@@ -115,7 +104,7 @@ export default function SettingsDialog({
                   setSection(item.id);
                   if (item.id === 'help') emitTutorial('settings.replay.find');
                 }}
-                className={`mb-1 w-full rounded-xl px-3 py-2 text-left text-sm font-medium transition ${
+                className={`nm-sidebar__item mb-1 w-full ${
                   section === item.id
                     ? item.id === 'danger'
                       ? 'bg-rose-500/15 text-rose-400'

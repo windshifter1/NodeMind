@@ -44,11 +44,14 @@ NodeMind/
 
 ```
 main.jsx → App.jsx → Canvas.jsx
-                          ├── useWorkspaces()  (state.workspaces, activeId, dispatch)
-                          ├── CanvasBoard      (nodes, edges, interaction)
-                          ├── WorkspaceBar / Toolbar / dialogs
-                          └── OnboardingTour (optional)
+                          ├── AppSidebar       (workspaces, settings)
+                          ├── top bar          (current workspace + workflow tools)
+                          ├── CanvasBoard      (nodes, edges)
+                          ├── AgentDock        (coming soon)
+                          └── dialogs / OnboardingTour
 ```
+
+Shell layout philosophy: [`docs/GEN-II-REBRAND-PLAN.md`](./docs/GEN-II-REBRAND-PLAN.md).
 
 **State:** `useWorkspaces` holds `{ workspaces[], activeId }`. Each workspace has metadata (name, colour, icon, orientation, layout settings), `nodes[]`, `edges[]`, `nextZ`, and `terminal` (per-workspace CLI buffer).
 
@@ -90,8 +93,9 @@ CLI smoke test: `node scripts/test-layout.mjs`.
 |------|------------------|
 | `CanvasBoard.jsx` | Infinite canvas, selection, connections, bin delete |
 | `NoteNode.jsx` | Node chrome, edit affordances |
-| `Toolbar.jsx` | Zoom, organise, export, terminal, settings |
-| `WorkspaceBar.jsx` | Tabs, create/edit workspace |
+| `Toolbar.jsx` | Top-bar workflow: add, draw, organise, share, save, terminal |
+| `shell/AppSidebar.jsx` | Collapsible left rail: workspaces + settings |
+| `shell/AgentDock.jsx` | Bottom-right Coming soon Agent |
 | `NodeEditDialog.jsx`, `WorkspaceEditDialog.jsx` | Metadata editors |
 | `TextExportDialog.jsx` | Plain-text export |
 | `SettingsDialog.jsx` | Light/dark node theme |

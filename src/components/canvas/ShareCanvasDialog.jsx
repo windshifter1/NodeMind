@@ -146,18 +146,13 @@ export default function ShareCanvasDialog({
         paddingLeft: 'calc(1rem + var(--safe-left))',
       }}
     >
-      <div className="absolute inset-0 bg-nm-overlay backdrop-blur-md" onClick={onClose} />
-      <div className="relative w-full max-w-md rounded-2xl border border-nm-border bg-nm-panel shadow-2xl overflow-hidden">
-        <div className="flex items-center gap-2 border-b border-nm-border bg-nm-header px-4 py-3">
+      <div className="nm-dialog-overlay" onClick={onClose} />
+      <div className="nm-dialog-panel max-w-md">
+        <div className="nm-dialog-head">
           <Share2 size={16} className="text-nm-text-muted" />
-          <p className="min-w-0 flex-1 text-sm font-medium text-nm-text">Share canvas</p>
-          <button
-            type="button"
-            title="Close"
-            onClick={onClose}
-            className="rounded-lg p-1.5 text-nm-text-faint transition hover:bg-nm-hover hover:text-nm-text active:scale-95"
-          >
-            <X size={16} />
+          <p className="min-w-0 flex-1">Share canvas</p>
+          <button type="button" title="Close" onClick={onClose} className="nm-dialog-close">
+            <X size={16} strokeWidth={1.75} />
           </button>
         </div>
         <div className="space-y-4 p-4">

@@ -71,9 +71,9 @@ export default function TextExportDialog({ open, onClose, workspaceName, nodes, 
         paddingLeft: 'calc(1rem + var(--safe-left))',
       }}
     >
-      <div className="absolute inset-0 bg-nm-overlay backdrop-blur-md" onClick={onClose} />
-      <div className="relative w-full max-w-2xl max-h-[80vh] rounded-2xl bg-nm-panel border border-nm-border shadow-2xl flex flex-col overflow-hidden">
-        <div className="flex items-center gap-2 px-3 sm:px-4 py-3 border-b border-nm-border bg-nm-header">
+      <div className="nm-dialog-overlay" onClick={onClose} />
+      <div className="nm-dialog-panel max-w-2xl">
+        <div className="nm-dialog-head">
           <button
             onClick={handleCopy}
             className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium bg-nm-hover hover:bg-nm-hover-strong text-nm-text transition active:scale-95"
@@ -89,11 +89,8 @@ export default function TextExportDialog({ open, onClose, workspaceName, nodes, 
             {expanded ? 'Hide text' : 'Show text'}
           </button>
           <div className="flex-1" />
-          <button
-            onClick={onClose}
-            className="p-2 rounded-lg text-nm-text-faint hover:text-nm-text hover:bg-nm-hover transition active:scale-95"
-          >
-            <X size={18} />
+          <button type="button" onClick={onClose} className="nm-dialog-close" title="Close">
+            <X size={16} strokeWidth={1.75} />
           </button>
         </div>
         <div className="overflow-auto px-4 sm:px-5 py-4">

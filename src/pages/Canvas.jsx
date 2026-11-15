@@ -2,8 +2,9 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import CanvasBoard from '@/components/canvas/CanvasBoard';
 import Toolbar from '@/components/canvas/Toolbar';
 import MobileChrome from '@/components/canvas/MobileChrome';
+import AppSidebar from '@/components/shell/AppSidebar';
+import AgentDock from '@/components/shell/AgentDock';
 import NodeEditDialog from '@/components/canvas/NodeEditDialog';
-import WorkspaceBar from '@/components/canvas/WorkspaceBar';
 import WorkspaceEditDialog from '@/components/canvas/WorkspaceEditDialog';
 import TextExportDialog from '@/components/canvas/TextExportDialog';
 import ShareCanvasDialog from '@/components/canvas/ShareCanvasDialog';
@@ -73,7 +74,6 @@ import {
   readStoredDensity,
   readStoredTheme,
 } from '@/lib/theme';
-import { PRODUCT_NAME } from '@/lib/brand';
 import { downloadBlob } from '@/lib/shareCanvas';
 import {
   backupFileName,
@@ -150,6 +150,14 @@ function CanvasReady({
   const [spawnRipples, setSpawnRipples] = useState([]);
   const [drawMode, setDrawMode] = useState(false);
   const [isDesktop, setIsDesktop] = useState(() => isDesktopPlatform());
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem('noded-sidebar-collapsed') === '1';
+    } catch {
+      return false;
+    }
+  });
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const socketHintTimerRef = useRef(null);
   const hadCreditOpRef = useRef(null);
   const knownNodeIdsRef = useRef(null);
@@ -163,6 +171,10 @@ function CanvasReady({
     mq.addEventListener?.('change', update);
     return () => mq.removeEventListener?.('change', update);
   }, []);
+
+  useEffect(() => {
+    if (isDesktop) setMobileSidebarOpen(false);
+  }, [isDesktop]);
 
   useEffect(() => {
     applyDocumentTheme(nodeTheme);
@@ -878,24 +890,127 @@ function CanvasReady({
 
   const recenterView = useCallback(() => {
     const nodes = active.nodes || [];
+    const board = document.querySelector('[data-canvas-board]')?.getBoundingClientRect();
+    const viewW = board?.width || window.innerWidth;
+    const viewH = board?.height || window.innerHeight;
     if (!nodes.length) {
       animateCamera(panRef.current, 1);
       return;
     }
     const bounds = workspaceNodesBounds(nodes);
-    const fitZoom = clampZoom(zoomToFrameBounds(bounds, window.innerWidth, window.innerHeight));
-    const cx = window.innerWidth / 2;
-    const cy = window.innerHeight / 2;
+    const fitZoom = clampZoom(zoomToFrameBounds(bounds, viewW, viewH));
     animateCamera(
-      { x: cx - bounds.centroid.x * fitZoom, y: cy - bounds.centroid.y * fitZoom },
+      { x: viewW / 2 - bounds.centroid.x * fitZoom, y: viewH / 2 - bounds.centroid.y * fitZoom },
       fitZoom
     );
   }, [active.nodes, animateCamera]);
 
   const editingNode = active.nodes.find((n) => n.id === editingNodeId) || null;
 
+  const toggleSidebarCollapsed = () => {
+    setSidebarCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem('noded-sidebar-collapsed', next ? '1' : '0');
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+  };
+
+  const toolbar = (
+    <Toolbar
+      onClear={handleClear}
+      onOpenShare={() => setShareMenuOpen(true)}
+      onOpenSave={() => setSaveMenuOpen(true)}
+      onOpenTerminal={() => setTerminalOpen(true)}
+      onAutoOrganise={autoOrganise}
+      onOrganiseSelected={organiseSelected}
+      selectedCount={selectedNodeIds.length}
+      selectionArmed={selectionArmed}
+      onToggleSelectionArm={() => setSelectionArmed((armed) => !armed)}
+      zoom={zoom}
+      onRecenter={recenterView}
+      drawMode={drawMode}
+      onToggleDrawMode={() => setDrawMode((v) => !v)}
+      backgroundArt={normalizeBackgroundArt(active.backgroundArt)}
+      onBackgroundArtChange={(patch) =>
+        dispatch({ type: 'UPDATE_BACKGROUND_ART', patch })
+      }
+      onAddNodeCenter={(anchor) => {
+        const clientX = anchor?.clientX ?? window.innerWidth / 2;
+        const clientY = anchor?.clientY ?? 72;
+        const rect = document.querySelector('[data-canvas-board]')?.getBoundingClientRect();
+        const left = rect?.left ?? 0;
+        const top = rect?.top ?? 0;
+        openNodePicker({
+          source: 'toolbar',
+          x: -nodeWidthForTitle('') / 2,
+          y: -TOP_BAR_HEIGHT / 2,
+          worldX: (clientX - left - pan.x) / zoom,
+          worldY: (clientY - top - pan.y) / zoom,
+          clientX,
+          clientY,
+        });
+      }}
+    />
+  );
+
   return (
-    <div className="absolute inset-0 overflow-hidden bg-nm-canvas">
+    <div className="nm-shell">
+      <AppSidebar
+        workspaces={state.workspaces}
+        activeId={state.activeId}
+        collapsed={sidebarCollapsed}
+        overlay={!isDesktop}
+        open={isDesktop || mobileSidebarOpen}
+        onToggleCollapsed={toggleSidebarCollapsed}
+        onClose={() => setMobileSidebarOpen(false)}
+        onSelect={selectWorkspace}
+        onCreate={() => setCreatingWorkspace(true)}
+        onEdit={() => setEditingWorkspace(true)}
+        onOpenSettings={() => setSettingsOpen(true)}
+      />
+      <div className="nm-shell__main">
+        {isDesktop ? (
+          <header className="nm-topbar">
+            <h1 className="nm-topbar__title">{active.name}</h1>
+            <span className="nm-topbar__meta">{Math.round(zoom * 100)}%</span>
+            {toolbar}
+          </header>
+        ) : (
+          <MobileChrome
+            workspaceName={active.name}
+            onOpenSidebar={() => setMobileSidebarOpen(true)}
+            onClear={handleClear}
+            onOpenShare={() => setShareMenuOpen(true)}
+            onOpenSave={() => setSaveMenuOpen(true)}
+            onOpenTerminal={() => setTerminalOpen(true)}
+            onAutoOrganise={autoOrganise}
+            onOrganiseSelected={organiseSelected}
+            selectedCount={selectedNodeIds.length}
+            selectionArmed={selectionArmed}
+            onToggleSelectionArm={() => setSelectionArmed((armed) => !armed)}
+            zoom={zoom}
+            onRecenter={recenterView}
+            drawMode={drawMode}
+            onToggleDrawMode={() => setDrawMode((v) => !v)}
+            backgroundArt={normalizeBackgroundArt(active.backgroundArt)}
+            onBackgroundArtChange={(patch) =>
+              dispatch({ type: 'UPDATE_BACKGROUND_ART', patch })
+            }
+            onAddNodeCenter={() => {
+              openNodePicker({
+                source: 'toolbar',
+                sheet: true,
+                x: -nodeWidthForTitle('') / 2,
+                y: -TOP_BAR_HEIGHT / 2,
+              });
+            }}
+          />
+        )}
+      <div className="nm-shell__stage">
       <CanvasBoard
         nodes={active.nodes}
         edges={active.edges}
@@ -944,7 +1059,6 @@ function CanvasReady({
         ghostSelections={ghostSelections}
         mathInputBlockedIds={mathInputBlockedIds}
         socketHint={socketHint}
-        hideEmptyHint={onboardingOpen}
         drawMode={drawMode}
         backgroundArt={normalizeBackgroundArt(active.backgroundArt)}
         onBackgroundArtChange={(next) =>
@@ -960,100 +1074,8 @@ function CanvasReady({
         onClose={closeSelectionMenu}
         onPick={pickSelectionOp}
       />
-
-      {isDesktop ? (
-        <header className="nm-appbar">
-          <div className="nm-brand" aria-label={PRODUCT_NAME}>
-            <svg width="16" height="16" viewBox="0 0 32 32" fill="none" aria-hidden="true">
-              <path d="M16 6v9.5M16 15.5 8 24M16 15.5l8 8.5" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
-              <circle cx="16" cy="5.5" r="2.25" fill="currentColor" />
-              <circle cx="7.6" cy="24.6" r="2.25" fill="currentColor" />
-              <circle cx="24.4" cy="24.6" r="2.25" fill="currentColor" />
-            </svg>
-            {PRODUCT_NAME}
-          </div>
-          <Toolbar
-            onClear={handleClear}
-            onOpenShare={() => setShareMenuOpen(true)}
-            onOpenSave={() => setSaveMenuOpen(true)}
-            onOpenTerminal={() => setTerminalOpen(true)}
-            onAutoOrganise={autoOrganise}
-            onOrganiseSelected={organiseSelected}
-            selectedCount={selectedNodeIds.length}
-            selectionArmed={selectionArmed}
-            onToggleSelectionArm={() => setSelectionArmed((armed) => !armed)}
-            zoom={zoom}
-            onRecenter={recenterView}
-            onOpenSettings={() => setSettingsOpen(true)}
-            drawMode={drawMode}
-            onToggleDrawMode={() => setDrawMode((v) => !v)}
-            backgroundArt={normalizeBackgroundArt(active.backgroundArt)}
-            onBackgroundArtChange={(patch) =>
-              dispatch({ type: 'UPDATE_BACKGROUND_ART', patch })
-            }
-            onAddNodeCenter={(anchor) => {
-              const clientX = anchor?.clientX ?? window.innerWidth / 2;
-              const clientY = anchor?.clientY ?? 72;
-              const rect = document.querySelector('[data-canvas-board]')?.getBoundingClientRect();
-              const left = rect?.left ?? 0;
-              const top = rect?.top ?? 0;
-              openNodePicker({
-                source: 'toolbar',
-                x: -nodeWidthForTitle('') / 2,
-                y: -TOP_BAR_HEIGHT / 2,
-                worldX: (clientX - left - pan.x) / zoom,
-                worldY: (clientY - top - pan.y) / zoom,
-                clientX,
-                clientY,
-              });
-            }}
-          />
-
-          <WorkspaceBar
-            workspaces={state.workspaces}
-            activeId={state.activeId}
-            onSelect={selectWorkspace}
-            onCreate={() => setCreatingWorkspace(true)}
-            onEdit={() => setEditingWorkspace(true)}
-          />
-        </header>
-      ) : (
-        <MobileChrome
-          workspaceName={active.name}
-          workspaces={state.workspaces}
-          activeId={state.activeId}
-          onSelectWorkspace={selectWorkspace}
-          onCreateWorkspace={() => setCreatingWorkspace(true)}
-          onEditWorkspace={() => setEditingWorkspace(true)}
-          onClear={handleClear}
-          onOpenShare={() => setShareMenuOpen(true)}
-          onOpenSave={() => setSaveMenuOpen(true)}
-          onOpenTerminal={() => setTerminalOpen(true)}
-          onAutoOrganise={autoOrganise}
-          onOrganiseSelected={organiseSelected}
-          selectedCount={selectedNodeIds.length}
-          selectionArmed={selectionArmed}
-          onToggleSelectionArm={() => setSelectionArmed((armed) => !armed)}
-          zoom={zoom}
-          onRecenter={recenterView}
-          onOpenSettings={() => setSettingsOpen(true)}
-          drawMode={drawMode}
-          onToggleDrawMode={() => setDrawMode((v) => !v)}
-          backgroundArt={normalizeBackgroundArt(active.backgroundArt)}
-          onBackgroundArtChange={(patch) =>
-            dispatch({ type: 'UPDATE_BACKGROUND_ART', patch })
-          }
-          onAddNodeCenter={() => {
-            // Bottom sheet (same chrome as More actions); node spawns at view center.
-            openNodePicker({
-              source: 'toolbar',
-              sheet: true,
-              x: -nodeWidthForTitle('') / 2,
-              y: -TOP_BAR_HEIGHT / 2,
-            });
-          }}
-        />
-      )}
+      {isDesktop ? <AgentDock /> : null}
+      </div>
 
       <NodeEditDialog
         node={editingNode}
@@ -1274,6 +1296,7 @@ function CanvasReady({
         onTutorialStart={beginTerminalTutorialWorkspace}
         onTutorialEnd={endTerminalTutorialWorkspace}
       />
+      </div>
     </div>
   );
 }

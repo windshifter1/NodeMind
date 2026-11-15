@@ -1019,32 +1019,28 @@ export default function TerminalDialog({
       className={`fixed z-[100] flex justify-center ${keyboardOpen ? 'items-end' : 'items-center'}`}
       style={shellStyle}
     >
-      <div className="absolute inset-0 bg-nm-overlay backdrop-blur-md" onClick={onClose} />
+      <div className="nm-dialog-overlay" onClick={onClose} />
       <div
-        className="relative flex w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-nm-border bg-nm-panel font-mono shadow-2xl"
+        className="nm-dialog-panel max-w-3xl font-mono"
         style={{
           height: keyboardOpen ? '100%' : '78vh',
           maxHeight: '100%',
         }}
       >
-        <div className="flex items-center gap-2 border-b border-nm-border bg-nm-header px-3 py-3 sm:px-4">
-          <Terminal size={16} className="text-nm-terminal-prompt" />
-          <h2 className="text-sm font-semibold text-nm-text">Noded</h2>
+        <div className="nm-dialog-head">
+          <Terminal size={16} className="text-nm-text-muted" />
+          <h2>Noded</h2>
           <div className="flex-1" />
           <button
             type="button"
             title="Interactive tutorial"
             onClick={startTutorial}
-            className={`rounded-lg p-2 transition active:scale-95 ${
-              tutorialOpen
-                ? 'bg-indigo-500/30 text-indigo-200'
-                : 'text-nm-text-faint hover:bg-nm-hover hover:text-nm-text'
-            }`}
+            className={`nm-dialog-close ${tutorialOpen ? 'bg-nm-hover-strong text-nm-text' : ''}`}
           >
-            <GraduationCap size={18} />
+            <GraduationCap size={16} strokeWidth={1.75} />
           </button>
-          <button onClick={onClose} className="rounded-lg p-2 text-nm-text-faint transition hover:bg-nm-hover hover:text-nm-text">
-            <X size={18} />
+          <button type="button" onClick={onClose} className="nm-dialog-close" title="Close">
+            <X size={16} strokeWidth={1.75} />
           </button>
         </div>
 

@@ -73,7 +73,6 @@ export default function CanvasBoard({
   ghostSelections = null,
   mathInputBlockedIds = null,
   socketHint = null,
-  hideEmptyHint = false,
   drawMode = false,
   backgroundArt = null,
   onBackgroundArtChange,
@@ -1332,16 +1331,6 @@ export default function CanvasBoard({
         ...boardBackground,
       }}
     >
-      {nodes.length === 0 && !hideEmptyHint && (
-        <div
-          data-empty-canvas-hint
-          className="absolute inset-0 flex items-center justify-center pointer-events-none px-6"
-        >
-          <p className="text-nm-text-subtle text-center text-sm sm:text-base max-w-md leading-relaxed select-none">
-            Tap empty canvas to add a node · drag sockets to connect · tap a line to delete
-          </p>
-        </div>
-      )}
       <BackgroundDrawLayer
         art={backgroundArt}
         onChange={(next) => onBackgroundArtChange?.(next)}

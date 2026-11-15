@@ -3,8 +3,7 @@
 .nm-mobile__chrome {
   border: 1px solid var(--nm-border);
   background: var(--nm-chrome);
-  box-shadow: var(--nm-glass-shadow);
-  backdrop-filter: blur(22px) saturate(1.7);
+  box-shadow: none;
 }
 
 .nm-mobile__btn {
@@ -29,19 +28,15 @@
 }
 
 .nm-mobile__btn--active {
-  color: #e0e7ff;
-  background: rgba(99, 102, 241, 0.35);
-  box-shadow:
-    0 0 0 1px rgba(165, 180, 252, 0.55),
-    0 0 18px rgba(99, 102, 241, 0.45);
+  color: var(--nm-text);
+  background: var(--nm-hover-strong);
+  box-shadow: none;
 }
 
 .nm-mobile__btn--primary {
-  color: #eef2ff;
-  background: rgba(99, 102, 241, 0.55);
-  box-shadow:
-    0 0 0 1px rgba(165, 180, 252, 0.45),
-    0 8px 22px rgba(99, 102, 241, 0.35);
+  color: var(--nm-accent-ink);
+  background: var(--nm-accent);
+  box-shadow: none;
 }
 
 .nm-mobile__label {
@@ -54,15 +49,19 @@
 .nm-mobile__top {
   position: absolute;
   z-index: 50;
-  top: calc(0.55rem + var(--safe-top));
-  left: calc(0.55rem + var(--safe-left));
-  right: calc(0.55rem + var(--safe-right));
+  top: 0;
+  left: 0;
+  right: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.45rem;
-  padding: 0.3rem 0.35rem;
-  border-radius: var(--nm-radius-bar);
+  min-height: calc(44px + var(--safe-top));
+  padding: var(--safe-top) calc(0.35rem + var(--safe-right)) 0.2rem calc(0.35rem + var(--safe-left));
+  border-radius: 0;
+  border-left: 0;
+  border-right: 0;
+  border-top: 0;
 }
 
 .nm-mobile__top-side {
@@ -80,6 +79,11 @@
 
 .nm-mobile__top-side--end {
   justify-content: flex-end;
+}
+
+.nm-mobile__top .nm-agent__btn--icon {
+  width: 44px;
+  height: 44px;
 }
 
 /* True bar-center title, independent of side control widths. */
@@ -260,16 +264,20 @@
 .nm-mobile__nav:active {
   position: absolute;
   z-index: 50;
-  left: calc(0.55rem + var(--safe-left));
-  right: calc(0.55rem + var(--safe-right));
-  bottom: calc(0.55rem + var(--safe-bottom));
+  left: 0;
+  right: 0;
+  bottom: 0;
   transform: none;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.25rem;
-  padding: 0.45rem 0.4rem 0.4rem;
-  border-radius: calc(var(--nm-radius-bar) + 0.15rem);
+  padding: 0.35rem calc(0.4rem + var(--safe-right)) calc(0.35rem + var(--safe-bottom))
+    calc(0.4rem + var(--safe-left));
+  border-radius: 0;
+  border-left: 0;
+  border-right: 0;
+  border-bottom: 0;
 }
 
 .nm-mobile__nav-slot {
@@ -287,12 +295,12 @@
   min-width: 48px;
   min-height: 48px;
   margin-top: 0;
-  border-radius: 1rem;
+  border-radius: 8px;
   padding: 0;
 }
 
 .nm-mobile__sheet-backdrop {
-  position: absolute;
+  position: fixed;
   inset: 0;
   z-index: 60;
   background: var(--nm-overlay);
@@ -301,15 +309,15 @@
 }
 
 .nm-mobile__sheet {
-  position: absolute;
+  position: fixed;
   z-index: 70;
-  left: calc(0.65rem + var(--safe-left));
-  right: calc(0.65rem + var(--safe-right));
-  bottom: calc(0.65rem + var(--safe-bottom));
+  left: 0;
+  right: 0;
+  bottom: 0;
   max-height: min(68%, 420px);
   overflow: auto;
-  border-radius: calc(var(--nm-radius-panel) + 0.25rem);
-  padding: 0.85rem 0.75rem 0.9rem;
+  border-radius: 8px 8px 0 0;
+  padding: 0.85rem 0.75rem calc(0.9rem + var(--safe-bottom));
   overscroll-behavior: contain;
   touch-action: pan-y;
   will-change: transform;

@@ -5,6 +5,7 @@ import '@/index.css'
 import '@/styles/tokens.css'
 import '@/styles/ui-chrome-layout.css'
 import '@/styles/gen-ii.css'
+import '@/styles/shell.css'
 import { applyDensity, applyDocumentTheme, readStoredDensity, readStoredTheme } from '@/lib/theme'
 import { registerServiceWorker } from '@/registerServiceWorker'
 

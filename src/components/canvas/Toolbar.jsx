@@ -6,7 +6,6 @@ import {
   Share2,
   Save,
   Wrench,
-  Settings,
   Home,
   SquareDashed,
   Pencil,
@@ -79,12 +78,12 @@ function ToolbarButton({
       title={title}
       disabled={disabled}
       data-selection-arm-button={selectionArmButton ? '' : undefined}
-      className={`p-2 sm:p-3 rounded-xl transition active:scale-95 ${
+      className={`rounded-md p-2 transition ${
         disabled
-          ? 'text-nm-text-subtle cursor-not-allowed'
+          ? 'cursor-not-allowed text-nm-text-subtle'
           : active
-            ? 'text-indigo-100 bg-indigo-500/35 shadow-[0_0_0_1px_rgba(165,180,252,0.55),0_0_18px_rgba(99,102,241,0.55)]'
-            : 'text-nm-text-secondary hover:text-nm-text hover:bg-nm-hover'
+            ? 'bg-nm-hover-strong text-nm-text'
+            : 'text-nm-text-secondary hover:bg-nm-hover hover:text-nm-text'
       } ${className}`}
     >
       {children}
@@ -176,7 +175,7 @@ function ToolbarGroup({ icon: Icon, title, options, dataOnboarding }) {
       </ToolbarButton>
       <div
         aria-hidden={!open}
-        className={`absolute top-full left-1/2 w-56 -translate-x-1/2 overflow-hidden rounded-2xl border border-nm-border bg-nm-chrome backdrop-blur-md shadow-xl transition-all duration-200 ease-out ${
+        className={`absolute top-full left-1/2 w-56 -translate-x-1/2 overflow-hidden rounded-lg border border-nm-border bg-nm-panel shadow-sm transition-all duration-200 ease-out ${
           open
             ? 'visible max-h-64 opacity-100 translate-y-0 pointer-events-auto'
             : 'invisible max-h-0 opacity-0 -translate-y-1 pointer-events-none'
@@ -217,7 +216,6 @@ export default function Toolbar({
   zoom,
   onRecenter,
   onAddNodeCenter,
-  onOpenSettings,
   drawMode = false,
   onToggleDrawMode,
   backgroundArt,
@@ -250,8 +248,7 @@ export default function Toolbar({
         <div
           data-onboarding="toolbar"
           data-draw-toolbar
-          className="absolute left-1/2 z-50 flex w-[min(96vw,calc(100%-1rem-var(--safe-left)-var(--safe-right)))] max-w-3xl -translate-x-1/2 flex-col gap-1.5 rounded-2xl border border-nm-border bg-nm-chrome px-1.5 py-1.5 shadow-xl backdrop-blur-md sm:w-auto sm:max-w-[min(96vw,calc(100%-2rem-var(--safe-left)-var(--safe-right)))] sm:gap-2 sm:px-3 sm:py-2.5"
-          style={{ top: 'calc(0.75rem + var(--safe-top))' }}
+          className="nm-toolbar flex w-full flex-col gap-1.5"
         >
           <div className="flex min-w-0 items-center justify-center gap-0.5 overflow-x-auto overscroll-x-contain [-ms-overflow-style:none] [scrollbar-width:none] sm:gap-1 [&::-webkit-scrollbar]:hidden">
             <ToolbarButton
@@ -436,9 +433,6 @@ export default function Toolbar({
             <Home size={16} />
           </ToolbarButton>
         </span>
-        <span className="hidden w-10 shrink-0 text-center text-xs text-nm-text-muted tabular-nums sm:inline">
-          {Math.round(zoom * 100)}%
-        </span>
         {showMobileSelection && (
           <span data-onboarding="toolbar-selection" className="inline-flex shrink-0">
             <ToolbarButton
@@ -456,8 +450,6 @@ export default function Toolbar({
             </ToolbarButton>
           </span>
         )}
-        {/* Force a second row on narrow screens so Settings stays inside the chrome. */}
-        <div className="h-0 basis-full sm:hidden" aria-hidden />
         <div className="mx-0.5 hidden h-6 w-px shrink-0 bg-nm-divider sm:mx-1 sm:block" />
         <ToolbarGroup
           icon={Wrench}
@@ -502,19 +494,6 @@ export default function Toolbar({
         <ToolbarButton onClick={onClear} title="Clear all" className="shrink-0 !p-2 sm:!p-3">
           <Trash2 size={16} />
         </ToolbarButton>
-        <div className="mx-0.5 h-6 w-px shrink-0 bg-nm-divider sm:mx-1" />
-        <span data-onboarding="toolbar-settings" className="inline-flex shrink-0">
-          <ToolbarButton
-            onClick={() => {
-              onOpenSettings();
-              emitTutorial('toolbar.settings.open');
-            }}
-            title="Settings"
-            className="!p-2 sm:!p-3"
-          >
-            <Settings size={16} />
-          </ToolbarButton>
-        </span>
       </div>
     </>
   );

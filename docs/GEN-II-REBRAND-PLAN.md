@@ -1,159 +1,134 @@
-# Gen II — rebrand & visual architecture plan
+# Noded — living product philosophy
 
-Branch: `gen-ii` (product codename **Gen II**; public name TBD).
+This file is the **running source of truth** for Gen II. Update it whenever a prompt significantly changes product direction. Agents must read it before chrome, layout, or brand work.
 
-This document is the execution backbone for agents implementing a full visual/brand reset. Read [`AGENTS.md`](../AGENTS.md) for codebase layout (may lag `dev`); on `gen-ii`, prefer this file for design work.
+Branch: `gen-ii`. Public name: **Noded**. Repo / storage keys stay `nodemind`.
 
 ---
 
 ## North star
 
-Join the **modern knowledge-work tool aesthetic** (Linear, Notion, Cursor, Raycast, Vercel, Claude)—not by copying layouts, but by sharing the same **visual grammar**: neutral chrome, one accent, typography-led hierarchy, density, keyboard fluency, and “the canvas is the hero.”
+Noded is a **local graph for thinking**. It should feel at home next to Linear, Notion, Cursor, and Claude: one visual grammar, not a parody of any one product.
 
-**Anti-goals:** glassmorphism skins, rainbow workspace colours as brand, decorative UI chrome competing with the graph, multiple parallel “UI style” themes.
+**The canvas is the product.** Chrome is a quiet frame. Colour is a signal, not decoration.
 
 ---
 
-## Phase 0 — Decisions (locked 2026-11-15)
+## Visual grammar (locked)
+
+| Topic | Rule |
+|-------|------|
+| Surfaces | Near-white (default) or near-black; grey ramps, not rainbow chrome |
+| Accent | One cool Linear-class violet (`--nm-accent`); semantic red/amber/green only |
+| Type | Inter for UI; JetBrains Mono for terminal |
+| Radius | 6–8px chrome and dialogs — not capsules |
+| Icons | 16–18px, 1.75 stroke; no filled decorative chrome |
+| Motion | 150–200ms ease; no liquid / gel |
+| Canvas | Neutral **dot grid**; empty canvas stays **blank** (no instructional overlay) |
+| Workspace colour | Not in chrome. Optional **left rail** on nodes + sockets only |
+
+---
+
+## Application architecture (locked 2026-11-15, layout pass)
+
+Learned from Linear + Notion (and Cursor’s same family). Keep the **spatial contract**, discard marketing copy, team invites, and product-specific nav.
+
+```
+┌─────────────┬──────────────────────────────────────┐
+│ Sidebar     │ Top bar: current workspace + tools   │
+│ (collapsible)│ (workflow only — add, draw, organise,│
+│  brand      │  share/save, terminal, zoom)          │
+│  workspaces │──────────────────────────────────────│
+│  + / edit   │                                      │
+│  settings   │              Canvas                  │
+│             │                         [ Agent ▢ ]  │
+└─────────────┴──────────────────────────────────────┘
+```
+
+### What each region is for
+
+| Region | Owns | Must not own |
+|--------|------|----------------|
+| **Left sidebar** | Product identity, **workspace list**, new/edit workspace, **Settings**, collapse control | Canvas tools, zoom, draw, add-node |
+| **Top bar** | **Current workspace name**, features used *while thinking on the graph* (add, draw, select, organise, recenter, share, save, terminal, zoom) | Settings, workspace CRUD |
+| **Canvas** | The graph. Empty = quiet. | Hints, FAQs, chrome |
+| **Bottom-right Agent** | Future AI chat. Until then: **Coming soon** panel. Same corner as Linear Agent / Notion help | Navigation |
+
+### Sidebar behaviour
+
+- Expanded ~240px; collapsed ~48px icon rail (Linear/Notion).
+- Persist collapse in `localStorage` (`noded-sidebar-collapsed`).
+- Mobile: overlay drawer from the left (hamburger). Same content as desktop.
+- Active workspace = quiet highlight, **no colour pills**.
+
+### Agent
+
+- Desktop: persistent control, lower-right of the **main pane** (not over the sidebar).
+- Mobile: **icon in the top bar** (right). Never a labeled chip sitting on the tab bar.
+- Opens a small panel: **Coming soon** — AI chat for this workspace. No fake chat.
+
+### Mobile (locked 2026-11-15, mobile pass)
+
+Learned from Linear iOS/Android (custom bottom toolbar, Create in chrome, drawer for switching) and Notion mobile (edge-to-edge top title bar, persistent bottom bar, Home drawer for the sidebar). Cursor has no first-class phone IDE; treat it as: agent is a surface, not a second nav.
+
+| Rule | Why |
+|------|-----|
+| **Full-bleed top + bottom bars** | Notion/Linear attach chrome to the screen edges. No floating glass islands. |
+| **Bottom bar = workflow** | Add, draw, select, home, more — thumbs stay at the bottom (Linear tab bar / Notion capture bar). |
+| **Drawer = places** | Workspaces + settings slide in from the left (Notion Home / Linear workspace switch). |
+| **Agent is quiet** | Sparkle in the top-right, same Coming soon panel. Do not cover Add. |
+| **Sheets from the bottom** | More / type pickers; 8px radius; same overlay token as dialogs. |
+
+---
+
+## Dialogs & submenus (cohesion rule)
+
+Every overlay — Settings, node edit, workspace edit, share, save, nearby, terminal, type pickers, sheets — uses the **same dialog language**:
+
+- Overlay: `--nm-overlay`, **no heavy blur**
+- Panel: `--nm-panel`, 1px `--nm-border`, 8px radius, `--nm-shadow`
+- Header: 48px, hairline bottom, 13px semibold title, 32px close
+- Nested nav (Settings): same as sidebar items, not a second visual system
+- Primary actions: `--nm-accent` or near-black on light; danger stays rose
+
+If you add a menu, **copy an existing dialog**, do not invent a new radius/shadow/glass recipe.
+
+---
+
+## Locked product decisions
 
 | Decision | Choice |
 |----------|--------|
-| **Product name (user-facing)** | **Noded** |
-| **Engineering / repo** | Keep `nodemind`, GitHub path, npm package, `localStorage` keys |
-| **Branch codename** | `gen-ii` |
-| **Default theme** | **Light** first paint (still ship dark + system toggle) |
-| **Legacy UI skins** | **Remove** (Lens / Gel / Clay / Sketch) — single Gen II chrome |
-| **Rename scope** | UI, manifest, copy, terminal strings — not repo or storage migration |
-
-Visual & UX (locked 2026-11-15, round 2):
-
-| Topic | Choice |
-|-------|--------|
-| **Accent** | Ecosystem norm: **one restrained cool accent** on neutral chrome (Linear-class desaturated violet; semantic red/amber/green for status only) |
-| **Accent implementation** | Token `accent` in OKLCH — ~**#5E6AD2** family; primary actions use accent; chrome remains greyscale |
-| **Logomark** | **Abstract** monochrome mark (node/graph geometry, not a letter); SVG, 16px-safe |
-| **Tagline** | **“A local graph for thinking.”** |
-| **Workspace colour in chrome** | **Remove** from tabs/bar — name + icon only |
-| **Canvas background** | **Subtle dot grid** on neutral base |
-| **Landing / entry** | **Direct to canvas** (ecosystem norm); onboarding tour for first visit; no marketing landing gate |
-
-Still open (optional polish):
-
-- [ ] Final abstract logomark SVG (Phase 2.1)
+| Name / tagline | **Noded** / “A local graph for thinking.” |
+| Theme | Light default; Dark + System in Settings |
+| Skins | Removed |
+| Entry | Direct to canvas; optional onboarding tour |
+| Pages | `dev` is the allowed GitHub Pages branch unless `github-pages` environment also lists `gen-ii` |
 
 ---
 
-## Phase 1 — Design system foundation
+## History log (append on significant prompts)
 
-**Goal:** One token system; delete or freeze legacy multi-style CSS.
+### 2026-11-15 — Brand reset
 
-| Task | Files / area | Done when |
-|------|----------------|-----------|
-| 1.1 Define token schema | `src/index.css`, new `src/styles/tokens.css` | 3 inputs documented: base, accent, contrast (Linear-style); all surfaces derive from CSS variables |
-| 1.2 Migrate to OKLCH/LCH | `tokens.css` | Light + dark palettes; 4-step text ramp; 3 surface elevations + overlay |
-| 1.3 Tailwind bridge | `tailwind.config.js` | Replace ad-hoc `nm-*` with semantic names: `surface`, `elevated`, `border`, `text-primary`… |
-| 1.4 Typography | `index.html` font links, `index.css` | One sans (Inter or Geist); optional mono for terminal/IDs; display weight for rare headings only |
-| 1.5 Motion | `index.css` or `motion.css` | 150–200ms ease; no gel/liquid jiggle as default |
-| 1.6 Deprecate UI styles | `src/lib/uiStyle.js`, `src/styles/ui-*.css` | Settings no longer exposes 5 skins; one Gen II chrome (keep feature flag `legacyUi` only if owner requests) |
-| 1.7 Iconography | lucide usage audit | 16–18px toolbar; 1.5px stroke; no filled decorative icons in chrome |
+Monochrome ecosystem grammar; Noded; light default; skins deleted; dot grid; no marketing landing.
 
-**Acceptance:** Toggle light/dark; no references to `UI_STYLE` in Settings; Storybook-like static page optional (`/dev/tokens` route) for visual QA.
+### 2026-11-15 — Mobile chrome (Linear / Notion phones)
 
----
+Edge-attached bars; Agent moved to the mobile top-right; overlay drawer is `fixed` and full-height. Recenter uses the canvas pane, not the window (sidebar no longer skews the camera).
 
-## Phase 2 — Brand assets & copy
+### 2026-11-15 — Shell layout (Linear / Notion)
 
-| Task | Files | Done when |
-|------|-------|-----------|
-| 2.1 Logomark SVG | `public/favicon.svg`, `public/logo-mark.svg` | Works at 16px; monochrome; clear on `#0a0a0a` and `#fafafa` |
-| 2.2 PWA icons | `public/icon-*.png`, `manifest.json` | `theme_color` / `background_color` match tokens |
-| 2.3 App strings | grep `NodeMind` in `src/` | Centralize in `src/lib/brand.js` (name, tagline, terminal banner) |
-| 2.4 Entry / landing | `LandingPage.jsx`, `Canvas.jsx` boot | Default **direct-to-canvas**; remove marketing landing as gate; onboarding tour for first visit |
-| 2.5 Meta | `index.html` title, description | Matches new name |
+User circled: workspace switcher + collapse in the **left rail**; **current context** in a thin top bar; **Agent** bottom-right; Notion **sidebar footer** (settings / product utilities). Applied as Noded’s shell. Discarded: team invites, Linear “Ask Linear” home, Notion breadcrumb-of-pages, “What’s new” cards.
+
+Also: empty-canvas tutorial sentence removed; all dialogs brought onto one chrome.
 
 ---
 
-## Phase 3 — Application shell (desktop)
+## Agent conventions
 
-| Task | Files | Done when |
-|------|-------|-----------|
-| 3.1 Top bar | `Toolbar.jsx`, `WorkspaceBar.jsx`, `ui-chrome-layout.css` | Single height; hairline border; no workspace rainbow pills as primary nav |
-| 3.2 Workspace switcher | `WorkspaceBar.jsx` | Icon + name only — **no workspace colour** in chrome |
-| 3.3 Menus / sheets | mobile chrome components | Grayscale; accent = focus ring + primary button only |
-| 3.4 Settings | `SettingsDialog.jsx` | Theme: light / dark / system; density compact/default; remove UI style picker |
-| 3.5 Command affordance | optional `Cmd+K` palette | Aligns with ecosystem; can ship post-MVP |
-
----
-
-## Phase 4 — Canvas & nodes
-
-| Task | Files | Done when |
-|------|-------|-----------|
-| 4.1 Canvas background | `CanvasBoard.jsx`, tokens | **Dot grid** on neutral token `--canvas`; no warm sketch paper default |
-| 4.2 Node chrome | `NoteNode.jsx`, math/graph node components | Flat surface + 1px border; workspace colour = subtle left rail or socket ring only |
-| 4.3 Edges | `canvasConstants.js`, board render | Muted grey edges; accent for selection only |
-| 4.4 Selection / focus | board | High contrast focus consistent with tokens |
-| 4.5 Draw layer | draw tools | Tools match shell; no separate “draw mode” aesthetic universe |
-
----
-
-## Phase 5 — Dialogs, terminal, onboarding
-
-| Task | Files | Done when |
-|------|-------|-----------|
-| 5.1 Modal system | all `*Dialog.jsx` | Shared header, padding, border-radius 8px |
-| 5.2 Terminal | `TerminalDialog.jsx`, `terminal/help.js` | Monospace; prompt uses accent sparingly; banner uses `brand.js` |
-| 5.3 Onboarding | `OnboardingTour.jsx` | Shorter copy; neutral coach marks; no purple gradients |
-
----
-
-## Phase 6 — Mobile
-
-| Task | Files | Done when |
-|------|-------|-----------|
-| 6.1 FAB / rails | mobile chrome in `src/components/` | Same tokens as desktop; safe-area preserved |
-| 6.2 Touch targets | 44px min | No visual style divergence |
-
----
-
-## Phase 7 — Quality & rollout
-
-| Task | Done when |
-|------|-----------|
-| 7.1 WCAG contrast on text ramp | AA minimum; optional high-contrast token preset |
-| 7.2 `npm run lint` + `typecheck` | Clean |
-| 7.3 Visual regression checklist | See appendix |
-| 7.4 Update `README.md`, `CLAUDE.md`, `AGENTS.md` | Brand + token rules |
-| 7.5 Version bump | `node scripts/version.mjs bump minor` when Gen II ships |
-
----
-
-## Appendix A — Visual regression checklist
-
-- [ ] Landing → enter app
-- [ ] Create workspace, add note + math node, connect edge
-- [ ] Auto-organise, pan/zoom extremes
-- [ ] Export / share flows
-- [ ] Terminal `help`, `version`
-- [ ] Mobile width 390px: toolbar, sheets, draw
-- [ ] Light + dark + system preference
-
----
-
-## Appendix B — Agent conventions
-
-1. **One PR per phase** (or sub-phase), targeting `gen-ii`.
-2. Do not reintroduce `ui-glass.css` / gel classes in new code.
-3. Use design tokens only—no hardcoded hex in components (except canvas user colours).
-4. Keep behaviour identical unless task explicitly changes UX.
-5. Reference this plan’s task IDs in commit messages (`gen-ii: 3.1 top bar tokens`).
-
----
-
-## Appendix C — Current baseline (pre–Gen II)
-
-- **Name:** NodeMind; indigo manifest (`#4f46e5`).
-- **UI:** Five interchangeable skins via `uiStyle.js` (lens, acrylic, gel, clay, sketch).
-- **Brand feel:** Glass / liquid / playful; multiple saturated workspace colours in chrome.
-
-Gen II removes skin-swapping as a first-class feature and replaces it with one neutral system.
+1. Read this file first for chrome/layout/brand.
+2. **Append a History log entry** when the user changes philosophy or layout.
+3. Tokens only — no new hex in chrome (user node colours excepted).
+4. Do not reintroduce glass, landing splash, or rainbow workspace tabs.
+5. Work on `gen-ii`. GitHub Pages: merge to `dev` until `gen-ii` is allowlisted.

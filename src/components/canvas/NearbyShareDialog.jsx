@@ -137,21 +137,17 @@ export default function NearbyShareDialog({
         paddingLeft: 'calc(1rem + var(--safe-left))',
       }}
     >
-      <div className="absolute inset-0 bg-nm-overlay backdrop-blur-md" onClick={onClose} />
+      <div className="nm-dialog-overlay" onClick={onClose} />
       <div
-        className="relative flex max-h-[88vh] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-nm-border bg-nm-panel shadow-2xl"
+        className="nm-dialog-panel max-w-md"
         onPointerDown={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center gap-2 border-b border-nm-border bg-nm-header px-3 py-3 sm:px-4">
+        <div className="nm-dialog-head">
           <TitleIcon size={16} className="text-nm-text-muted" />
-          <h2 className="text-sm font-semibold text-nm-text">{title}</h2>
+          <h2>{title}</h2>
           <div className="flex-1" />
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg p-2 text-nm-text-faint transition hover:bg-nm-hover hover:text-nm-text"
-          >
-            <X size={18} />
+          <button type="button" onClick={onClose} className="nm-dialog-close" title="Close">
+            <X size={16} strokeWidth={1.75} />
           </button>
         </div>
 

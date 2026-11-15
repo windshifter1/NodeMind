@@ -27,12 +27,12 @@ export default function MathsCreditDialog({ open, onClose }) {
       }}
       role="presentation"
     >
-      <div className="absolute inset-0 bg-nm-overlay backdrop-blur-md" onClick={onClose} aria-hidden />
+      <div className="nm-dialog-overlay" onClick={onClose} aria-hidden />
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="nm-maths-credit-title"
-        className="relative w-full max-w-lg overflow-hidden rounded-2xl border border-nm-border bg-nm-panel p-5 shadow-2xl sm:p-6"
+        className="nm-dialog-panel max-w-lg p-5 sm:p-6"
         onPointerDown={(e) => e.stopPropagation()}
       >
         <div className="mb-3 flex items-start gap-2">

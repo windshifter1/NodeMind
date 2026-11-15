@@ -221,7 +221,7 @@ export default function NodeTypeMenu({
   const menu = (
     <div
       data-node-type-menu
-      className={`${fixed ? 'fixed' : 'absolute'} overflow-hidden rounded-2xl border border-nm-border bg-nm-chrome shadow-xl backdrop-blur-md`}
+      className={`${fixed ? 'fixed' : 'absolute'} overflow-hidden rounded-lg border border-nm-border bg-nm-panel shadow-sm`}
       style={{
         left,
         top,

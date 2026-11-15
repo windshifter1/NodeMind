@@ -5,7 +5,6 @@ import {
   Home,
   SquareDashed,
   MoreHorizontal,
-  Settings,
   Terminal,
   Share2,
   Save,
@@ -18,8 +17,8 @@ import {
   ImagePlus,
   Hand,
 } from 'lucide-react';
-import { WORKSPACE_ICONS } from '@/lib/workspaceIcons';
 import { emitTutorial } from '@/lib/tutorialEvents';
+import AgentDock from '@/components/shell/AgentDock';
 import { normalizeBackgroundArt } from '@/lib/backgroundArt';
 import { useSheetDragDismiss } from '@/hooks/useSheetDragDismiss';
 import { addBackgroundImage } from './BackgroundDrawLayer';
@@ -211,11 +210,7 @@ function DrawRail({ backgroundArt, onBackgroundArtChange, imageRef, onExit }) {
 
 export default function MobileChrome({
   workspaceName,
-  workspaces,
-  activeId,
-  onSelectWorkspace,
-  onCreateWorkspace,
-  onEditWorkspace,
+  onOpenSidebar,
   onClear,
   onOpenTerminal,
   onAutoOrganise,
@@ -226,7 +221,6 @@ export default function MobileChrome({
   zoom,
   onRecenter,
   onAddNodeCenter,
-  onOpenSettings,
   drawMode = false,
   onToggleDrawMode,
   backgroundArt,
@@ -234,7 +228,6 @@ export default function MobileChrome({
   onOpenShare,
   onOpenSave,
 }) {
-  const [workspaceSheetOpen, setWorkspaceSheetOpen] = useState(false);
   const [moreSheetOpen, setMoreSheetOpen] = useState(false);
   const [moreOpenedByTools, setMoreOpenedByTools] = useState(false);
   const imageRef = useRef(null);
@@ -246,13 +239,11 @@ export default function MobileChrome({
     const syncFromTutorial = () => {
       if (document.body.dataset.tutorialActive !== 'mobile') return;
       const target = document.body.dataset.tutorialHighlight || '';
-      if (target.startsWith('workspace')) {
+      if (target.startsWith('workspace') || target === 'toolbar-settings') {
         setMoreSheetOpen(false);
-        setWorkspaceSheetOpen(true);
+        onOpenSidebar?.();
         return;
       }
-      // Leave the sheet when the tour moves on (e.g. to Settings).
-      setWorkspaceSheetOpen(false);
       if (target && target !== 'toolbar-tools') {
         setMoreSheetOpen(false);
       }
@@ -264,9 +255,7 @@ export default function MobileChrome({
       attributeFilter: ['data-tutorial-highlight', 'data-tutorial-active'],
     });
     return () => obs.disconnect();
-  }, []);
-
-  const closeWorkspaceSheet = () => setWorkspaceSheetOpen(false);
+  }, [onOpenSidebar]);
 
   const closeMoreSheet = () => {
     setMoreSheetOpen(false);
@@ -277,14 +266,8 @@ export default function MobileChrome({
   };
 
   const openMoreSheet = ({ fromTools = false } = {}) => {
-    setWorkspaceSheetOpen(false);
     setMoreOpenedByTools(fromTools);
     setMoreSheetOpen(true);
-  };
-
-  const openWorkspaceSheet = () => {
-    setMoreSheetOpen(false);
-    setWorkspaceSheetOpen(true);
   };
 
   const patchBg = (patch) => onBackgroundArtChange?.({ ...bg, ...patch });
@@ -302,12 +285,11 @@ export default function MobileChrome({
       >
         <div className="nm-mobile__top-side nm-mobile__top-side--start">
           <ChromeButton
-            title="Workspaces"
-            active={workspaceSheetOpen && !drawMode}
-            onClick={() => (workspaceSheetOpen ? closeWorkspaceSheet() : openWorkspaceSheet())}
+            title="Menu"
+            onClick={() => onOpenSidebar?.()}
             className="!min-h-10 !min-w-10"
             data-mobile-chrome
-            data-onboarding={!workspaceSheetOpen ? 'workspace-bar' : undefined}
+            data-onboarding="workspace-bar"
           >
             <Menu size={17} />
           </ChromeButton>
@@ -328,18 +310,7 @@ export default function MobileChrome({
           )}
         </div>
         <div className="nm-mobile__top-side nm-mobile__top-side--end">
-          <ChromeButton
-            title="Settings"
-            data-onboarding="toolbar-settings"
-            data-mobile-chrome
-            className="!min-h-10 !min-w-10"
-            onClick={() => {
-              onOpenSettings();
-              emitTutorial('toolbar.settings.open');
-            }}
-          >
-            <Settings size={17} />
-          </ChromeButton>
+          <AgentDock variant="icon" />
         </div>
       </div>
 
@@ -372,7 +343,6 @@ export default function MobileChrome({
                 patchBg({ tool: 'pen' });
                 if (selectionArmed) onToggleSelectionArm?.();
                 onToggleDrawMode?.();
-                setWorkspaceSheetOpen(false);
                 setMoreSheetOpen(false);
               }}
             >
@@ -386,7 +356,6 @@ export default function MobileChrome({
               primary
               className="nm-mobile__fab"
               onClick={() => {
-                setWorkspaceSheetOpen(false);
                 setMoreSheetOpen(false);
                 onAddNodeCenter();
               }}
@@ -422,65 +391,6 @@ export default function MobileChrome({
           </div>
         </div>
       )}
-
-      <MoreSheet
-        open={workspaceSheetOpen && !drawMode}
-        title="Workspaces"
-        onClose={closeWorkspaceSheet}
-        layout="stack"
-      >
-        <div
-          className="nm-mobile__ws-sheet"
-          data-onboarding="workspace-bar"
-          data-mobile-chrome
-          aria-label="Workspaces"
-        >
-          <div className="nm-mobile__ws-strip">
-            {workspaces.map((ws) => {
-              const Icon = WORKSPACE_ICONS[ws.icon] || WORKSPACE_ICONS.note;
-              const isActive = ws.id === activeId;
-              return (
-                <button
-                  key={ws.id}
-                  type="button"
-                  title={ws.name}
-                  className={`nm-mobile__ws-tab ${isActive ? 'nm-mobile__ws-tab--on' : ''}`}
-                  onClick={() => {
-                    if (ws.id !== activeId) emitTutorial('workspace.switch');
-                    onSelectWorkspace(ws.id);
-                  }}
-                >
-                  <Icon size={15} />
-                </button>
-              );
-            })}
-            <ChromeButton
-              title="New workspace"
-              data-onboarding="workspace-create"
-              className="!min-h-[34px] !min-w-[34px] !p-1.5"
-              onClick={() => {
-                onCreateWorkspace();
-                closeWorkspaceSheet();
-              }}
-            >
-              <Plus size={15} />
-            </ChromeButton>
-          </div>
-          <ChromeButton
-            title="Edit workspace"
-            data-onboarding="workspace-edit"
-            className="nm-mobile__ws-edit"
-            onClick={() => {
-              onEditWorkspace();
-              emitTutorial('workspace.edit.open');
-              closeWorkspaceSheet();
-            }}
-          >
-            <Pencil size={15} />
-            <span>Edit</span>
-          </ChromeButton>
-        </div>
-      </MoreSheet>
 
       <MoreSheet open={moreSheetOpen} title="More actions" onClose={closeMoreSheet}>
         <SheetItem

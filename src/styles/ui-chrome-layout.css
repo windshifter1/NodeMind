@@ -2,22 +2,7 @@
    Mobile FAB chrome (nm-mobile_*) owns its own placement — do not override it. */
 
 [data-onboarding='toolbar']:not([data-mobile-chrome]) {
-  position: absolute !important;
-  top: calc(1rem + var(--safe-top)) !important;
-  bottom: auto !important;
-  left: 50% !important;
-  transform: translateX(-50%);
-  z-index: 50;
-}
-
-/* Desktop workspace strip only — never retarget mobile top-bar menu buttons. */
-[data-onboarding='workspace-bar']:not([data-mobile-chrome]):not(.nm-mobile__btn) {
-  position: absolute !important;
-  top: auto !important;
-  bottom: calc(1rem + var(--safe-bottom)) !important;
-  left: 50% !important;
-  transform: translateX(-50%);
-  z-index: 50;
+  position: static;
 }
 
 [data-onboarding='delete-bin'] {
@@ -29,13 +14,7 @@
 
 /* Mobile: keep the bin above the FAB bottom nav. */
 [data-onboarding='delete-bin'][data-mobile-chrome] {
-  bottom: calc(5.6rem + var(--safe-bottom)) !important;
-}
-
-html[data-ui-family='glass'] [data-onboarding='toolbar']:not([data-mobile-chrome]):active,
-html[data-ui-family='glass']
-  [data-onboarding='workspace-bar']:not([data-mobile-chrome]):not(.nm-mobile__btn):active {
-  transform: translateX(-50%);
+  bottom: calc(4.75rem + var(--safe-bottom)) !important;
 }
 
 [data-onboarding-tour] {

@@ -103,28 +103,17 @@ export default function WorkspaceEditDialog({ workspace, open, onClose, onSave, 
   };
 
   return (
-    <div
-      className="fixed inset-0 z-[210] flex items-center justify-center"
-      style={{
-        paddingTop: 'calc(1rem + var(--safe-top))',
-        paddingRight: 'calc(1rem + var(--safe-right))',
-        paddingBottom: 'calc(1rem + var(--safe-bottom))',
-        paddingLeft: 'calc(1rem + var(--safe-left))',
-      }}
-    >
-      <div className="absolute inset-0 bg-nm-overlay backdrop-blur-md" onClick={close} />
+    <div className="nm-dialog-root">
+      <div className="nm-dialog-overlay" onClick={close} />
       <div
-        className="relative w-full max-w-sm max-h-[88vh] rounded-2xl bg-nm-panel border border-nm-border shadow-2xl flex flex-col overflow-hidden"
+        className="nm-dialog-panel max-w-sm"
         onPointerDown={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center gap-2 px-3 sm:px-4 py-3 border-b border-nm-border bg-nm-header">
-          <h2 className="text-sm font-semibold text-nm-text">{mode === 'create' ? 'New workspace' : 'Edit workspace'}</h2>
+        <div className="nm-dialog-head">
+          <h2>{mode === 'create' ? 'New workspace' : 'Edit workspace'}</h2>
           <div className="flex-1" />
-          <button
-            onClick={close}
-            className="p-2 rounded-lg text-nm-text-faint hover:text-nm-text hover:bg-nm-hover transition active:scale-95"
-          >
-            <X size={18} />
+          <button type="button" onClick={close} className="nm-dialog-close" title="Close">
+            <X size={16} strokeWidth={1.75} />
           </button>
         </div>
 

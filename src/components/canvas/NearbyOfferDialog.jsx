@@ -16,9 +16,9 @@ export default function NearbyOfferDialog({ offer, progress = 0 }) {
         paddingLeft: 'calc(1rem + var(--safe-left))',
       }}
     >
-      <div className="absolute inset-0 bg-nm-overlay backdrop-blur-md" />
+      <div className="nm-dialog-overlay" />
       <div
-        className="relative w-full max-w-sm rounded-2xl border border-nm-border bg-nm-panel p-5 shadow-2xl"
+        className="nm-dialog-panel max-w-sm p-5"
         onPointerDown={(e) => e.stopPropagation()}
       >
         <div className="mb-3 flex items-center gap-2 text-nm-text-muted">

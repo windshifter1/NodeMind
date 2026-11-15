@@ -118,26 +118,48 @@ html, body, #root {
   min-height: 32px;
 }
 
-[class*='bg-indigo-'] {
+/* Solid primary actions use the accent. Tinted states stay translucent. */
+.bg-indigo-500,
+.hover\:bg-indigo-400:hover,
+.hover\:bg-indigo-500:hover {
   background-color: var(--nm-accent) !important;
   box-shadow: none !important;
 }
 
-[class*='text-indigo-'] {
-  color: var(--nm-accent) !important;
-}
-
-[class*='bg-indigo-'][class*='text-indigo-'],
-button[class*='bg-indigo-'] {
+.bg-indigo-500.text-white,
+button.bg-indigo-500,
+a.bg-indigo-500 {
   color: var(--nm-accent-ink) !important;
 }
 
+.bg-indigo-500\/15,
+.bg-indigo-500\/20,
+.bg-indigo-500\/30,
+.bg-indigo-500\/35,
+.bg-indigo-500\/50,
+.hover\:bg-indigo-500\/50:hover {
+  background-color: color-mix(in srgb, var(--nm-accent) 18%, transparent) !important;
+  box-shadow: none !important;
+}
+
+[class*='text-indigo-'] {
+  color: var(--nm-accent);
+}
+
+.bg-indigo-500\/15[class*='text-indigo-'],
+.bg-indigo-500\/20[class*='text-indigo-'],
+.bg-indigo-500\/30[class*='text-indigo-'],
+.bg-indigo-500\/35[class*='text-indigo-'],
+.bg-indigo-500\/50[class*='text-indigo-'] {
+  color: var(--nm-accent) !important;
+}
+
 [class*='border-indigo-'] {
-  border-color: color-mix(in srgb, var(--nm-accent) 65%, transparent) !important;
+  border-color: color-mix(in srgb, var(--nm-accent) 55%, transparent);
 }
 
 [class*='ring-indigo-'] {
-  --tw-ring-color: var(--nm-accent) !important;
+  --tw-ring-color: var(--nm-accent);
 }
 
 .bg-nm-chrome,

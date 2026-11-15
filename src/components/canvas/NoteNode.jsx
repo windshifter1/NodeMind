@@ -46,8 +46,8 @@ import GeometryNodeBody from './bodies/GeometryNodeBody';
 
 const DOUBLE_TAP_MS = 450;
 
-function selectionGlow(color) {
-  return `0 0 0 3px ${color}f2, 0 0 0 7px ${color}80, 0 0 24px 6px ${color}a6, 0 12px 36px rgba(0, 0, 0, 0.45)`;
+function selectionGlow() {
+  return '0 0 0 2px color-mix(in srgb, var(--nm-accent) 45%, transparent)';
 }
 
 function Socket({
@@ -355,11 +355,11 @@ export default function NoteNode({
         '--nm-node-accent': node.color,
         borderWidth: borderW,
         borderStyle: 'solid',
-        borderColor: selected ? node.color : 'var(--nm-border)',
+        borderColor: selected ? 'var(--nm-accent)' : 'var(--nm-border)',
         backgroundColor: 'var(--nm-node-bg)',
         borderRadius: nodeRadius,
         opacity: ghost ? 0.3 : 1,
-        boxShadow: selected ? selectionGlow(node.color) : 'var(--nm-glass-shadow)',
+        boxShadow: selected ? selectionGlow() : '0 1px 2px oklch(0.2 0.02 260 / 0.06)',
         backdropFilter: 'var(--nm-node-blur)',
         WebkitBackdropFilter: 'var(--nm-node-blur)',
         transition:
@@ -434,7 +434,8 @@ export default function NoteNode({
         style={{
           height: TOP_BAR_HEIGHT,
           cursor: editingTitle ? 'text' : 'grab',
-          backgroundColor: `${node.color}33`,
+          backgroundColor: 'var(--nm-header)',
+          boxShadow: `inset 3px 0 0 ${node.color}`,
           borderBottom: bodyCollapsed ? 'none' : '1px solid var(--nm-border)',
           // Match the card radius so the bar doesn’t square-poke rounded corners.
           borderTopLeftRadius: 'inherit',
@@ -501,8 +502,8 @@ export default function NoteNode({
               }}
               onPointerDown={(e) => e.stopPropagation()}
               placeholder={displayNodeTitle(node)}
-              className={`relative z-[21] flex-1 min-w-0 rounded border bg-white/90 px-1.5 py-0.5 text-sm font-medium outline-none dark:bg-black/20 ${darkNodes ? 'text-zinc-100 placeholder:text-zinc-500' : 'text-slate-800 placeholder:text-slate-400'}`}
-              style={{ fontSize: 14, borderColor: node.color }}
+              className="relative z-[21] min-w-0 flex-1 rounded border border-nm-border bg-nm-input px-1.5 py-0.5 text-sm font-medium text-nm-text outline-none placeholder:text-nm-text-muted"
+              style={{ fontSize: 14 }}
             />
             <button
               type="button"
@@ -521,7 +522,7 @@ export default function NoteNode({
           </>
         ) : (
           <span
-            className={`flex-1 truncate text-sm font-medium px-1 ${darkNodes ? 'text-zinc-100' : 'text-slate-800'}`}
+            className="flex-1 truncate px-1 text-sm font-medium text-nm-text"
             onPointerDown={handleTitlePointerDown}
             onDoubleClick={handleTitleDoubleClick}
           >

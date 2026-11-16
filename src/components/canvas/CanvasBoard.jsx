@@ -1556,7 +1556,7 @@ export default function CanvasBoard({
           ref={binRef}
           data-onboarding="delete-bin"
           data-mobile-chrome={!isDesktop && !drawMode ? '' : undefined}
-          className={`nm-bin absolute z-50 overflow-visible rounded-2xl border bg-nm-bin p-2 shadow-xl backdrop-blur-md ${
+          className={`nm-bin absolute z-50 overflow-visible border bg-nm-bin shadow-xl backdrop-blur-md ${
             overBin ? 'is-hot' : ''
           }`}
           style={{
@@ -1568,7 +1568,7 @@ export default function CanvasBoard({
             color: overBin ? '#ef4444' : 'var(--nm-text-secondary)',
           }}
         >
-          <span className="flex items-center justify-center transition-transform" style={{ width: 38, height: 38 }}>
+          <span className="nm-dock-chip__inner transition-transform">
             <BinIcon open={overBin} size={18} />
           </span>
         </div>

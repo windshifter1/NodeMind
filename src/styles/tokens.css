@@ -10,6 +10,10 @@ html[data-theme='light'] {
   --nm-accent-ink: #ffffff;
   --nm-contrast: 1;
 
+  --nm-weight-chrome: 300;
+  --nm-weight-chrome-active: 400;
+  --nm-weight-chrome-title: 500;
+
   --nm-page: #efeff0;
   --nm-elevated: #f9f9fa;
   --nm-canvas: #f9f9fa;

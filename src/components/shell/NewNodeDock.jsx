@@ -18,7 +18,9 @@ export default function NewNodeDock({ onAdd, lift = false }) {
         aria-label="New node"
         title="New node"
       >
-        <Plus size={18} strokeWidth={1.75} />
+        <span className="nm-dock-chip__inner">
+          <Plus size={18} strokeWidth={1.75} />
+        </span>
       </button>
     </div>
   );

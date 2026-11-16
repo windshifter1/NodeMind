@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
 import Canvas from '@/pages/Canvas';
+import FontSpecimen from '@/pages/fonts/FontSpecimen';
 import MockupShell from '@/pages/mockups/MockupShell';
 import MobileDevMockup from '@/pages/mockups/MobileDevMockup';
 import {
   getAppPath,
   matchDevOrganisePath,
   matchDevPath,
+  matchFontSpecimenPath,
   matchMockupPath,
 } from '@/lib/appPath';
 import { lockMobileViewport } from '@/lib/lockMobileViewport';
@@ -39,12 +41,17 @@ export default function App() {
   }, []);
 
   const mockupN = matchMockupPath(path);
+  const fontSpecimen = matchFontSpecimenPath(path);
   const frame = (node) => (
     <>
       {node}
       <TooltipLayer />
     </>
   );
+
+  if (fontSpecimen) {
+    return frame(<FontSpecimen kind={fontSpecimen} />);
+  }
 
   if (mockupN) {
     return frame(<MockupShell n={mockupN} />);

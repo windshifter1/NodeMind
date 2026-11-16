@@ -1,12 +1,12 @@
 import React, { useEffect } from 'react';
-import { PanelLeft, PanelLeftClose, Pencil, Plus, Settings } from 'lucide-react';
+import { PanelLeft, PanelLeftClose, Pencil, Plus, Settings, Trash2 } from 'lucide-react';
 import { PRODUCT_NAME } from '@/lib/brand';
 import { WORKSPACE_ICONS } from '@/lib/workspaceIcons';
 import { emitTutorial } from '@/lib/tutorialEvents';
 
 function BrandMark() {
   return (
-    <svg width="16" height="16" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+    <svg width="20" height="20" viewBox="0 0 32 32" fill="none" aria-hidden="true">
       <path d="M16 6v9.5M16 15.5 8 24M16 15.5l8 8.5" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
       <circle cx="16" cy="5.5" r="2.25" fill="currentColor" />
       <circle cx="7.6" cy="24.6" r="2.25" fill="currentColor" />
@@ -26,6 +26,7 @@ export default function AppSidebar({
   onSelect,
   onCreate,
   onEdit,
+  onDelete,
   onOpenSettings,
 }) {
   useEffect(() => {
@@ -94,20 +95,34 @@ export default function AppSidebar({
                   <Icon size={16} strokeWidth={1.75} />
                   <span>{ws.name}</span>
                 </button>
-                <button
-                  type="button"
-                  className="nm-sidebar__edit"
-                  data-onboarding={active ? 'workspace-edit' : undefined}
-                  title="Edit canvas"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onEdit?.(ws.id);
-                    emitTutorial('workspace.edit.open');
-                    if (overlay) onClose?.();
-                  }}
-                >
-                  <Pencil size={14} strokeWidth={1.75} />
-                </button>
+                <div className="nm-sidebar__tools">
+                  <button
+                    type="button"
+                    className="nm-sidebar__edit"
+                    data-onboarding={active ? 'workspace-edit' : undefined}
+                    title="Edit canvas"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onEdit?.(ws.id);
+                      emitTutorial('workspace.edit.open');
+                      if (overlay) onClose?.();
+                    }}
+                  >
+                    <Pencil size={14} strokeWidth={1.75} />
+                  </button>
+                  <button
+                    type="button"
+                    className="nm-sidebar__delete"
+                    title="Delete canvas"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDelete?.(ws);
+                      if (overlay) onClose?.();
+                    }}
+                  >
+                    <Trash2 size={14} strokeWidth={1.75} />
+                  </button>
+                </div>
               </div>
             );
           })}

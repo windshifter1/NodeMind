@@ -1,9 +1,9 @@
 import React from 'react';
 import { Plus } from 'lucide-react';
 
-export default function NewNodeDock({ onAdd }) {
+export default function NewNodeDock({ onAdd, lift = false }) {
   return (
-    <div className="nm-agent">
+    <div className={`nm-agent ${lift ? 'is-lifted' : ''}`}>
       <button
         type="button"
         className="nm-agent__btn nm-agent__btn--create"

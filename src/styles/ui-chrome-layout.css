@@ -7,8 +7,8 @@
 
 [data-onboarding='delete-bin'] {
   position: absolute !important;
-  right: calc(1rem + var(--safe-right)) !important;
-  bottom: calc(1rem + var(--safe-bottom)) !important;
+  right: calc(12px + var(--safe-right)) !important;
+  bottom: calc(12px + var(--safe-bottom)) !important;
   z-index: 50;
 }
 

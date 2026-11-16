@@ -9,6 +9,7 @@ import {
   matchMockupPath,
 } from '@/lib/appPath';
 import { lockMobileViewport } from '@/lib/lockMobileViewport';
+import TooltipLayer from '@/components/shell/TooltipLayer';
 
 export default function App() {
   const [offline, setOffline] = useState(() => typeof navigator !== 'undefined' && !navigator.onLine);
@@ -38,8 +39,15 @@ export default function App() {
   }, []);
 
   const mockupN = matchMockupPath(path);
+  const frame = (node) => (
+    <>
+      {node}
+      <TooltipLayer />
+    </>
+  );
+
   if (mockupN) {
-    return <MockupShell n={mockupN} />;
+    return frame(<MockupShell n={mockupN} />);
   }
 
   // /dev and /dev2 are organise experiments (must win over old /dev2 mockup route).
@@ -48,7 +56,7 @@ export default function App() {
       edgeAwareMode === 'node-spread'
         ? '/dev2 · node-spread organise'
         : '/dev · curve-fan organise';
-    return (
+    return frame(
       <div className="relative h-full w-full overflow-hidden bg-nm-canvas">
         <Canvas
           edgeAwareLayout
@@ -82,10 +90,10 @@ export default function App() {
 
   const devN = matchDevPath(path);
   if (devN) {
-    return <MobileDevMockup n={devN} />;
+    return frame(<MobileDevMockup n={devN} />);
   }
 
-  return (
+  return frame(
     <div className="relative h-full w-full overflow-hidden bg-nm-canvas">
       <Canvas smoothStrokes />
       {offline && (

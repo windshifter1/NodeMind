@@ -266,11 +266,10 @@ export default function WorkspaceEditDialog({ workspace, open, onClose, onSave, 
           <div className="flex justify-between items-center mt-5">
             {mode === 'edit' ? (
               <button
+                type="button"
                 onClick={() => {
-                  if (window.confirm('Delete this canvas and all its content?')) {
-                    onDelete(workspace.id);
-                    close();
-                  }
+                  onDelete?.(workspace);
+                  close();
                 }}
                 className="text-sm text-red-500 hover:text-red-400 font-medium transition"
               >

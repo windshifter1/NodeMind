@@ -11,6 +11,7 @@ import ShareCanvasDialog from '@/components/canvas/ShareCanvasDialog';
 import ActionMenuDialog from '@/components/canvas/ActionMenuDialog';
 import TerminalDialog from '@/components/canvas/TerminalDialog';
 import SettingsDialog from '@/components/canvas/SettingsDialog';
+import ConfirmDialog from '@/components/canvas/ConfirmDialog';
 import NearbyShareDialog from '@/components/canvas/NearbyShareDialog';
 import NearbyOfferDialog from '@/components/canvas/NearbyOfferDialog';
 import SelectionOpMenu from '@/components/canvas/SelectionOpMenu';
@@ -67,10 +68,16 @@ import { isDesktopPlatform, shouldStartOnboarding } from '@/lib/onboarding';
 import { readMathsCreditSeen, setMathsCreditSeen } from '@/lib/mathsCredit';
 import { emitTutorial } from '@/lib/tutorialEvents';
 import {
+  applyA11yContrast,
+  applyA11yFont,
   applyDensity,
   applyDocumentTheme,
+  persistA11yContrast,
+  persistA11yFont,
   persistDensity,
   persistTheme,
+  readStoredA11yContrast,
+  readStoredA11yFont,
   readStoredDensity,
   readStoredTheme,
 } from '@/lib/theme';
@@ -141,6 +148,10 @@ function CanvasReady({
   const [selectionArmed, setSelectionArmed] = useState(false);
   const [nodeTheme, setNodeTheme] = useState(() => readStoredTheme());
   const [density, setDensity] = useState(() => readStoredDensity());
+  const [a11yFont, setA11yFont] = useState(() => readStoredA11yFont());
+  const [a11yContrast, setA11yContrast] = useState(() => readStoredA11yContrast());
+  const [binVisible, setBinVisible] = useState(false);
+  const [deletingWorkspace, setDeletingWorkspace] = useState(null);
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [mathsCreditOpen, setMathsCreditOpen] = useState(false);
   const [nodePicker, setNodePicker] = useState(null);
@@ -190,6 +201,16 @@ function CanvasReady({
     applyDensity(density);
     persistDensity(density);
   }, [density]);
+
+  useEffect(() => {
+    applyA11yFont(a11yFont);
+    persistA11yFont(a11yFont);
+  }, [a11yFont]);
+
+  useEffect(() => {
+    applyA11yContrast(a11yContrast);
+    persistA11yContrast(a11yContrast);
+  }, [a11yContrast]);
 
   // Plop animation + subtle ripples when nodes appear.
   useEffect(() => {
@@ -974,6 +995,7 @@ function CanvasReady({
           if (id && id !== state.activeId) selectWorkspace(id);
           setEditingWorkspace(true);
         }}
+        onDelete={(ws) => setDeletingWorkspace(ws)}
         onOpenSettings={() => setSettingsOpen(true)}
       />
       <div className="nm-shell__main">
@@ -1069,6 +1091,7 @@ function CanvasReady({
           dispatch({ type: 'UPDATE_BACKGROUND_ART', patch: next })
         }
         smoothStrokes={smoothStrokes}
+        onBinVisibleChange={setBinVisible}
       />
       <SelectionOpMenu
         open={!!selectionMenu}
@@ -1078,7 +1101,7 @@ function CanvasReady({
         onClose={closeSelectionMenu}
         onPick={pickSelectionOp}
       />
-      {isDesktop ? <NewNodeDock onAdd={addNodeFromChrome} /> : null}
+      {isDesktop ? <NewNodeDock onAdd={addNodeFromChrome} lift={binVisible} /> : null}
       </div>
 
       <NodeEditDialog
@@ -1095,7 +1118,7 @@ function CanvasReady({
         mode="edit"
         onClose={() => setEditingWorkspace(false)}
         onSave={updateWorkspaceMeta}
-        onDelete={deleteWorkspace}
+        onDelete={(ws) => setDeletingWorkspace(ws)}
       />
 
       <WorkspaceEditDialog
@@ -1259,6 +1282,10 @@ function CanvasReady({
         onThemeChange={setNodeTheme}
         density={density}
         onDensityChange={setDensity}
+        a11yFont={a11yFont}
+        onA11yFontChange={setA11yFont}
+        a11yContrast={a11yContrast}
+        onA11yContrastChange={setA11yContrast}
         workspaceCount={state.workspaces.length}
         onDeleteAllWorkspaces={deleteAllWorkspaces}
         persistStatus={persistStatus}
@@ -1266,6 +1293,22 @@ function CanvasReady({
         onImportBackup={handleImportBackup}
         deviceName={nearby.deviceName}
         onDeviceNameChange={nearby.setDeviceName}
+      />
+
+      <ConfirmDialog
+        open={!!deletingWorkspace}
+        title="Delete canvas"
+        body={
+          deletingWorkspace
+            ? `Delete "${deletingWorkspace.name || 'Untitled'}"? This removes the canvas and all of its nodes. This cannot be undone.`
+            : ''
+        }
+        confirmLabel="Delete canvas"
+        onClose={() => setDeletingWorkspace(null)}
+        onConfirm={() => {
+          if (deletingWorkspace?.id) deleteWorkspace(deletingWorkspace.id);
+          setDeletingWorkspace(null);
+        }}
       />
 
       <NearbyShareDialog

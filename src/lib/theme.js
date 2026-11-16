@@ -56,3 +56,50 @@ export function persistDensity(density) {
     /* ignore */
   }
 }
+
+const A11Y_FONT_KEY = 'noded-a11y-font';
+const A11Y_CONTRAST_KEY = 'noded-a11y-contrast';
+
+export function readStoredA11yFont() {
+  try {
+    const value = localStorage.getItem(A11Y_FONT_KEY);
+    if (value === 'large' || value === 'xl') return value;
+  } catch {
+    /* ignore */
+  }
+  return 'default';
+}
+
+export function applyA11yFont(size) {
+  const value = size === 'large' || size === 'xl' ? size : 'default';
+  document.documentElement.setAttribute('data-a11y-font', value);
+}
+
+export function persistA11yFont(size) {
+  const value = size === 'large' || size === 'xl' ? size : 'default';
+  try {
+    localStorage.setItem(A11Y_FONT_KEY, value);
+  } catch {
+    /* ignore */
+  }
+}
+
+export function readStoredA11yContrast() {
+  try {
+    return localStorage.getItem(A11Y_CONTRAST_KEY) === 'high' ? 'high' : 'default';
+  } catch {
+    return 'default';
+  }
+}
+
+export function applyA11yContrast(contrast) {
+  document.documentElement.setAttribute('data-a11y-contrast', contrast === 'high' ? 'high' : 'default');
+}
+
+export function persistA11yContrast(contrast) {
+  try {
+    localStorage.setItem(A11Y_CONTRAST_KEY, contrast === 'high' ? 'high' : 'default');
+  } catch {
+    /* ignore */
+  }
+}

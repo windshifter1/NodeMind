@@ -37,11 +37,11 @@ html, body, #root {
   font-weight: 500;
 }
 
-.nm-toolbar button,
+.nm-toolbar .nm-toolbar__btn,
 .nm-appbar [data-onboarding='workspace-create'],
 .nm-appbar [data-onboarding='workspace-edit'] {
-  min-width: 32px;
-  min-height: 32px;
+  min-width: 28px;
+  min-height: 28px;
 }
 
 /* Solid primary actions use the accent. Tinted states stay translucent. */

@@ -34,8 +34,8 @@ html[data-theme='light'] {
   --nm-input: #f4f4f5;
   --nm-option: #f4f4f5;
   --nm-option-text: oklch(0.32 0.012 260);
-  --nm-tooltip: oklch(0.22 0.01 260);
-  --nm-tooltip-text: oklch(0.98 0.002 260);
+  --nm-tooltip: #f9f9fa;
+  --nm-tooltip-text: #191919;
   --nm-terminal-bg: #f9f9fa;
   --nm-terminal-text: oklch(0.28 0.012 260);
   --nm-terminal-prompt: var(--nm-accent);
@@ -117,8 +117,8 @@ html[data-theme='dark'] {
   --nm-input: oklch(0.22 0.008 260);
   --nm-option: oklch(0.22 0.008 260);
   --nm-option-text: oklch(0.86 0.008 260);
-  --nm-tooltip: oklch(0.24 0.008 260);
-  --nm-tooltip-text: oklch(0.97 0.004 260);
+  --nm-tooltip: oklch(0.22 0.008 260);
+  --nm-tooltip-text: oklch(0.96 0.004 260);
   --nm-terminal-bg: oklch(0.14 0.006 260);
   --nm-terminal-text: oklch(0.9 0.008 260);
   --nm-terminal-prompt: var(--nm-accent);
@@ -154,4 +154,48 @@ html[data-density='compact'] {
   --nm-radius-btn: 4px;
   --nm-radius-node: 6px;
   --nm-radius-panel: 6px;
+}
+
+:root {
+  --nm-type-scale: 1;
+}
+
+html[data-a11y-font='large'] {
+  --nm-type-scale: 1.125;
+}
+
+html[data-a11y-font='xl'] {
+  --nm-type-scale: 1.25;
+}
+
+html {
+  font-size: calc(16px * var(--nm-type-scale, 1));
+}
+
+html[data-a11y-contrast='high'][data-theme='light'] {
+  --nm-text: #111111;
+  --nm-text-secondary: #1d1d1d;
+  --nm-text-muted: #3f3f3f;
+  --nm-text-faint: #3f3f3f;
+  --nm-text-subtle: #555555;
+  --nm-label: #2e2e2e;
+  --nm-border: oklch(0.22 0.01 260 / 0.32);
+  --nm-border-strong: oklch(0.22 0.01 260 / 0.48);
+  --nm-hover: oklch(0.2 0.01 260 / 0.14);
+  --nm-canvas-dot: oklch(0.28 0.02 260 / 0.5);
+  --nm-option-text: #1d1d1d;
+}
+
+html[data-a11y-contrast='high'][data-theme='dark'] {
+  --nm-text: #f4f4f4;
+  --nm-text-secondary: #ececec;
+  --nm-text-muted: #c8c8c8;
+  --nm-text-faint: #c8c8c8;
+  --nm-text-subtle: #b0b0b0;
+  --nm-label: #dedede;
+  --nm-border: oklch(1 0 0 / 0.32);
+  --nm-border-strong: oklch(1 0 0 / 0.48);
+  --nm-hover: oklch(1 0 0 / 0.16);
+  --nm-canvas-dot: oklch(0.95 0.01 260 / 0.42);
+  --nm-option-text: #ececec;
 }

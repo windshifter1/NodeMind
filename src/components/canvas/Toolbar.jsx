@@ -77,7 +77,7 @@ function ToolbarButton({
       title={title}
       disabled={disabled}
       data-selection-arm-button={selectionArmButton ? '' : undefined}
-      className={`rounded-md p-2 transition ${
+      className={`nm-toolbar__btn inline-flex shrink-0 items-center justify-center rounded-md p-1.5 transition ${
         disabled
           ? 'cursor-not-allowed text-nm-text-subtle'
           : active
@@ -253,7 +253,7 @@ export default function Toolbar({
               active
               onClick={() => onToggleDrawMode?.()}
               title="Done — exit draw mode"
-              className="shrink-0 !p-2"
+              className="shrink-0"
             >
               <X size={16} />
             </ToolbarButton>
@@ -265,7 +265,7 @@ export default function Toolbar({
               active={bg.tool === 'pan'}
               onClick={() => patchBg({ tool: 'pan' })}
               title="Pan canvas"
-              className="shrink-0 !p-2"
+              className="shrink-0"
             >
               <Hand size={16} />
             </ToolbarButton>
@@ -273,7 +273,7 @@ export default function Toolbar({
               active={bg.tool === 'pen'}
               onClick={() => patchBg({ tool: 'pen' })}
               title="Pen"
-              className="shrink-0 !p-2"
+              className="shrink-0"
             >
               <Pencil size={16} />
             </ToolbarButton>
@@ -281,7 +281,7 @@ export default function Toolbar({
               active={bg.tool === 'erase'}
               onClick={() => patchBg({ tool: 'erase' })}
               title="Erase"
-              className="shrink-0 !p-2"
+              className="shrink-0"
             >
               <Eraser size={16} />
             </ToolbarButton>
@@ -289,14 +289,14 @@ export default function Toolbar({
               active={bg.tool === 'select'}
               onClick={() => patchBg({ tool: 'select' })}
               title="Select and move"
-              className="shrink-0 !p-2"
+              className="shrink-0"
             >
               <MousePointer2 size={16} />
             </ToolbarButton>
             <ToolbarButton
               onClick={() => imageRef.current?.click()}
               title="Place image on background"
-              className="shrink-0 !p-2"
+              className="shrink-0"
             >
               <ImagePlus size={16} />
             </ToolbarButton>
@@ -307,7 +307,7 @@ export default function Toolbar({
                 emitTutorial('toolbar.recenter');
               }}
               title="Recenter"
-              className="shrink-0 !p-2"
+              className="shrink-0"
             >
               <Home size={16} />
             </ToolbarButton>
@@ -398,7 +398,7 @@ export default function Toolbar({
             onToggleDrawMode?.();
           }}
           title="Draw on canvas background"
-          className="shrink-0 !p-2 sm:!p-3"
+          className="shrink-0"
         >
           <Pencil size={16} />
         </ToolbarButton>
@@ -410,7 +410,6 @@ export default function Toolbar({
               emitTutorial('toolbar.recenter');
             }}
             title="Recenter"
-            className="!p-2 sm:!p-3"
           >
             <Home size={16} />
           </ToolbarButton>
@@ -426,7 +425,6 @@ export default function Toolbar({
                 if (next) emitTutorial('toolbar.selection.arm');
               }}
               title={selectionArmed ? 'Selection Mode armed — drag on canvas' : 'Selection Mode'}
-              className="!p-2 sm:!p-3"
             >
               <SquareDashed size={16} />
             </ToolbarButton>
@@ -456,24 +454,24 @@ export default function Toolbar({
             },
           ]}
         />
-        <ToolbarButton onClick={onOpenTerminal} title="Terminal" className="shrink-0 !p-2 sm:!p-3">
+        <ToolbarButton onClick={onOpenTerminal} title="Terminal">
           <Terminal size={16} />
         </ToolbarButton>
         <ToolbarButton
           onClick={() => onOpenShare?.()}
           title="Share"
-          className="shrink-0 !p-2 sm:!p-3"
+          className="shrink-0"
         >
           <Share2 size={16} />
         </ToolbarButton>
         <ToolbarButton
           onClick={() => onOpenSave?.()}
           title="Save"
-          className="shrink-0 !p-2 sm:!p-3"
+          className="shrink-0"
         >
           <Save size={16} />
         </ToolbarButton>
-        <ToolbarButton onClick={onClear} title="Clear all" className="shrink-0 !p-2 sm:!p-3">
+        <ToolbarButton onClick={onClear} title="Clear all">
           <Trash2 size={16} />
         </ToolbarButton>
       </div>

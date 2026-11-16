@@ -79,6 +79,7 @@ export default function CanvasBoard({
   edgeAwareLayout = false,
   edgeCurveFan = false,
   smoothStrokes = false,
+  onBinVisibleChange,
 }) {
   const graphOrientation = normalizeOrientation(orientation);
   const edgeDisplay = edgeCurveFan
@@ -173,6 +174,12 @@ export default function CanvasBoard({
     mo.observe(document.body, { attributes: true, attributeFilter: ['data-tutorial-highlight'] });
     return () => mo.disconnect();
   }, []);
+
+  const binVisible = Boolean(draggingNode || tutorialBinVisible);
+
+  useEffect(() => {
+    onBinVisibleChange?.(binVisible);
+  }, [binVisible, onBinVisibleChange]);
 
   useEffect(() => {
     const mq = window.matchMedia?.('(hover: hover) and (pointer: fine)');
@@ -1544,23 +1551,24 @@ export default function CanvasBoard({
         />
       )}
 
-      {(draggingNode || tutorialBinVisible) && (
+      {binVisible && (
         <div
           ref={binRef}
           data-onboarding="delete-bin"
           data-mobile-chrome={!isDesktop && !drawMode ? '' : undefined}
-          className="absolute z-50 overflow-visible rounded-2xl border bg-nm-bin backdrop-blur-md p-2 shadow-xl transition-all"
+          className={`nm-bin absolute z-50 overflow-visible rounded-2xl border bg-nm-bin p-2 shadow-xl backdrop-blur-md ${
+            overBin ? 'is-hot' : ''
+          }`}
           style={{
             pointerEvents: 'none',
-            right: 'calc(1rem + var(--safe-right))',
-            bottom: 'calc(1rem + var(--safe-bottom))',
+            right: 'calc(12px + var(--safe-right))',
+            bottom: 'calc(12px + var(--safe-bottom))',
             borderColor: overBin ? '#ef4444' : 'var(--nm-border)',
             backgroundColor: overBin ? 'rgba(239,68,68,0.2)' : 'var(--nm-bin)',
             color: overBin ? '#ef4444' : 'var(--nm-text-secondary)',
-            transform: overBin ? 'scale(1.08)' : 'none',
           }}
         >
-          <span className="flex items-center justify-center" style={{ width: 38, height: 38 }}>
+          <span className="flex items-center justify-center transition-transform" style={{ width: 38, height: 38 }}>
             <BinIcon open={overBin} size={18} />
           </span>
         </div>

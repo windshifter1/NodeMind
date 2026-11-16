@@ -19,6 +19,10 @@ export default function SettingsDialog({
   onThemeChange,
   density = 'default',
   onDensityChange,
+  a11yFont = 'default',
+  onA11yFontChange,
+  a11yContrast = 'default',
+  onA11yContrastChange,
   workspaceCount = 1,
   onDeleteAllWorkspaces,
   persistStatus = {},
@@ -92,6 +96,7 @@ export default function SettingsDialog({
           <aside className="border-r border-nm-border bg-nm-sidebar p-3">
             {[
               { id: 'style', label: 'Appearance' },
+              { id: 'a11y', label: 'Accessibility' },
               { id: 'data', label: 'Data' },
               { id: 'help', label: 'Help' },
               { id: 'danger', label: 'Danger' },
@@ -166,6 +171,76 @@ export default function SettingsDialog({
                           key={value}
                           type="button"
                           onClick={() => onDensityChange?.(value)}
+                          className="min-h-11 rounded-lg border px-3 py-2 text-sm font-medium"
+                          style={{
+                            backgroundColor: selected ? 'color-mix(in srgb, var(--nm-accent) 16%, transparent)' : 'var(--nm-option)',
+                            borderColor: selected ? 'var(--nm-accent)' : 'var(--nm-border)',
+                            color: 'var(--nm-text)',
+                          }}
+                        >
+                          {label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {section === 'a11y' && (
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-sm font-semibold text-nm-text">Accessibility</h3>
+                  <p className="mt-1 text-xs text-nm-text-muted">
+                    Type size and contrast apply on this device and persist locally.
+                  </p>
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-nm-text">Font size</h3>
+                  <p className="mt-1 text-xs text-nm-text-muted">
+                    Scales chrome, dialogs, and node text.
+                  </p>
+                  <div className="mt-4 grid grid-cols-3 gap-2">
+                    {[
+                      { value: 'default', label: 'Default' },
+                      { value: 'large', label: 'Large' },
+                      { value: 'xl', label: 'Extra large' },
+                    ].map(({ value, label }) => {
+                      const selected = a11yFont === value;
+                      return (
+                        <button
+                          key={value}
+                          type="button"
+                          onClick={() => onA11yFontChange?.(value)}
+                          className="min-h-11 rounded-lg border px-2 py-2 text-sm font-medium"
+                          style={{
+                            backgroundColor: selected ? 'color-mix(in srgb, var(--nm-accent) 16%, transparent)' : 'var(--nm-option)',
+                            borderColor: selected ? 'var(--nm-accent)' : 'var(--nm-border)',
+                            color: 'var(--nm-text)',
+                          }}
+                        >
+                          {label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-nm-text">Contrast</h3>
+                  <p className="mt-1 text-xs text-nm-text-muted">
+                    High contrast strengthens text, borders, and the canvas grid.
+                  </p>
+                  <div className="mt-4 grid grid-cols-2 gap-2">
+                    {[
+                      { value: 'default', label: 'Default' },
+                      { value: 'high', label: 'High contrast' },
+                    ].map(({ value, label }) => {
+                      const selected = a11yContrast === value;
+                      return (
+                        <button
+                          key={value}
+                          type="button"
+                          onClick={() => onA11yContrastChange?.(value)}
                           className="min-h-11 rounded-lg border px-3 py-2 text-sm font-medium"
                           style={{
                             backgroundColor: selected ? 'color-mix(in srgb, var(--nm-accent) 16%, transparent)' : 'var(--nm-option)',

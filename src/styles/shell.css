@@ -126,7 +126,7 @@
   flex: 1;
   align-items: center;
   gap: 8px;
-  font-size: 13px;
+  font-size: 0.9375rem;
   font-weight: 600;
   letter-spacing: -0.02em;
 }
@@ -148,7 +148,7 @@
 
 .nm-sidebar__label {
   padding: 12px 12px 4px;
-  font-size: 11px;
+  font-size: 0.6875rem;
   font-weight: 500;
   letter-spacing: 0.02em;
   color: var(--nm-text-muted);
@@ -194,7 +194,7 @@
   padding: 0 8px;
   border-radius: 6px;
   color: var(--nm-text-muted);
-  font-size: 13px;
+  font-size: 0.8125rem;
   text-align: left;
 }
 
@@ -208,22 +208,28 @@
   font-weight: 500;
 }
 
-.nm-sidebar__edit {
+.nm-sidebar__tools {
+  display: flex;
+  align-items: center;
+  margin-right: 4px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.nm-sidebar__edit,
+.nm-sidebar__delete {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 26px;
   height: 26px;
-  margin-right: 4px;
   border-radius: 6px;
   color: var(--nm-text-muted);
-  opacity: 0;
-  pointer-events: none;
 }
 
-.nm-sidebar__row:hover .nm-sidebar__edit,
-.nm-sidebar__row:focus-within .nm-sidebar__edit,
-.nm-sidebar__edit:focus-visible {
+.nm-sidebar__row:hover .nm-sidebar__tools,
+.nm-sidebar__row:focus-within .nm-sidebar__tools,
+.nm-sidebar__tools:focus-within {
   opacity: 1;
   pointer-events: auto;
 }
@@ -233,12 +239,18 @@
   color: var(--nm-text);
 }
 
-.nm-sidebar--collapsed .nm-sidebar__edit {
+.nm-sidebar__delete:hover,
+.nm-sidebar__delete:focus-visible {
+  background: color-mix(in srgb, var(--nm-danger) 16%, transparent);
+  color: var(--nm-danger);
+}
+
+.nm-sidebar--collapsed .nm-sidebar__tools {
   display: none;
 }
 
 @media (hover: none) {
-  .nm-sidebar__row--on .nm-sidebar__edit {
+  .nm-sidebar__row--on .nm-sidebar__tools {
     opacity: 1;
     pointer-events: auto;
   }
@@ -276,7 +288,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 13px;
+  font-size: 0.8125rem;
   font-weight: 500;
   color: var(--nm-text);
 }
@@ -305,10 +317,13 @@
   display: none;
 }
 
-.nm-topbar .nm-toolbar button {
-  min-width: 32px;
-  min-height: 32px;
-  padding: 6px;
+.nm-toolbar .nm-toolbar__btn {
+  box-sizing: border-box;
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  min-height: 28px;
+  padding: 0;
   border-radius: 6px;
 }
 
@@ -321,6 +336,12 @@
   flex-direction: column;
   align-items: flex-end;
   gap: 8px;
+  transform: translateY(0);
+  transition: transform var(--nm-duration) var(--nm-ease);
+}
+
+.nm-agent.is-lifted {
+  transform: translateY(-68px);
 }
 
 .nm-agent__btn {
@@ -390,6 +411,50 @@
   padding: 12px 14px 14px;
 }
 
+.nm-tip {
+  position: fixed;
+  z-index: 400;
+  top: 0;
+  left: 0;
+  display: inline-flex;
+  max-width: min(16rem, calc(100vw - 16px));
+  align-items: center;
+  gap: 8px;
+  padding: 5px 10px;
+  border: 1px solid var(--nm-border);
+  border-radius: 8px;
+  background: var(--nm-tooltip);
+  color: var(--nm-tooltip-text);
+  box-shadow: var(--nm-shadow-sm);
+  pointer-events: none;
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  animation: nm-tip-in var(--nm-duration-fast) var(--nm-ease);
+}
+
+.nm-tip__kbd {
+  display: inline-flex;
+  min-width: 1.1rem;
+  justify-content: center;
+  color: var(--nm-text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 500;
+}
+
+@keyframes nm-tip-in {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 .nm-dialog-root {
   position: fixed;
   inset: 0;
@@ -432,7 +497,7 @@
 .nm-dialog-head h2,
 .nm-dialog-head p {
   margin: 0;
-  font-size: 13px;
+  font-size: 0.8125rem;
   font-weight: 600;
   color: var(--nm-text);
 }
@@ -450,6 +515,26 @@
 .nm-dialog-close:hover {
   background: var(--nm-hover);
   color: var(--nm-text);
+}
+
+.nm-bin {
+  pointer-events: none;
+  animation: nm-bin-in var(--nm-duration) var(--nm-ease) both;
+}
+
+.nm-bin.is-hot span {
+  transform: scale(1.08);
+}
+
+@keyframes nm-bin-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 .rounded-2xl.border.border-nm-border.bg-nm-panel,

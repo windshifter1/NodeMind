@@ -25,20 +25,25 @@ function PillButton({ active, title, onClick, children }) {
   );
 }
 
+function toolPreviewDiameter(tool, penWidth, eraseMode) {
+  if (tool === 'pen') return Math.max(8, penWidth);
+  if (tool === 'erase') {
+    return eraseMode === 'area' ? Math.max(20, penWidth * 3 * 2) : Math.max(12, penWidth + 8);
+  }
+  return 0;
+}
+
 export default function DrawToolPill({ backgroundArt, onBackgroundArtChange, onExit }) {
   const imageRef = useRef(null);
   const colorRef = useRef(null);
   const bg = normalizeBackgroundArt(backgroundArt);
   const patchBg = (patch) => onBackgroundArtChange?.({ ...bg, ...patch });
+  const previewPx = toolPreviewDiameter(bg.tool, bg.penWidth, bg.eraseMode);
+  const showPreview = bg.tool === 'pen' || bg.tool === 'erase';
 
   return (
     <>
-      <div
-        className="nm-draw-pill"
-        data-draw-toolbar
-        role="toolbar"
-        aria-label="Draw tools"
-      >
+      <div className="nm-draw-pill" data-draw-toolbar role="toolbar" aria-label="Draw tools">
         <PillButton active title="Done — exit draw mode" onClick={onExit}>
           <X size={18} strokeWidth={1.75} />
         </PillButton>
@@ -79,6 +84,21 @@ export default function DrawToolPill({ backgroundArt, onBackgroundArtChange, onE
 
         <div className="nm-draw-pill__divider" />
 
+        {showPreview ? (
+          <div
+            className={`nm-draw-pill__size-preview ${bg.tool === 'erase' ? 'is-erase' : 'is-pen'}`}
+            title={bg.tool === 'pen' ? `Pen size ${bg.penWidth}px` : 'Eraser size'}
+            aria-hidden
+            style={{
+              width: previewPx,
+              height: previewPx,
+              ...(bg.tool === 'pen'
+                ? { backgroundColor: bg.color, borderColor: bg.color }
+                : { borderColor: bg.color }),
+            }}
+          />
+        ) : null}
+
         <div className="nm-draw-pill__color-wrap">
           <button
             type="button"
@@ -114,16 +134,22 @@ export default function DrawToolPill({ backgroundArt, onBackgroundArtChange, onE
         </select>
 
         {bg.tool === 'erase' ? (
-          <select
-            value={bg.eraseMode}
-            onChange={(e) => patchBg({ eraseMode: e.target.value })}
-            className="nm-draw-pill__select"
-            title="Erase type"
-            aria-label="Erase type"
-          >
-            <option value="stroke">Stroke</option>
-            <option value="area">Area</option>
-          </select>
+          <div className="nm-draw-pill__toggle" role="group" aria-label="Erase mode">
+            <button
+              type="button"
+              className={`nm-draw-pill__toggle-btn ${bg.eraseMode === 'stroke' ? 'is-on' : ''}`}
+              onClick={() => patchBg({ eraseMode: 'stroke' })}
+            >
+              Stroke
+            </button>
+            <button
+              type="button"
+              className={`nm-draw-pill__toggle-btn ${bg.eraseMode === 'area' ? 'is-on' : ''}`}
+              onClick={() => patchBg({ eraseMode: 'area' })}
+            >
+              Area
+            </button>
+          </div>
         ) : null}
       </div>
 

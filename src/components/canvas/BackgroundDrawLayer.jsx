@@ -5,6 +5,16 @@ import {
   newStrokeId,
   normalizeBackgroundArt,
 } from '@/lib/backgroundArt';
+import {
+  boundsForImage,
+  boundsForStroke,
+  layerOf,
+  migrateBackgroundArtLayers,
+  moveAnnotationLayer,
+  nextLayerBelowNodes,
+  NODES_LAYER_INDEX,
+} from '@/lib/backgroundArtLayers';
+import AnnotationLayerBar from '@/components/canvas/AnnotationLayerBar';
 import { getBlobUrl, putFileFromFileList } from '@/lib/mediaStore';
 import {
   eraseAreaFromStrokes,
@@ -51,10 +61,11 @@ export default function BackgroundDrawLayer({
   /** Catmull-Rom cubics + denser capture instead of blocky polylines. */
   smoothStrokes = false,
 }) {
-  const bg = useMemo(() => normalizeBackgroundArt(art), [art]);
+  const bg = useMemo(() => migrateBackgroundArtLayers(art), [art]);
   const [draft, setDraft] = useState(null);
   const [selectedId, setSelectedId] = useState(null);
   const [selectedKind, setSelectedKind] = useState(null); // stroke | image
+  const [layerBarPos, setLayerBarPos] = useState(null);
   const dragRef = useRef(null);
   const capturingRef = useRef(false);
   const boardRectRef = useRef(null);
@@ -144,19 +155,25 @@ export default function BackgroundDrawLayer({
     };
   };
 
-  const hitStroke = (x, y, strokes = artSnapshot().strokes) => {
-    for (let i = strokes.length - 1; i >= 0; i--) {
-      const s = strokes[i];
+  const inTier = (layer, tier) =>
+    tier === 'above' ? layer > NODES_LAYER_INDEX : layer < NODES_LAYER_INDEX;
+
+  const hitStroke = (x, y, tier, strokes = artSnapshot().strokes) => {
+    const sorted = strokes
+      .filter((s) => inTier(layerOf(s), tier))
+      .sort((a, b) => layerOf(b) - layerOf(a));
+    for (const s of sorted) {
       const tol = Math.max(8, (s.width || 3) + 4);
       if (pointHitsStroke(x, y, s, tol)) return s;
     }
     return null;
   };
 
-  const hitImage = (x, y) => {
-    const images = artSnapshot().images;
-    for (let i = images.length - 1; i >= 0; i--) {
-      const img = images[i];
+  const hitImage = (x, y, tier) => {
+    const images = artSnapshot()
+      .images.filter((img) => inTier(layerOf(img), tier))
+      .sort((a, b) => layerOf(b) - layerOf(a));
+    for (const img of images) {
       if (x >= img.x && x <= img.x + img.w && y >= img.y && y <= img.y + img.h) return img;
     }
     return null;
@@ -209,9 +226,11 @@ export default function BackgroundDrawLayer({
     }
   };
 
-  const onPointerDown = (e) => {
+  const onPointerDown = (e, tier) => {
     if (!enabled || passThrough) return;
     if (e.button !== 0) return;
+    if (tier === 'above' && bg.tool !== 'select') return;
+    if (tier === 'below' && bg.tool === 'select') return;
 
     const layer = e.currentTarget;
     activePointersRef.current.add(e.pointerId);
@@ -227,7 +246,10 @@ export default function BackgroundDrawLayer({
     const w = screenToWorld(e.clientX, e.clientY);
 
     if (bg.tool === 'select') {
-      const img = hitImage(w.x, w.y);
+      const img =
+        tier === 'both'
+          ? hitImage(w.x, w.y, 'above') || hitImage(w.x, w.y, 'below')
+          : hitImage(w.x, w.y, tier);
       if (img) {
         e.stopPropagation();
         capturingRef.current = true;
@@ -238,7 +260,10 @@ export default function BackgroundDrawLayer({
         dragRef.current = { kind: 'image', id: img.id, ox: w.x - img.x, oy: w.y - img.y };
         return;
       }
-      const stroke = hitStroke(w.x, w.y);
+      const stroke =
+        tier === 'both'
+          ? hitStroke(w.x, w.y, 'above') || hitStroke(w.x, w.y, 'below')
+          : hitStroke(w.x, w.y, tier);
       if (stroke) {
         e.stopPropagation();
         capturingRef.current = true;
@@ -274,10 +299,12 @@ export default function BackgroundDrawLayer({
     }
     if (bg.tool === 'pen') {
       const id = newStrokeId();
+      const base = migrateBackgroundArtLayers(artSnapshot());
       const next = {
         id,
         color: bg.color,
         width: bg.penWidth,
+        layer: nextLayerBelowNodes(base),
         points: [{ x: w.x, y: w.y }],
       };
       draftRef.current = next;
@@ -382,7 +409,12 @@ export default function BackgroundDrawLayer({
     if (current) {
       const base = artSnapshot();
       const points = simplifyPoints(current.points, minPointDist(zoom, smoothStrokes));
-      onChange({ ...base, strokes: [...base.strokes, { ...current, points }] });
+      const layered = migrateBackgroundArtLayers(base);
+      const withLayer =
+        typeof current.layer === 'number'
+          ? current
+          : { ...current, layer: nextLayerBelowNodes(layered) };
+      onChange({ ...layered, strokes: [...layered.strokes, { ...withLayer, points }] });
       draftRef.current = null;
       setDraft(null);
     }
@@ -393,51 +425,131 @@ export default function BackgroundDrawLayer({
     liveBgRef.current = null;
   };
 
+  const updateLayerBarPos = () => {
+    if (!enabled || bg.tool !== 'select' || !selectedId || !selectedKind) {
+      setLayerBarPos(null);
+      return;
+    }
+    const rect = boardRectRef.current || document.querySelector('[data-canvas-board]')?.getBoundingClientRect();
+    const current = artSnapshot();
+    const bounds =
+      selectedKind === 'stroke'
+        ? boundsForStroke(current.strokes.find((s) => s.id === selectedId))
+        : boundsForImage(current.images.find((img) => img.id === selectedId));
+    if (!rect || !bounds) {
+      setLayerBarPos(null);
+      return;
+    }
+    const centerX = ((bounds.minX + bounds.maxX) / 2) * zoom + pan.x + rect.left;
+    const topY = bounds.minY * zoom + pan.y + rect.top;
+    const bottomY = bounds.maxY * zoom + pan.y + rect.top;
+    const placeBelow = topY < rect.top + 52;
+    const y = placeBelow ? bottomY + 10 : topY - 44;
+    setLayerBarPos({ x: centerX, y, placeBelow });
+  };
+
+  useEffect(() => {
+    updateLayerBarPos();
+  }, [selectedId, selectedKind, enabled, bg.tool, pan.x, pan.y, zoom, bg.strokes, bg.images]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const tierItems = (tier) => ({
+    strokes: bg.strokes.filter((s) => inTier(layerOf(s), tier)),
+    images: bg.images.filter((img) => inTier(layerOf(img), tier)),
+  });
+
+  const tierPointer = (tier) => {
+    if (!enabled || passThrough) return 'none';
+    if (bg.tool === 'select') return 'none';
+    if (tier === 'above') return 'none';
+    return 'auto';
+  };
+
+  const renderTier = (tier) => {
+    const { strokes, images } = tierItems(tier);
+    const z = tier === 'above' ? 3 : 1;
+    return (
+      <svg
+        key={tier}
+        data-background-draw
+        data-draw-tier={tier}
+        className="absolute inset-0 overflow-visible"
+        style={{
+          width: '100%',
+          height: '100%',
+          pointerEvents: tierPointer(tier),
+          zIndex: z,
+          touchAction: 'none',
+          overflow: 'visible',
+        }}
+        onPointerDown={(e) => onPointerDown(e, tier)}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
+      >
+        <g transform={`translate(${pan.x} ${pan.y}) scale(${zoom})`}>
+          {images.map((img) => (
+            <image
+              key={img.id}
+              href={imageUrls[img.id] || ''}
+              x={img.x}
+              y={img.y}
+              width={img.w}
+              height={img.h}
+              opacity={0.95}
+              style={{
+                outline:
+                  selectedKind === 'image' && selectedId === img.id ? '2px solid #818cf8' : 'none',
+              }}
+            />
+          ))}
+          {strokes.map((s) => (
+            <StrokeGraphic
+              key={s.id}
+              stroke={s}
+              selected={selectedKind === 'stroke' && selectedId === s.id}
+              smooth={smoothStrokes}
+            />
+          ))}
+          {tier === 'below' && draft ? (
+            <StrokeGraphic stroke={draft} selected={false} smooth={smoothStrokes} />
+          ) : null}
+        </g>
+      </svg>
+    );
+  };
+
   return (
-    <svg
-      data-background-draw
-      className="absolute inset-0 overflow-visible"
-      style={{
-        width: '100%',
-        height: '100%',
-        // Pan tool: none so board pans. Pen/erase/select: auto to receive strokes/hits.
-        pointerEvents: enabled && !passThrough ? 'auto' : 'none',
-        zIndex: enabled && !passThrough ? 4 : 0,
-        touchAction: 'none',
-        overflow: 'visible',
-      }}
-      onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerUp={onPointerUp}
-      onPointerCancel={onPointerUp}
-    >
-      <g transform={`translate(${pan.x} ${pan.y}) scale(${zoom})`}>
-        {bg.images.map((img) => (
-          <image
-            key={img.id}
-            href={imageUrls[img.id] || ''}
-            x={img.x}
-            y={img.y}
-            width={img.w}
-            height={img.h}
-            opacity={0.95}
-            style={{
-              outline:
-                selectedKind === 'image' && selectedId === img.id ? '2px solid #818cf8' : 'none',
-            }}
-          />
-        ))}
-        {bg.strokes.map((s) => (
-          <StrokeGraphic
-            key={s.id}
-            stroke={s}
-            selected={selectedKind === 'stroke' && selectedId === s.id}
-            smooth={smoothStrokes}
-          />
-        ))}
-        {draft && <StrokeGraphic stroke={draft} selected={false} smooth={smoothStrokes} />}
-      </g>
-    </svg>
+    <>
+      {renderTier('below')}
+      {renderTier('above')}
+      {enabled && !passThrough && bg.tool === 'select' ? (
+        <svg
+          data-background-draw-select
+          className="absolute inset-0"
+          style={{ width: '100%', height: '100%', zIndex: 4, pointerEvents: 'auto', touchAction: 'none' }}
+          onPointerDown={(e) => onPointerDown(e, 'both')}
+          onPointerMove={onPointerMove}
+          onPointerUp={onPointerUp}
+          onPointerCancel={onPointerUp}
+        />
+      ) : null}
+      {layerBarPos && enabled && bg.tool === 'select' ? (
+        <AnnotationLayerBar
+          x={layerBarPos.x}
+          y={layerBarPos.y}
+          onForward={() => {
+            const next = moveAnnotationLayer(artSnapshot(), selectedId, selectedKind, 'forward');
+            onChange(next);
+            requestAnimationFrame(updateLayerBarPos);
+          }}
+          onBack={() => {
+            const next = moveAnnotationLayer(artSnapshot(), selectedId, selectedKind, 'back');
+            onChange(next);
+            requestAnimationFrame(updateLayerBarPos);
+          }}
+        />
+      ) : null}
+    </>
   );
 }
 
@@ -465,6 +577,7 @@ const StrokeGraphic = memo(function StrokeGraphic({ stroke, selected, smooth = f
 export async function addBackgroundImage(art, file, at = { x: 80, y: 80 }) {
   const bg = normalizeBackgroundArt(art);
   const meta = await putFileFromFileList(file);
+  const layered = migrateBackgroundArtLayers(bg);
   const img = {
     id: newImageId(),
     fileId: meta.fileId,
@@ -472,6 +585,7 @@ export async function addBackgroundImage(art, file, at = { x: 80, y: 80 }) {
     y: at.y,
     w: 240,
     h: 180,
+    layer: nextLayerBelowNodes(layered),
   };
-  return { ...bg, images: [...bg.images, img], tool: 'select' };
+  return { ...layered, images: [...layered.images, img], tool: 'select' };
 }

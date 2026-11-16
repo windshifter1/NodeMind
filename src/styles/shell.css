@@ -617,16 +617,101 @@ html[data-theme='dark'] .nm-draw-pill {
   max-width: var(--nm-chrome-hit-lg);
   border: 1px solid var(--nm-border);
   border-radius: 8px;
-  padding: 4px 2px;
-  background: transparent;
-  color: var(--nm-text-secondary);
-  font-size: 9px;
+  padding: 0.35rem 0.5rem;
+  background: var(--nm-option);
+  color: var(--nm-text);
+  font-size: 0.8125rem;
   font-weight: 600;
   text-align: center;
 }
 
 .nm-draw-pill__select--width {
-  font-size: 10px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  min-height: 2.25rem;
+  padding: 0.35rem 0.5rem;
+  line-height: 1.2;
+  -webkit-appearance: menulist;
+  appearance: auto;
+}
+
+.nm-draw-pill__size-preview {
+  flex-shrink: 0;
+  border-radius: 999px;
+  box-sizing: border-box;
+}
+
+.nm-draw-pill__size-preview.is-pen {
+  border: 2px solid currentColor;
+  opacity: 0.92;
+}
+
+.nm-draw-pill__size-preview.is-erase {
+  border: 2px dashed var(--nm-text-muted);
+  background: oklch(0.5 0.01 260 / 0.08);
+}
+
+.nm-draw-pill__toggle {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+}
+
+.nm-draw-pill__toggle-btn {
+  min-height: 2.25rem;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--nm-border);
+  border-radius: 8px;
+  background: var(--nm-option);
+  font-size: 0.75rem;
+  font-weight: 650;
+  color: var(--nm-text-secondary);
+}
+
+.nm-draw-pill__toggle-btn.is-on {
+  border-color: color-mix(in srgb, var(--nm-accent) 45%, var(--nm-border));
+  background: color-mix(in srgb, var(--nm-accent) 12%, var(--nm-option));
+  color: var(--nm-text);
+}
+
+.nm-annot-layer-bar {
+  position: fixed;
+  z-index: 80;
+  display: flex;
+  gap: 4px;
+  padding: 4px 6px;
+  border: 1px solid var(--nm-border);
+  border-radius: 999px;
+  background: var(--nm-elevated);
+  box-shadow: var(--nm-shadow-sm);
+  transform: translate(-50%, 0);
+  pointer-events: auto;
+}
+
+.nm-annot-layer-bar__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--nm-chrome-hit);
+  height: var(--nm-chrome-hit);
+  min-width: var(--nm-chrome-hit);
+  min-height: var(--nm-chrome-hit);
+  border: 1px solid transparent;
+  border-radius: 999px;
+  color: var(--nm-text-secondary);
+  background: transparent;
+}
+
+.nm-annot-layer-bar__btn:hover:not(:disabled) {
+  background: var(--nm-hover);
+  color: var(--nm-text);
+}
+
+.nm-annot-layer-bar__btn.is-soon,
+.nm-annot-layer-bar__btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 .nm-agent {

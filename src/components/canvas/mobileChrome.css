@@ -173,91 +173,27 @@
     0 0 10px 1px color-mix(in srgb, var(--mk-tab) 55%, transparent);
 }
 
-.nm-mobile__draw-rail,
-.nm-mobile__draw-rail:active {
-  position: absolute;
-  z-index: 50;
-  left: calc(0.45rem + var(--safe-left));
-  top: 50%;
-  transform: translateY(-50%);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.35rem;
-  padding: 0.5rem 0.4rem;
-  border-radius: calc(var(--nm-radius-bar) + 0.1rem);
-  max-height: min(62vh, calc(100% - 11rem - var(--safe-top) - var(--safe-bottom)));
-  overflow-y: auto;
-  overscroll-behavior: contain;
+.nm-mobile__draw-glide {
+  z-index: 52;
+  flex-shrink: 0;
+  padding: 4px calc(8px + var(--safe-right)) 6px calc(8px + var(--safe-left));
+  border-bottom: 1px solid var(--nm-divider);
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
   scrollbar-width: none;
-  width: 56px;
 }
 
-.nm-mobile__draw-rail::-webkit-scrollbar {
+.nm-mobile__draw-glide::-webkit-scrollbar {
   display: none;
 }
 
-.nm-mobile__draw-rail .nm-mobile__btn {
-  width: 40px;
-  height: 40px;
-  min-width: 40px;
-  min-height: 40px;
-  padding: 0.4rem;
-  border-radius: 0.75rem;
+.nm-mobile__draw-glide .nm-toolbar-glide {
+  grid-template-columns: 1fr;
 }
 
-.nm-mobile__draw-divider {
-  width: 28px;
-  height: 1px;
-  background: var(--nm-divider);
-  flex-shrink: 0;
-}
-
-.nm-mobile__draw-color {
-  width: 32px;
-  height: 32px;
-  padding: 2px;
-  border-radius: 0.65rem;
-  border: 1px solid var(--nm-border);
-  background: transparent;
-  cursor: pointer;
-  flex-shrink: 0;
-}
-
-.nm-mobile__draw-field {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.15rem;
-  width: 100%;
-}
-
-.nm-mobile__draw-field span {
-  font-size: 9px;
-  font-weight: 650;
-  color: var(--nm-text-muted);
-  letter-spacing: 0.02em;
-}
-
-.nm-mobile__draw-field input[type='range'] {
-  writing-mode: vertical-lr;
-  direction: rtl;
-  width: 18px;
-  height: 64px;
-  padding: 0;
-  accent-color: #818cf8;
-}
-
-.nm-mobile__draw-select {
-  width: 100%;
-  border-radius: 0.55rem;
-  border: 1px solid var(--nm-border);
-  background: transparent;
-  color: var(--nm-text-secondary);
-  font-size: 9px;
-  font-weight: 600;
-  padding: 0.3rem 0.15rem;
-  text-align: center;
+.nm-mobile__draw-glide .nm-toolbar-glide__inner {
+  opacity: 1;
+  transform: none;
 }
 
 .nm-mobile__nav,

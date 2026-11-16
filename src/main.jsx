@@ -19,6 +19,13 @@ import {
 } from '@/lib/theme'
 import { registerServiceWorker } from '@/registerServiceWorker'
 
+/** Prod SW registrations on localhost can serve a stale shell and break `vite` dev. */
+if (import.meta.env.DEV && typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then((regs) => {
+    regs.forEach((reg) => reg.unregister())
+  })
+}
+
 applyDocumentTheme(readStoredTheme())
 applyDensity(readStoredDensity())
 applyA11yFont(readStoredA11yFont())

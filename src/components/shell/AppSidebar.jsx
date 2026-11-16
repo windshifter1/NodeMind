@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
-import { PanelLeft, PanelLeftClose, Pencil, Plus, Settings, Trash2 } from 'lucide-react';
+import { PanelLeft, PanelLeftClose, Plus, Settings, SlidersHorizontal, Trash2 } from 'lucide-react';
 import { PRODUCT_NAME } from '@/lib/brand';
-import { WORKSPACE_ICONS } from '@/lib/workspaceIcons';
+import WorkspaceIcon from '@/components/shell/WorkspaceIcon';
 import { emitTutorial } from '@/lib/tutorialEvents';
 
 function BrandMark() {
@@ -75,7 +75,6 @@ export default function AppSidebar({
         <div className="nm-sidebar__label">Canvases</div>
         <nav className="nm-sidebar__nav" aria-label="Canvases">
           {workspaces.map((ws) => {
-            const Icon = WORKSPACE_ICONS[ws.icon] || WORKSPACE_ICONS.note;
             const active = ws.id === activeId;
             return (
               <div
@@ -92,7 +91,7 @@ export default function AppSidebar({
                     if (overlay) onClose?.();
                   }}
                 >
-                  <Icon size={16} strokeWidth={1.75} />
+                  <WorkspaceIcon icon={ws.icon} colour={ws.colour} size={16} strokeWidth={1.75} />
                   <span>{ws.name}</span>
                 </button>
                 <div className="nm-sidebar__tools">
@@ -108,7 +107,7 @@ export default function AppSidebar({
                       if (overlay) onClose?.();
                     }}
                   >
-                    <Pencil size={14} strokeWidth={1.75} />
+                    <SlidersHorizontal size={14} strokeWidth={1.75} />
                   </button>
                   <button
                     type="button"

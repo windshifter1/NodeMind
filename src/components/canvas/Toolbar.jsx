@@ -7,18 +7,12 @@ import {
   Wrench,
   Home,
   SquareDashed,
-  Pencil,
-  Eraser,
-  MousePointer2,
-  ImagePlus,
-  Hand,
-  X,
+  Paintbrush,
 } from 'lucide-react';
 import { emitTutorial } from '@/lib/tutorialEvents';
 import { useTutorialHighlight } from '@/hooks/useTutorialHighlight';
 import { normalizeBackgroundArt } from '@/lib/backgroundArt';
-import { addBackgroundImage } from './BackgroundDrawLayer';
-
+import DrawToolRail from '@/components/canvas/DrawToolRail';
 function AutoOrganiseAllIcon({ size = 15 }) {
   return (
     <svg
@@ -149,13 +143,14 @@ function ToolbarGroup({ icon: Icon, title, options, dataOnboarding }) {
   return (
     <div
       ref={groupRef}
-      className="relative shrink-0"
+      className="nm-toolbar-glide-cluster shrink-0"
       data-onboarding={dataOnboarding}
       onMouseEnter={() => canHover.current && !clickOnlyOpen && setHoverOpen(true)}
       onMouseLeave={() => canHover.current && !clickOnlyOpen && setHoverOpen(false)}
     >
       <ToolbarButton
         title={title}
+        active={open}
         onClick={() => {
           setClickedOpen((value) => {
             const next = !value;
@@ -172,32 +167,27 @@ function ToolbarGroup({ icon: Icon, title, options, dataOnboarding }) {
       >
         <Icon size={16} />
       </ToolbarButton>
-      <div
-        aria-hidden={!open}
-        className={`absolute top-full left-1/2 w-56 -translate-x-1/2 overflow-hidden rounded-lg border border-nm-border bg-nm-panel shadow-sm transition-all duration-200 ease-out ${
-          open
-            ? 'visible max-h-64 opacity-100 translate-y-0 pointer-events-auto'
-            : 'invisible max-h-0 opacity-0 -translate-y-1 pointer-events-none'
-        }`}
-      >
-        <div className="flex flex-col gap-1 p-2">
-          {options.map(({ label, icon: OptionIcon, action, disabled = false, title: optionTitle, tutorialEvent }) => (
-            <button
-              key={label}
-              onClick={() => !disabled && run(action, tutorialEvent)}
-              disabled={disabled}
-              title={optionTitle || label}
-              tabIndex={open && !disabled ? 0 : -1}
-              className={`flex items-center gap-2 rounded-xl px-3 py-2 text-left text-sm transition active:scale-[0.98] ${
-                disabled
-                  ? 'text-nm-text-subtle cursor-not-allowed'
-                  : 'text-nm-text-secondary hover:text-nm-text hover:bg-nm-hover'
-              }`}
-            >
-              <OptionIcon size={15} />
-              <span>{label}</span>
-            </button>
-          ))}
+      <div className={`nm-toolbar-glide ${open ? 'is-open' : ''}`} aria-hidden={!open}>
+        <div className="nm-toolbar-glide__inner">
+          <div className="nm-toolbar-glide__row" role="menu">
+            {options.map(({ label, icon: OptionIcon, action, disabled = false, title: optionTitle, tutorialEvent }) => (
+              <button
+                key={label}
+                type="button"
+                role="menuitem"
+                onClick={() => !disabled && run(action, tutorialEvent)}
+                disabled={disabled}
+                title={optionTitle || label}
+                tabIndex={open && !disabled ? 0 : -1}
+                className={`nm-toolbar__btn nm-toolbar-glide__item ${
+                  disabled ? 'is-disabled' : ''
+                }`}
+              >
+                <OptionIcon size={16} />
+              </button>
+            ))}
+          </div>
+          <div className="nm-toolbar-glide__underline" aria-hidden="true" />
         </div>
       </div>
     </div>
@@ -221,7 +211,6 @@ export default function Toolbar({
   onOpenShare,
   onOpenSave,
 }) {
-  const imageRef = useRef(null);
   const canOrganiseSelected = selectedCount >= 2;
   const [showMobileSelection, setShowMobileSelection] = useState(false);
   const bg = normalizeBackgroundArt(backgroundArt);
@@ -240,168 +229,33 @@ export default function Toolbar({
   const chromeClass =
     'nm-toolbar relative z-50 flex min-w-0 flex-wrap items-center justify-end gap-0.5';
 
-  if (drawMode) {
-    return (
-      <>
-        <div
-          data-onboarding="toolbar"
-          data-draw-toolbar
-          className="nm-toolbar flex w-full flex-col gap-1.5"
-        >
-          <div className="flex min-w-0 items-center justify-center gap-0.5 overflow-x-auto overscroll-x-contain [-ms-overflow-style:none] [scrollbar-width:none] sm:gap-1 [&::-webkit-scrollbar]:hidden">
-            <ToolbarButton
-              active
-              onClick={() => onToggleDrawMode?.()}
-              title="Done — exit draw mode"
-              className="shrink-0"
-            >
-              <X size={16} />
-            </ToolbarButton>
-            <span className="hidden shrink-0 px-1 text-xs font-medium text-nm-text-muted md:inline">
-              Draw
-            </span>
-            <div className="mx-0.5 hidden h-6 w-px shrink-0 bg-nm-divider sm:mx-1 sm:block" />
-            <ToolbarButton
-              active={bg.tool === 'pan'}
-              onClick={() => patchBg({ tool: 'pan' })}
-              title="Pan canvas"
-              className="shrink-0"
-            >
-              <Hand size={16} />
-            </ToolbarButton>
-            <ToolbarButton
-              active={bg.tool === 'pen'}
-              onClick={() => patchBg({ tool: 'pen' })}
-              title="Pen"
-              className="shrink-0"
-            >
-              <Pencil size={16} />
-            </ToolbarButton>
-            <ToolbarButton
-              active={bg.tool === 'erase'}
-              onClick={() => patchBg({ tool: 'erase' })}
-              title="Erase"
-              className="shrink-0"
-            >
-              <Eraser size={16} />
-            </ToolbarButton>
-            <ToolbarButton
-              active={bg.tool === 'select'}
-              onClick={() => patchBg({ tool: 'select' })}
-              title="Select and move"
-              className="shrink-0"
-            >
-              <MousePointer2 size={16} />
-            </ToolbarButton>
-            <ToolbarButton
-              onClick={() => imageRef.current?.click()}
-              title="Place image on background"
-              className="shrink-0"
-            >
-              <ImagePlus size={16} />
-            </ToolbarButton>
-            <div className="mx-0.5 h-6 w-px shrink-0 bg-nm-divider sm:mx-1" />
-            <ToolbarButton
-              onClick={() => {
-                onRecenter();
-                emitTutorial('toolbar.recenter');
-              }}
-              title="Recenter"
-              className="shrink-0"
-            >
-              <Home size={16} />
-            </ToolbarButton>
-            <span className="hidden shrink-0 text-xs text-nm-text-muted tabular-nums sm:inline sm:w-10 sm:text-center">
-              {Math.round(zoom * 100)}%
-            </span>
-          </div>
-
-          <div className="flex min-w-0 flex-wrap items-center justify-center gap-x-2 gap-y-1 border-t border-nm-divider/70 px-1 pt-1.5 sm:flex-nowrap sm:gap-3">
-            <label
-              className="flex min-w-0 flex-1 items-center gap-1.5 text-[10px] text-nm-text-muted sm:flex-none"
-              title="Pen width"
-            >
-              <span className="shrink-0">W</span>
-              <input
-                type="range"
-                min={1}
-                max={24}
-                value={bg.penWidth}
-                onChange={(e) => patchBg({ penWidth: Number(e.target.value) })}
-                className="min-w-0 w-full max-w-[7rem] sm:w-20"
-              />
-            </label>
-            <input
-              type="color"
-              value={bg.color}
-              onChange={(e) => patchBg({ color: e.target.value })}
-              title="Pen colour"
-              className="h-7 w-7 shrink-0 cursor-pointer rounded-lg border border-nm-border bg-transparent p-0.5 sm:h-8 sm:w-8"
-            />
-            <label
-              className="flex min-w-0 flex-1 items-center gap-1.5 text-[10px] text-nm-text-muted sm:flex-none"
-              title="Emissiveness (glow), default 0"
-            >
-              <span className="shrink-0">Glow</span>
-              <input
-                type="range"
-                min={0}
-                max={100}
-                value={Math.round((bg.emissiveness || 0) * 100)}
-                onChange={(e) => patchBg({ emissiveness: Number(e.target.value) / 100 })}
-                className="min-w-0 w-full max-w-[6.5rem] sm:w-16"
-              />
-            </label>
-            {bg.tool === 'erase' && (
-              <select
-                value={bg.eraseMode}
-                onChange={(e) => patchBg({ eraseMode: e.target.value })}
-                className="max-w-full shrink-0 rounded-xl border border-nm-border bg-transparent px-2 py-1 text-xs text-nm-text-secondary"
-                title="Erase type"
-              >
-                <option value="stroke">Stroke</option>
-                <option value="area">Area</option>
-              </select>
-            )}
-          </div>
-        </div>
-        <input
-          ref={imageRef}
-          type="file"
-          accept="image/*"
-          className="hidden"
-          onChange={async (e) => {
-            const file = e.target.files?.[0];
-            e.target.value = '';
-            if (!file) return;
-            try {
-              const next = await addBackgroundImage(bg, file);
-              onBackgroundArtChange?.(next);
-            } catch {
-              /* ignore */
-            }
-          }}
-        />
-      </>
-    );
-  }
-
   return (
     <>
       <div
         data-onboarding="toolbar"
         className={chromeClass}
       >
-        <ToolbarButton
-          onClick={() => {
-            patchBg({ tool: 'pan' });
-            onToggleDrawMode?.();
-          }}
-          title="Draw on canvas background"
-          className="shrink-0"
+        <div
+          className={`nm-toolbar-glide-cluster nm-draw-cluster shrink-0 ${drawMode ? 'is-open' : ''}`}
+          data-onboarding="toolbar-draw"
         >
-          <Pencil size={16} />
-        </ToolbarButton>
+          <ToolbarButton
+            active={drawMode}
+            onClick={() => {
+              if (!drawMode) patchBg({ tool: 'pen' });
+              onToggleDrawMode?.();
+            }}
+            title={drawMode ? 'Exit draw mode' : 'Draw on canvas background'}
+          >
+            <Paintbrush size={16} strokeWidth={1.75} />
+          </ToolbarButton>
+          <DrawToolRail
+            open={drawMode}
+            showUnderline={false}
+            backgroundArt={backgroundArt}
+            onBackgroundArtChange={onBackgroundArtChange}
+          />
+        </div>
         <div className="mx-0.5 h-6 w-px shrink-0 bg-nm-divider sm:mx-1" />
         <span data-onboarding="toolbar-recenter" className="inline-flex shrink-0">
           <ToolbarButton

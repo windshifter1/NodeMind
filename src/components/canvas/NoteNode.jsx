@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useLayoutEffect, useState, useCallback, useMemo } from 'react';
-import { ChevronDown, ChevronUp, Minus, Pencil, Pin, X } from 'lucide-react';
+import { ChevronDown, ChevronUp, Minus, Pin, SlidersHorizontal, X } from 'lucide-react';
 import {
   MATH_NODE_MAX_WIDTH,
   MATH_NODE_MIN_WIDTH,
@@ -548,7 +548,7 @@ export default function NoteNode({
           className={`relative z-[21] p-1 rounded-md active:scale-95 transition ${darkNodes ? 'text-zinc-300 hover:bg-white/10' : 'text-slate-600 hover:bg-black/10'}`}
           title="Edit colour & pin"
         >
-          <Pencil size={14} />
+          <SlidersHorizontal size={14} strokeWidth={1.75} />
         </button>
 
       </div>

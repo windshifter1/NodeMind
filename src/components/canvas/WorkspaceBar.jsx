@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Plus, Pencil } from 'lucide-react';
-import { WORKSPACE_ICONS } from '@/lib/workspaceIcons';
+import { Plus, SlidersHorizontal } from 'lucide-react';
+import WorkspaceIcon from '@/components/shell/WorkspaceIcon';
 import { emitTutorial } from '@/lib/tutorialEvents';
 
 const WORKSPACE_BTN =
@@ -242,8 +242,6 @@ function WorkspaceScrollStrip({
 }
 
 function WorkspaceTab({ workspace: w, isActive, buttonRef, onSelect, onPointerDown, onPointerUp, onPointerLeave, onMouseEnter, onMouseLeave }) {
-  const Icon = WORKSPACE_ICONS[w.icon] || WORKSPACE_ICONS.note;
-
   return (
     <div className="relative flex h-8 shrink-0 items-center justify-center">
       <button
@@ -256,7 +254,7 @@ function WorkspaceTab({ workspace: w, isActive, buttonRef, onSelect, onPointerDo
         onMouseLeave={onMouseLeave}
         className={`nm-ws-chip ${isActive ? 'nm-ws-chip--on' : ''}`}
       >
-        <Icon size={14} className="shrink-0" strokeWidth={1.75} />
+        <WorkspaceIcon icon={w.icon} colour={w.colour} size={14} strokeWidth={1.75} />
         <span>{w.name}</span>
       </button>
     </div>
@@ -372,7 +370,7 @@ export default function WorkspaceBar({ workspaces, activeId, onSelect, onCreate,
           title="Edit current workspace"
           className={`${WORKSPACE_BTN} text-nm-text-secondary hover:bg-nm-hover hover:text-nm-text`}
         >
-          <Pencil size={16} />
+          <SlidersHorizontal size={16} strokeWidth={1.75} />
         </button>
       </div>
 

@@ -67,6 +67,7 @@ export const LAYOUT_DENSITIES = {
   COMPACT: 'compact',
   DEFAULT: 'default',
   SPACIOUS: 'spacious',
+  CUSTOM: 'custom',
 };
 
 export const DEFAULT_LAYOUT_SETTINGS = {
@@ -98,6 +99,13 @@ export function layoutPresetForDensity(density) {
   if (density === LAYOUT_DENSITIES.SPACIOUS) {
     return { horizontalSpacing: 300, verticalSpacing: 170, graphSpacing: 360 };
   }
+  if (density === LAYOUT_DENSITIES.CUSTOM) {
+    return {
+      horizontalSpacing: DEFAULT_LAYOUT_SETTINGS.horizontalSpacing,
+      verticalSpacing: DEFAULT_LAYOUT_SETTINGS.verticalSpacing,
+      graphSpacing: DEFAULT_LAYOUT_SETTINGS.graphSpacing,
+    };
+  }
   return {
     horizontalSpacing: DEFAULT_LAYOUT_SETTINGS.horizontalSpacing,
     verticalSpacing: DEFAULT_LAYOUT_SETTINGS.verticalSpacing,
@@ -120,6 +128,15 @@ export function normalizeLayoutSettings(settings = {}) {
     ? settings.density
     : LAYOUT_DENSITIES.DEFAULT;
   const preset = layoutPresetForDensity(density);
+
+  if (density === LAYOUT_DENSITIES.CUSTOM) {
+    return {
+      horizontalSpacing: numberOrDefault(settings.horizontalSpacing, preset.horizontalSpacing),
+      verticalSpacing: numberOrDefault(settings.verticalSpacing, preset.verticalSpacing),
+      graphSpacing: numberOrDefault(settings.graphSpacing, preset.graphSpacing),
+      density: LAYOUT_DENSITIES.CUSTOM,
+    };
+  }
 
   return {
     horizontalSpacing: numberOrDefault(settings.horizontalSpacing, preset.horizontalSpacing),

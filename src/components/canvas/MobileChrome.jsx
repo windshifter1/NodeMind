@@ -1,7 +1,6 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Plus,
-  Pencil,
   Home,
   SquareDashed,
   MoreHorizontal,
@@ -11,16 +10,12 @@ import {
   Trash2,
   Wrench,
   Menu,
-  X,
-  Eraser,
-  MousePointer2,
-  ImagePlus,
-  Hand,
+  Paintbrush,
 } from 'lucide-react';
 import { emitTutorial } from '@/lib/tutorialEvents';
 import { normalizeBackgroundArt } from '@/lib/backgroundArt';
 import { useSheetDragDismiss } from '@/hooks/useSheetDragDismiss';
-import { addBackgroundImage } from './BackgroundDrawLayer';
+import DrawToolRail from '@/components/canvas/DrawToolRail';
 import './mobileChrome.css';
 
 function ChromeButton({
@@ -109,104 +104,6 @@ function SheetItem({ icon: Icon, label, onClick, disabled = false, dataOnboardin
   );
 }
 
-function DrawRail({ backgroundArt, onBackgroundArtChange, imageRef, onExit }) {
-  const bg = normalizeBackgroundArt(backgroundArt);
-  const patchBg = (patch) => onBackgroundArtChange?.({ ...bg, ...patch });
-
-  return (
-    <div
-      className="nm-mobile__draw-rail nm-mobile__chrome"
-      data-draw-toolbar
-      data-mobile-chrome
-      aria-label="Draw tools"
-    >
-      <ChromeButton title="Done — exit draw mode" active onClick={onExit}>
-        <X size={16} />
-      </ChromeButton>
-
-      <div className="nm-mobile__draw-divider" />
-
-      <ChromeButton
-        title="Pan canvas"
-        active={bg.tool === 'pan'}
-        onClick={() => patchBg({ tool: 'pan' })}
-      >
-        <Hand size={16} />
-      </ChromeButton>
-      <ChromeButton
-        title="Pen"
-        active={bg.tool === 'pen'}
-        onClick={() => patchBg({ tool: 'pen' })}
-      >
-        <Pencil size={16} />
-      </ChromeButton>
-      <ChromeButton
-        title="Erase"
-        active={bg.tool === 'erase'}
-        onClick={() => patchBg({ tool: 'erase' })}
-      >
-        <Eraser size={16} />
-      </ChromeButton>
-      <ChromeButton
-        title="Select and move"
-        active={bg.tool === 'select'}
-        onClick={() => patchBg({ tool: 'select' })}
-      >
-        <MousePointer2 size={16} />
-      </ChromeButton>
-      <ChromeButton title="Place image on background" onClick={() => imageRef.current?.click()}>
-        <ImagePlus size={16} />
-      </ChromeButton>
-
-      <div className="nm-mobile__draw-divider" />
-
-      <input
-        type="color"
-        value={bg.color}
-        onChange={(e) => patchBg({ color: e.target.value })}
-        title="Pen colour"
-        aria-label="Pen colour"
-        className="nm-mobile__draw-color"
-      />
-
-      <label className="nm-mobile__draw-field" title="Pen width">
-        <span>W</span>
-        <input
-          type="range"
-          min={1}
-          max={24}
-          value={bg.penWidth}
-          onChange={(e) => patchBg({ penWidth: Number(e.target.value) })}
-        />
-      </label>
-
-      <label className="nm-mobile__draw-field" title="Emissiveness (glow)">
-        <span>Glow</span>
-        <input
-          type="range"
-          min={0}
-          max={100}
-          value={Math.round((bg.emissiveness || 0) * 100)}
-          onChange={(e) => patchBg({ emissiveness: Number(e.target.value) / 100 })}
-        />
-      </label>
-
-      {bg.tool === 'erase' && (
-        <select
-          value={bg.eraseMode}
-          onChange={(e) => patchBg({ eraseMode: e.target.value })}
-          className="nm-mobile__draw-select"
-          title="Erase type"
-          aria-label="Erase type"
-        >
-          <option value="stroke">Stroke</option>
-          <option value="area">Area</option>
-        </select>
-      )}
-    </div>
-  );
-}
-
 export default function MobileChrome({
   workspaceName,
   onOpenSidebar,
@@ -229,7 +126,6 @@ export default function MobileChrome({
 }) {
   const [moreSheetOpen, setMoreSheetOpen] = useState(false);
   const [moreOpenedByTools, setMoreOpenedByTools] = useState(false);
-  const imageRef = useRef(null);
   const canOrganiseSelected = selectedCount >= 2;
   const bg = normalizeBackgroundArt(backgroundArt);
 
@@ -271,10 +167,6 @@ export default function MobileChrome({
 
   const patchBg = (patch) => onBackgroundArtChange?.({ ...bg, ...patch });
 
-  const exitDraw = () => {
-    if (drawMode) onToggleDrawMode?.();
-  };
-
   return (
     <>
       <div
@@ -312,13 +204,17 @@ export default function MobileChrome({
       </div>
 
       {drawMode ? (
-        <DrawRail
-          backgroundArt={backgroundArt}
-          onBackgroundArtChange={onBackgroundArtChange}
-          imageRef={imageRef}
-          onExit={exitDraw}
-        />
-      ) : (
+        <div className="nm-mobile__draw-glide nm-mobile__chrome" data-mobile-chrome>
+          <DrawToolRail
+            open
+            backgroundArt={backgroundArt}
+            onBackgroundArtChange={onBackgroundArtChange}
+            onExit={() => onToggleDrawMode?.()}
+          />
+        </div>
+      ) : null}
+
+      {!drawMode ? (
         <div data-onboarding="toolbar" data-mobile-chrome className="nm-mobile__nav nm-mobile__chrome">
           <div className="nm-mobile__nav-slot" data-onboarding="toolbar-recenter">
             <ChromeButton
@@ -343,7 +239,7 @@ export default function MobileChrome({
                 setMoreSheetOpen(false);
               }}
             >
-              <Pencil size={17} />
+              <Paintbrush size={17} strokeWidth={1.75} />
             </ChromeButton>
             <span className="nm-mobile__label">Draw</span>
           </div>
@@ -387,7 +283,7 @@ export default function MobileChrome({
             <span className="nm-mobile__label">More</span>
           </div>
         </div>
-      )}
+      ) : null}
 
       <MoreSheet open={moreSheetOpen} title="More actions" onClose={closeMoreSheet}>
         <SheetItem
@@ -442,24 +338,6 @@ export default function MobileChrome({
           }}
         />
       </MoreSheet>
-
-      <input
-        ref={imageRef}
-        type="file"
-        accept="image/*"
-        className="hidden"
-        onChange={async (e) => {
-          const file = e.target.files?.[0];
-          e.target.value = '';
-          if (!file) return;
-          try {
-            const next = await addBackgroundImage(bg, file);
-            onBackgroundArtChange?.(next);
-          } catch {
-            /* ignore */
-          }
-        }}
-      />
     </>
   );
 }

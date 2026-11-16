@@ -365,8 +365,21 @@
 }
 
 .nm-sidebar__foot {
+  display: flex;
+  flex-direction: column;
   margin-top: auto;
-  padding: 0 var(--nm-sidebar-inset) var(--nm-sidebar-inset);
+  padding: 4px var(--nm-sidebar-inset) var(--nm-sidebar-inset);
+}
+
+.nm-sidebar__actions .nm-sidebar__item,
+.nm-sidebar__foot .nm-sidebar__item {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.nm-sidebar--collapsed .nm-sidebar__actions .nm-sidebar__item,
+.nm-sidebar--collapsed .nm-sidebar__foot .nm-sidebar__item {
+  width: 40px;
 }
 
 .nm-topbar {

@@ -1,5 +1,17 @@
 /** Workspace background art model helpers. */
 
+export const PEN_WIDTH_PRESETS = [1, 2, 3, 4, 6, 8, 10, 12, 16, 20, 24];
+
+export function snapPenWidth(value) {
+  const n = Number(value) || 3;
+  if (PEN_WIDTH_PRESETS.includes(n)) return n;
+  let best = PEN_WIDTH_PRESETS[0];
+  for (const preset of PEN_WIDTH_PRESETS) {
+    if (Math.abs(preset - n) < Math.abs(best - n)) best = preset;
+  }
+  return best;
+}
+
 export function emptyBackgroundArt() {
   return {
     strokes: [],
@@ -7,7 +19,6 @@ export function emptyBackgroundArt() {
     tool: 'pan',
     penWidth: 3,
     color: '#334155',
-    emissiveness: 0,
     eraseMode: 'stroke', // stroke | area
   };
 }
@@ -27,15 +38,10 @@ export function normalizeBackgroundArt(raw) {
     strokes: Array.isArray(raw.strokes) ? raw.strokes : [],
     images: Array.isArray(raw.images) ? raw.images : [],
     tool,
-    penWidth: clamp(Number(raw.penWidth) || 3, 1, 48),
+    penWidth: snapPenWidth(raw.penWidth),
     color: typeof raw.color === 'string' ? raw.color : base.color,
-    emissiveness: clamp(Number(raw.emissiveness) || 0, 0, 1),
     eraseMode: raw.eraseMode === 'area' ? 'area' : 'stroke',
   };
-}
-
-function clamp(n, min, max) {
-  return Math.min(max, Math.max(min, n));
 }
 
 export function newStrokeId() {

@@ -214,6 +214,9 @@ export default function CanvasBoard({
 
   /** Desktop always marquees on primary mouse; mobile only when Selection Mode is armed. */
   const shouldUseMarquee = (e) => {
+    if (drawMode && normalizeBackgroundArt(backgroundArt).tool === 'pan') {
+      return false;
+    }
     if (selectionArmedRef.current) {
       return e.pointerType !== 'mouse' ? e.button === 0 || e.button === -1 : e.button === 0;
     }

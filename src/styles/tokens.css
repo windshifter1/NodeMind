@@ -162,14 +162,23 @@ html[data-density='compact'] {
 
 :root {
   --nm-type-scale: 1;
+  --nm-chrome-hit: 28px;
+  --nm-chrome-hit-lg: 40px;
+  --nm-chrome-hit-mobile: 44px;
 }
 
 html[data-a11y-font='large'] {
   --nm-type-scale: 1.125;
+  --nm-chrome-hit: 32px;
+  --nm-chrome-hit-lg: 44px;
+  --nm-chrome-hit-mobile: 48px;
 }
 
 html[data-a11y-font='xl'] {
   --nm-type-scale: 1.25;
+  --nm-chrome-hit: 36px;
+  --nm-chrome-hit-lg: 48px;
+  --nm-chrome-hit-mobile: 52px;
 }
 
 html {

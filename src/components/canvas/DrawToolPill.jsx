@@ -7,7 +7,7 @@ import {
   PenLine,
   X,
 } from 'lucide-react';
-import { normalizeBackgroundArt } from '@/lib/backgroundArt';
+import { normalizeBackgroundArt, PEN_WIDTH_PRESETS } from '@/lib/backgroundArt';
 import { addBackgroundImage } from '@/components/canvas/BackgroundDrawLayer';
 
 function PillButton({ active, title, onClick, children }) {
@@ -27,13 +27,14 @@ function PillButton({ active, title, onClick, children }) {
 
 export default function DrawToolPill({ backgroundArt, onBackgroundArtChange, onExit }) {
   const imageRef = useRef(null);
+  const colorRef = useRef(null);
   const bg = normalizeBackgroundArt(backgroundArt);
   const patchBg = (patch) => onBackgroundArtChange?.({ ...bg, ...patch });
 
   return (
     <>
       <div
-        className="nm-draw-pill nm-scrollbar"
+        className="nm-draw-pill"
         data-draw-toolbar
         role="toolbar"
         aria-label="Draw tools"
@@ -78,36 +79,39 @@ export default function DrawToolPill({ backgroundArt, onBackgroundArtChange, onE
 
         <div className="nm-draw-pill__divider" />
 
-        <input
-          type="color"
-          value={bg.color}
-          onChange={(e) => patchBg({ color: e.target.value })}
-          title="Pen colour"
-          aria-label="Pen colour"
-          className="nm-draw-pill__color"
-        />
-
-        <label className="nm-draw-pill__field" title="Pen width">
-          <span>W</span>
-          <input
-            type="range"
-            min={1}
-            max={24}
-            value={bg.penWidth}
-            onChange={(e) => patchBg({ penWidth: Number(e.target.value) })}
+        <div className="nm-draw-pill__color-wrap">
+          <button
+            type="button"
+            title="Pen colour"
+            aria-label="Pen colour"
+            className="nm-draw-pill__color"
+            style={{ backgroundColor: bg.color }}
+            onClick={() => colorRef.current?.click()}
           />
-        </label>
-
-        <label className="nm-draw-pill__field" title="Emissiveness (glow)">
-          <span>Glow</span>
           <input
-            type="range"
-            min={0}
-            max={100}
-            value={Math.round((bg.emissiveness || 0) * 100)}
-            onChange={(e) => patchBg({ emissiveness: Number(e.target.value) / 100 })}
+            ref={colorRef}
+            type="color"
+            value={bg.color}
+            onChange={(e) => patchBg({ color: e.target.value })}
+            className="nm-draw-pill__color-input"
+            tabIndex={-1}
+            aria-hidden
           />
-        </label>
+        </div>
+
+        <select
+          value={bg.penWidth}
+          onChange={(e) => patchBg({ penWidth: Number(e.target.value) })}
+          className="nm-draw-pill__select nm-draw-pill__select--width"
+          title="Pen width"
+          aria-label="Pen width"
+        >
+          {PEN_WIDTH_PRESETS.map((w) => (
+            <option key={w} value={w}>
+              {w}px
+            </option>
+          ))}
+        </select>
 
         {bg.tool === 'erase' ? (
           <select

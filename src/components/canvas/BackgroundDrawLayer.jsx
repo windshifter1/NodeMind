@@ -278,7 +278,6 @@ export default function BackgroundDrawLayer({
         id,
         color: bg.color,
         width: bg.penWidth,
-        emissiveness: bg.emissiveness ?? 0,
         points: [{ x: w.x, y: w.y }],
       };
       draftRef.current = next;
@@ -394,27 +393,6 @@ export default function BackgroundDrawLayer({
     liveBgRef.current = null;
   };
 
-  // Live-update glow on the in-progress draft and selected stroke when the slider moves.
-  useEffect(() => {
-    const nextGlow = bg.emissiveness ?? 0;
-    const current = draftRef.current;
-    if (current && Math.abs((Number(current.emissiveness) || 0) - nextGlow) >= 0.001) {
-      const next = { ...current, emissiveness: nextGlow };
-      draftRef.current = next;
-      setDraft(next);
-    }
-    if (selectedKind !== 'stroke' || !selectedId) return;
-    const stroke = bg.strokes.find((s) => s.id === selectedId);
-    if (!stroke) return;
-    if (Math.abs((Number(stroke.emissiveness) || 0) - nextGlow) < 0.001) return;
-    onChange({
-      ...bg,
-      strokes: bg.strokes.map((s) =>
-        s.id === selectedId ? { ...s, emissiveness: nextGlow } : s
-      ),
-    });
-  }, [bg.emissiveness, selectedId, selectedKind]); // eslint-disable-line react-hooks/exhaustive-deps
-
   return (
     <svg
       data-background-draw
@@ -463,47 +441,23 @@ export default function BackgroundDrawLayer({
   );
 }
 
-/**
- * Soft glow via wider translucent under-strokes only.
- * SVG feGaussianBlur was catastrophically expensive when the parent
- * group is scaled up (zoomed in) — huge filter intermediates.
- */
 const StrokeGraphic = memo(function StrokeGraphic({ stroke, selected, smooth = false }) {
   const d = pointsToPath(stroke.points, { smooth });
   if (!d) return null;
   const color = stroke.color || '#334155';
   const width = Math.max(1, Number(stroke.width) || 3);
-  const glow = Math.max(0, Math.min(1, Number(stroke.emissiveness) || 0));
-  const common = {
-    d,
-    fill: 'none',
-    stroke: color,
-    strokeLinecap: 'round',
-    strokeLinejoin: 'round',
-  };
 
   return (
     <g style={{ outline: selected ? '1px solid #818cf8' : undefined }}>
-      {glow > 0 && (
-        <>
-          <path
-            {...common}
-            strokeWidth={width + glow * 26}
-            opacity={0.1 + glow * 0.18}
-          />
-          <path
-            {...common}
-            strokeWidth={width + glow * 12}
-            opacity={0.2 + glow * 0.28}
-          />
-          <path
-            {...common}
-            strokeWidth={width + glow * 5}
-            opacity={0.38 + glow * 0.32}
-          />
-        </>
-      )}
-      <path {...common} strokeWidth={width} opacity={1} />
+      <path
+        d={d}
+        fill="none"
+        stroke={color}
+        strokeWidth={width}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        opacity={1}
+      />
     </g>
   );
 });

@@ -10,8 +10,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 44px;
-  min-height: 44px;
+  min-width: var(--nm-chrome-hit-mobile);
+  min-height: var(--nm-chrome-hit-mobile);
   padding: 0.55rem;
   border-radius: var(--nm-radius-btn);
   color: var(--nm-text-secondary);

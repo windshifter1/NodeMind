@@ -15,7 +15,6 @@ import {
 import { emitTutorial } from '@/lib/tutorialEvents';
 import { normalizeBackgroundArt } from '@/lib/backgroundArt';
 import { useSheetDragDismiss } from '@/hooks/useSheetDragDismiss';
-import DrawToolRail from '@/components/canvas/DrawToolRail';
 import './mobileChrome.css';
 
 function ChromeButton({
@@ -202,17 +201,6 @@ export default function MobileChrome({
         </div>
         <div className="nm-mobile__top-side nm-mobile__top-side--end" />
       </div>
-
-      {drawMode ? (
-        <div className="nm-mobile__draw-glide nm-mobile__chrome" data-mobile-chrome>
-          <DrawToolRail
-            open
-            backgroundArt={backgroundArt}
-            onBackgroundArtChange={onBackgroundArtChange}
-            onExit={() => onToggleDrawMode?.()}
-          />
-        </div>
-      ) : null}
 
       {!drawMode ? (
         <div data-onboarding="toolbar" data-mobile-chrome className="nm-mobile__nav nm-mobile__chrome">

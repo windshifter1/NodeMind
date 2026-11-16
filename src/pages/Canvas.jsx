@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import CanvasBoard from '@/components/canvas/CanvasBoard';
 import Toolbar from '@/components/canvas/Toolbar';
+import DrawToolPill from '@/components/canvas/DrawToolPill';
 import MobileChrome from '@/components/canvas/MobileChrome';
 import AppSidebar from '@/components/shell/AppSidebar';
 import NewNodeDock from '@/components/shell/NewNodeDock';
@@ -1037,6 +1038,13 @@ function CanvasReady({
           />
         )}
       <div className="nm-shell__stage">
+      {drawMode ? (
+        <DrawToolPill
+          backgroundArt={normalizeBackgroundArt(active.backgroundArt)}
+          onBackgroundArtChange={(patch) => dispatch({ type: 'UPDATE_BACKGROUND_ART', patch })}
+          onExit={() => setDrawMode(false)}
+        />
+      ) : null}
       <CanvasBoard
         nodes={active.nodes}
         edges={active.edges}

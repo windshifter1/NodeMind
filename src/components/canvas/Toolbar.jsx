@@ -12,7 +12,6 @@ import {
 import { emitTutorial } from '@/lib/tutorialEvents';
 import { useTutorialHighlight } from '@/hooks/useTutorialHighlight';
 import { normalizeBackgroundArt } from '@/lib/backgroundArt';
-import DrawToolRail from '@/components/canvas/DrawToolRail';
 function AutoOrganiseAllIcon({ size = 15 }) {
   return (
     <svg
@@ -235,27 +234,18 @@ export default function Toolbar({
         data-onboarding="toolbar"
         className={chromeClass}
       >
-        <div
-          className={`nm-toolbar-glide-cluster nm-draw-cluster shrink-0 ${drawMode ? 'is-open' : ''}`}
+        <ToolbarButton
+          active={drawMode}
+          onClick={() => {
+            if (!drawMode) patchBg({ tool: 'pen' });
+            onToggleDrawMode?.();
+          }}
+          title={drawMode ? 'Draw mode (tools on canvas)' : 'Draw on canvas background'}
+          className="shrink-0"
           data-onboarding="toolbar-draw"
         >
-          <ToolbarButton
-            active={drawMode}
-            onClick={() => {
-              if (!drawMode) patchBg({ tool: 'pen' });
-              onToggleDrawMode?.();
-            }}
-            title={drawMode ? 'Exit draw mode' : 'Draw on canvas background'}
-          >
-            <Paintbrush size={16} strokeWidth={1.75} />
-          </ToolbarButton>
-          <DrawToolRail
-            open={drawMode}
-            showUnderline={false}
-            backgroundArt={backgroundArt}
-            onBackgroundArtChange={onBackgroundArtChange}
-          />
-        </div>
+          <Paintbrush size={16} strokeWidth={1.75} />
+        </ToolbarButton>
         <div className="mx-0.5 h-6 w-px shrink-0 bg-nm-divider sm:mx-1" />
         <span data-onboarding="toolbar-recenter" className="inline-flex shrink-0">
           <ToolbarButton

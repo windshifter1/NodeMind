@@ -173,29 +173,6 @@
     0 0 10px 1px color-mix(in srgb, var(--mk-tab) 55%, transparent);
 }
 
-.nm-mobile__draw-glide {
-  z-index: 52;
-  flex-shrink: 0;
-  padding: 4px calc(8px + var(--safe-right)) 6px calc(8px + var(--safe-left));
-  border-bottom: 1px solid var(--nm-divider);
-  overflow-x: auto;
-  overscroll-behavior-x: contain;
-  scrollbar-width: none;
-}
-
-.nm-mobile__draw-glide::-webkit-scrollbar {
-  display: none;
-}
-
-.nm-mobile__draw-glide .nm-toolbar-glide {
-  grid-template-columns: 1fr;
-}
-
-.nm-mobile__draw-glide .nm-toolbar-glide__inner {
-  opacity: 1;
-  transform: none;
-}
-
 .nm-mobile__nav,
 .nm-mobile__nav:active {
   position: absolute;

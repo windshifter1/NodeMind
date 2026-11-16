@@ -18,14 +18,15 @@ Noded is a **local graph for thinking**. It should feel at home next to Linear, 
 
 | Topic | Rule |
 |-------|------|
-| Surfaces | Near-white (default) or near-black; grey ramps, not rainbow chrome |
+| Surfaces | Page **#EFEFF0**, elevated **#F9F9FA** — never `#ffffff`. Soft shadow + 12px radius on the main pane |
 | Accent | One cool Linear-class violet (`--nm-accent`); semantic red/amber/green only |
-| Type | Inter for UI; JetBrains Mono for terminal |
-| Radius | 6–8px chrome and dialogs — not capsules |
-| Icons | 16–18px, 1.75 stroke; no filled decorative chrome |
-| Motion | 150–200ms ease; no liquid / gel |
-| Canvas | Neutral **dot grid**; empty canvas stays **blank** (no instructional overlay) |
-| Workspace colour | Not in chrome. Optional **left rail** on nodes + sockets only |
+| Type | **Geist** for UI; JetBrains Mono for terminal |
+| Radius | 6–10px chrome and dialogs — not capsules |
+| Icons | 16–18px, 1.75 stroke; no filled decorative icons in chrome |
+| Motion | 240ms `cubic-bezier(0.32, 0.72, 0, 1)` — Notion/ChatGPT drawer feel, app-wide |
+| Canvas | Neutral **dot grid** on `#F9F9FA`; empty canvas stays **blank** |
+| Text | Near-black `#191919` for primary; `#9B9B9B` muted for secondary |
+| Product noun | User-facing **Canvas** / **Canvases** (code may still say workspace) |
 
 ---
 
@@ -38,10 +39,10 @@ Learned from Linear + Notion (and Cursor’s same family). Keep the **spatial co
 │ Sidebar     │ Top bar: current workspace + tools   │
 │ (collapsible)│ (workflow only — add, draw, organise,│
 │  brand      │  share/save, terminal, zoom)          │
-│  workspaces │──────────────────────────────────────│
-│  + / edit   │                                      │
+│  canvases   │──────────────────────────────────────│
+│  + new      │                                      │
 │  settings   │              Canvas                  │
-│             │                         [ Agent ▢ ]  │
+│             │                            [ + ]     │
 └─────────────┴──────────────────────────────────────┘
 ```
 
@@ -49,10 +50,10 @@ Learned from Linear + Notion (and Cursor’s same family). Keep the **spatial co
 
 | Region | Owns | Must not own |
 |--------|------|----------------|
-| **Left sidebar** | Product identity, **workspace list**, new/edit workspace, **Settings**, collapse control | Canvas tools, zoom, draw, add-node |
-| **Top bar** | **Current workspace name**, features used *while thinking on the graph* (add, draw, select, organise, recenter, share, save, terminal, zoom) | Settings, workspace CRUD |
+| **Left sidebar** | Product identity, **canvas list** (hover-to-edit), new canvas, **Settings**, collapse | Graph tools |
+| **Top bar** | **Current canvas name**, workflow (draw, organise, recenter, share, save, terminal, zoom) | Settings, canvas CRUD, add-node |
 | **Canvas** | The graph. Empty = quiet. | Hints, FAQs, chrome |
-| **Bottom-right Agent** | Future AI chat. Until then: **Coming soon** panel. Same corner as Linear Agent / Notion help | Navigation |
+| **Bottom-right +** | **New node** | Agent / chat |
 
 ### Sidebar behaviour
 
@@ -109,6 +110,10 @@ If you add a menu, **copy an existing dialog**, do not invent a new radius/shado
 
 ## History log (append on significant prompts)
 
+### 2026-11-16 — Elevation, type, Canvas noun, new-node dock
+
+Live branch is **`dev`**. Page `#EFEFF0` / elevated `#F9F9FA`; Geist; primary `#191919` / muted `#9B9B9B`; 240ms drawer motion; **Canvas** copy; hover-edit on list rows; bottom-right **+** is new node (Agent label gone).
+
 ### 2026-11-15 — Brand reset
 
 Monochrome ecosystem grammar; Noded; light default; skins deleted; dot grid; no marketing landing.
@@ -131,4 +136,4 @@ Also: empty-canvas tutorial sentence removed; all dialogs brought onto one chrom
 2. **Append a History log entry** when the user changes philosophy or layout.
 3. Tokens only — no new hex in chrome (user node colours excepted).
 4. Do not reintroduce glass, landing splash, or rainbow workspace tabs.
-5. Work on `gen-ii`. GitHub Pages: merge to `dev` until `gen-ii` is allowlisted.
+5. Live / Pages branch is **`dev`**. Feature work can land on `dev` (or merge from `gen-ii`).

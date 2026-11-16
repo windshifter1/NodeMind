@@ -37,17 +37,24 @@ export default function AppSidebar({
     return () => window.removeEventListener('keydown', onKey);
   }, [overlay, open, onClose]);
 
-  if (overlay && !open) return null;
+  const railCollapsed = collapsed && !overlay;
 
   return (
     <>
       {overlay ? (
-        <button type="button" className="nm-sidebar-backdrop" aria-label="Close sidebar" onClick={onClose} />
+        <button
+          type="button"
+          className={`nm-sidebar-backdrop ${open ? 'is-open' : ''}`}
+          aria-label="Close sidebar"
+          tabIndex={open ? 0 : -1}
+          onClick={onClose}
+        />
       ) : null}
       <aside
-        className={`nm-sidebar ${collapsed && !overlay ? 'nm-sidebar--collapsed' : ''} ${overlay ? 'nm-sidebar--overlay' : ''}`}
+        className={`nm-sidebar ${railCollapsed ? 'nm-sidebar--collapsed' : ''} ${overlay ? 'nm-sidebar--overlay' : ''} ${overlay && open ? 'is-open' : ''}`}
         data-onboarding="workspace-bar"
         aria-label="Sidebar"
+        aria-hidden={overlay && !open ? true : undefined}
       >
         <div className="nm-sidebar__top">
           <div className="nm-sidebar__brand" title={PRODUCT_NAME}>
@@ -57,33 +64,51 @@ export default function AppSidebar({
           <button
             type="button"
             className="nm-sidebar__iconbtn"
-            title={overlay ? 'Close sidebar' : collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            title={overlay ? 'Close sidebar' : railCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             onClick={overlay ? onClose : onToggleCollapsed}
           >
-            {overlay || !collapsed ? <PanelLeftClose size={16} strokeWidth={1.75} /> : <PanelLeft size={16} strokeWidth={1.75} />}
+            {overlay || !railCollapsed ? <PanelLeftClose size={16} strokeWidth={1.75} /> : <PanelLeft size={16} strokeWidth={1.75} />}
           </button>
         </div>
 
-        <div className="nm-sidebar__label">Workspaces</div>
-        <nav className="nm-sidebar__nav" aria-label="Workspaces">
+        <div className="nm-sidebar__label">Canvases</div>
+        <nav className="nm-sidebar__nav" aria-label="Canvases">
           {workspaces.map((ws) => {
             const Icon = WORKSPACE_ICONS[ws.icon] || WORKSPACE_ICONS.note;
             const active = ws.id === activeId;
             return (
-              <button
+              <div
                 key={ws.id}
-                type="button"
-                className={`nm-sidebar__item ${active ? 'nm-sidebar__item--on' : ''}`}
-                title={ws.name}
-                onClick={() => {
-                  if (ws.id !== activeId) emitTutorial('workspace.switch');
-                  onSelect?.(ws.id);
-                  if (overlay) onClose?.();
-                }}
+                className={`nm-sidebar__row ${active ? 'nm-sidebar__row--on' : ''}`}
               >
-                <Icon size={16} strokeWidth={1.75} />
-                <span>{ws.name}</span>
-              </button>
+                <button
+                  type="button"
+                  className={`nm-sidebar__item ${active ? 'nm-sidebar__item--on' : ''}`}
+                  title={ws.name}
+                  onClick={() => {
+                    if (ws.id !== activeId) emitTutorial('workspace.switch');
+                    onSelect?.(ws.id);
+                    if (overlay) onClose?.();
+                  }}
+                >
+                  <Icon size={16} strokeWidth={1.75} />
+                  <span>{ws.name}</span>
+                </button>
+                <button
+                  type="button"
+                  className="nm-sidebar__edit"
+                  data-onboarding={active ? 'workspace-edit' : undefined}
+                  title="Edit canvas"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onEdit?.(ws.id);
+                    emitTutorial('workspace.edit.open');
+                    if (overlay) onClose?.();
+                  }}
+                >
+                  <Pencil size={14} strokeWidth={1.75} />
+                </button>
+              </div>
             );
           })}
         </nav>
@@ -93,28 +118,14 @@ export default function AppSidebar({
             type="button"
             className="nm-sidebar__item"
             data-onboarding="workspace-create"
-            title="New workspace"
+            title="New canvas"
             onClick={() => {
               onCreate?.();
               if (overlay) onClose?.();
             }}
           >
             <Plus size={16} strokeWidth={1.75} />
-            <span>New workspace</span>
-          </button>
-          <button
-            type="button"
-            className="nm-sidebar__item"
-            data-onboarding="workspace-edit"
-            title="Edit workspace"
-            onClick={() => {
-              onEdit?.();
-              emitTutorial('workspace.edit.open');
-              if (overlay) onClose?.();
-            }}
-          >
-            <Pencil size={16} strokeWidth={1.75} />
-            <span>Edit workspace</span>
+            <span>New canvas</span>
           </button>
         </div>
 

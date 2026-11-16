@@ -399,7 +399,7 @@ export default function TerminalDialog({
   const nodes = workspace.nodes || [];
   const graphOrientation = normalizeOrientation(orientation || workspace.orientation);
   const pathParts = nodePath(nodes, cwdId);
-  const prompt = `${workspace.name || 'Workspace'}:\\${pathParts.join('\\')}>`;
+  const prompt = `${workspace.name || 'Canvas'}:\\${pathParts.join('\\')}>`;
 
   useEffect(() => {
     linesRef.current = lines;
@@ -887,7 +887,7 @@ export default function TerminalDialog({
       }
       case 'arrange':
         onArrange?.();
-        write('Workspace arranged.');
+        write('Canvas arranged.');
         break;
       case 'export':
         onExport();

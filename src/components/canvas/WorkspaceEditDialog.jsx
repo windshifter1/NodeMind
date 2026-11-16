@@ -110,7 +110,7 @@ export default function WorkspaceEditDialog({ workspace, open, onClose, onSave, 
         onPointerDown={(e) => e.stopPropagation()}
       >
         <div className="nm-dialog-head">
-          <h2>{mode === 'create' ? 'New workspace' : 'Edit workspace'}</h2>
+          <h2>{mode === 'create' ? 'New canvas' : 'Edit canvas'}</h2>
           <div className="flex-1" />
           <button type="button" onClick={close} className="nm-dialog-close" title="Close">
             <X size={16} strokeWidth={1.75} />
@@ -267,14 +267,14 @@ export default function WorkspaceEditDialog({ workspace, open, onClose, onSave, 
             {mode === 'edit' ? (
               <button
                 onClick={() => {
-                  if (window.confirm('Delete this workspace and all its content?')) {
+                  if (window.confirm('Delete this canvas and all its content?')) {
                     onDelete(workspace.id);
                     close();
                   }
                 }}
                 className="text-sm text-red-500 hover:text-red-400 font-medium transition"
               >
-                Delete workspace
+                Delete canvas
               </button>
             ) : (
               <span />

@@ -9,7 +9,9 @@
   inset: 0;
   display: flex;
   overflow: hidden;
-  background: var(--nm-canvas);
+  background: var(--nm-page);
+  padding: 8px;
+  gap: 0;
 }
 
 .nm-shell__main {
@@ -18,6 +20,10 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+  border-radius: 12px;
+  background: var(--nm-elevated);
+  box-shadow: var(--nm-shadow);
 }
 
 .nm-shell__stage {
@@ -34,12 +40,13 @@
   width: var(--nm-sidebar-width);
   flex: 0 0 var(--nm-sidebar-width);
   height: 100%;
-  border-right: 1px solid var(--nm-border);
-  background: var(--nm-chrome);
+  border: 0;
+  background: transparent;
   padding-top: var(--safe-top);
   padding-bottom: var(--safe-bottom);
   padding-left: var(--safe-left);
   color: var(--nm-text);
+  overflow: hidden;
 }
 
 .nm-sidebar--collapsed {
@@ -71,13 +78,23 @@
 
 .nm-sidebar--overlay {
   position: fixed;
-  left: 0;
-  top: 0;
-  bottom: 0;
+  left: 8px;
+  top: 8px;
+  bottom: 8px;
   z-index: 90;
   width: min(var(--nm-sidebar-width), 86vw);
   flex: none;
+  padding: 0;
+  border-radius: 12px;
+  background: var(--nm-elevated);
   box-shadow: var(--nm-shadow);
+  transform: translateX(calc(-100% - 16px));
+  pointer-events: none;
+}
+
+.nm-sidebar--overlay.is-open {
+  transform: none;
+  pointer-events: auto;
 }
 
 .nm-sidebar-backdrop {
@@ -86,6 +103,13 @@
   z-index: 85;
   border: 0;
   background: var(--nm-overlay);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.nm-sidebar-backdrop.is-open {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .nm-sidebar__top {
@@ -130,6 +154,10 @@
   color: var(--nm-text-muted);
 }
 
+.nm-sidebar--collapsed .nm-sidebar__row {
+  justify-content: center;
+}
+
 .nm-sidebar__nav,
 .nm-sidebar__actions {
   display: flex;
@@ -144,27 +172,76 @@
   overflow: auto;
 }
 
+.nm-sidebar__row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  border-radius: 6px;
+}
+
+.nm-sidebar__row--on,
+.nm-sidebar__row:hover {
+  background: var(--nm-hover);
+}
+
 .nm-sidebar__item {
   display: flex;
   align-items: center;
   gap: 8px;
   min-height: 32px;
+  min-width: 0;
+  flex: 1;
   padding: 0 8px;
   border-radius: 6px;
-  color: var(--nm-text-secondary);
+  color: var(--nm-text-muted);
   font-size: 13px;
   text-align: left;
 }
 
 .nm-sidebar__item:hover {
-  background: var(--nm-hover);
   color: var(--nm-text);
 }
 
 .nm-sidebar__item--on {
-  background: var(--nm-hover-strong);
+  background: transparent;
   color: var(--nm-text);
   font-weight: 500;
+}
+
+.nm-sidebar__edit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  margin-right: 4px;
+  border-radius: 6px;
+  color: var(--nm-text-muted);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.nm-sidebar__row:hover .nm-sidebar__edit,
+.nm-sidebar__row:focus-within .nm-sidebar__edit,
+.nm-sidebar__edit:focus-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.nm-sidebar__edit:hover {
+  background: var(--nm-hover-strong);
+  color: var(--nm-text);
+}
+
+.nm-sidebar--collapsed .nm-sidebar__edit {
+  display: none;
+}
+
+@media (hover: none) {
+  .nm-sidebar__row--on .nm-sidebar__edit {
+    opacity: 1;
+    pointer-events: auto;
+  }
 }
 
 .nm-sidebar__item span {
@@ -190,7 +267,7 @@
   padding: 0 10px 0 12px;
   padding-right: calc(10px + var(--safe-right));
   border-bottom: 1px solid var(--nm-border);
-  background: var(--nm-chrome);
+  background: transparent;
 }
 
 .nm-topbar__title {
@@ -249,15 +326,25 @@
 .nm-agent__btn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
-  height: 32px;
-  padding: 0 10px 0 8px;
+  height: 36px;
+  width: 36px;
+  padding: 0;
   border: 1px solid var(--nm-border);
-  border-radius: 8px;
-  background: var(--nm-panel);
+  border-radius: 10px;
+  background: var(--nm-elevated);
   color: var(--nm-text);
   font-size: 12px;
   font-weight: 500;
+  box-shadow: var(--nm-shadow);
+}
+
+.nm-agent__btn--create {
+  width: 40px;
+  height: 40px;
+  color: var(--nm-text);
+  background: var(--nm-elevated);
   box-shadow: var(--nm-shadow);
 }
 
@@ -328,8 +415,8 @@
   flex-direction: column;
   overflow: hidden;
   border: 1px solid var(--nm-border);
-  border-radius: 8px;
-  background: var(--nm-panel);
+  border-radius: 10px;
+  background: var(--nm-elevated);
   box-shadow: var(--nm-shadow);
 }
 

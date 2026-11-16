@@ -184,7 +184,7 @@ function desktopSteps() {
     {
       id: 'arrange',
       title: 'Arrange the canvas',
-      body: 'Run the auto-organise layout for this workspace.',
+      body: 'Run the auto-organise layout for this canvas.',
       expect: { kind: 'command', match: /^arrange$/i },
       hint: 'arrange',
       highlight: 'input',
@@ -342,7 +342,7 @@ function mobileSteps() {
     {
       id: 'find',
       title: 'Find',
-      body: 'Search across the workspace.',
+      body: 'Search across the canvas.',
       expect: { kind: 'command', match: /^find(\s|$)/i },
       hint: 'find Tutorial',
       highlight: 'input',
@@ -405,7 +405,7 @@ function mobileSteps() {
     {
       id: 'arrange',
       title: 'Arrange',
-      body: 'Auto organise the workspace.',
+      body: 'Auto organise the canvas.',
       expect: { kind: 'command', match: /^arrange$/i },
       hint: 'arrange',
       highlight: 'input',

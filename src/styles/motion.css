@@ -1,0 +1,56 @@
+:root {
+  --nm-ease: cubic-bezier(0.32, 0.72, 0, 1);
+  --nm-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --nm-duration: 240ms;
+  --nm-duration-fast: 160ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --nm-duration: 1ms;
+    --nm-duration-fast: 1ms;
+  }
+}
+
+.nm-sidebar,
+.nm-sidebar-backdrop,
+.nm-shell__main,
+.nm-agent__btn,
+.nm-sidebar__item,
+.nm-sidebar__iconbtn,
+.nm-sidebar__edit,
+.nm-dialog-close,
+.nm-topbar .nm-toolbar button {
+  transition-property: transform, opacity, background-color, color, box-shadow, width, flex-basis, border-color;
+  transition-duration: var(--nm-duration);
+  transition-timing-function: var(--nm-ease);
+}
+
+.nm-dialog-overlay {
+  animation: nm-fade var(--nm-duration) var(--nm-ease);
+}
+
+.nm-dialog-panel {
+  animation: nm-rise var(--nm-duration) var(--nm-ease);
+  box-shadow: var(--nm-shadow);
+}
+
+@keyframes nm-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes nm-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}

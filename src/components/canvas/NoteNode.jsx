@@ -359,7 +359,7 @@ export default function NoteNode({
         backgroundColor: 'var(--nm-node-bg)',
         borderRadius: nodeRadius,
         opacity: ghost ? 0.3 : 1,
-        boxShadow: selected ? selectionGlow() : '0 1px 2px oklch(0.2 0.02 260 / 0.06)',
+        boxShadow: selected ? selectionGlow() : 'var(--nm-node-shadow)',
         backdropFilter: 'var(--nm-node-blur)',
         WebkitBackdropFilter: 'var(--nm-node-blur)',
         transition:

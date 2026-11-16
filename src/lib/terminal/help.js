@@ -163,24 +163,24 @@ export const HELP_GROUPS = [
     ],
   },
   {
-    title: 'Workspace',
+    title: 'Canvas',
     entries: [
       {
         keys: ['arrange'],
         syntax: 'arrange',
-        summary: 'Auto organise the workspace.',
+        summary: 'Auto organise the canvas.',
         example: 'arrange',
       },
       {
         keys: ['export'],
         syntax: 'export',
-        summary: 'Download this workspace as JSON, including drawings and attached files.',
+        summary: 'Download this canvas as JSON, including drawings and attached files.',
         example: 'export',
       },
       {
         keys: ['import'],
         syntax: 'import',
-        summary: 'Open the JSON import picker. Adds a workspace or full backup without replacing existing ones.',
+        summary: 'Open the JSON import picker. Adds a canvas or full backup without replacing existing ones.',
         example: 'import',
       },
     ],

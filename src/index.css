@@ -28,8 +28,7 @@
     overscroll-behavior: none;
     touch-action: manipulation;
     -webkit-text-size-adjust: 100%;
-    /* Match canvas so any edge seam is invisible */
-    background-color: var(--nm-canvas);
+    background-color: var(--nm-page);
   }
 
   body {
@@ -48,7 +47,7 @@
     overscroll-behavior: none;
     touch-action: manipulation;
     -webkit-text-size-adjust: 100%;
-    background-color: var(--nm-canvas);
+    background-color: var(--nm-page);
   }
 
   #root {
@@ -57,7 +56,7 @@
     width: 100%;
     height: 100%;
     overflow: hidden;
-    background-color: var(--nm-canvas);
+    background-color: var(--nm-page);
   }
 
   @media (max-width: 768px) {

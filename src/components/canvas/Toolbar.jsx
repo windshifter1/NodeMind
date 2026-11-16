@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Trash2,
-  Plus,
   Terminal,
   Share2,
   Save,
@@ -215,7 +214,6 @@ export default function Toolbar({
   onToggleSelectionArm,
   zoom,
   onRecenter,
-  onAddNodeCenter,
   drawMode = false,
   onToggleDrawMode,
   backgroundArt,
@@ -394,28 +392,12 @@ export default function Toolbar({
         data-onboarding="toolbar"
         className={chromeClass}
       >
-        <span data-onboarding="toolbar-add" className="inline-flex shrink-0">
-          <ToolbarButton
-            onClick={(e) => {
-              const rect = e.currentTarget.getBoundingClientRect();
-              onAddNodeCenter({
-                clientX: rect.left + rect.width / 2 - 140,
-                clientY: rect.bottom + 10,
-              });
-            }}
-            title="Add node"
-            className="!p-2 sm:!p-3"
-          >
-            <Plus size={16} />
-          </ToolbarButton>
-        </span>
-        <div className="mx-0.5 h-6 w-px shrink-0 bg-nm-divider sm:mx-1" />
         <ToolbarButton
           onClick={() => {
             patchBg({ tool: 'pan' });
             onToggleDrawMode?.();
           }}
-          title="Draw on workspace background"
+          title="Draw on canvas background"
           className="shrink-0 !p-2 sm:!p-3"
         >
           <Pencil size={16} />

@@ -3,7 +3,7 @@ import CanvasBoard from '@/components/canvas/CanvasBoard';
 import Toolbar from '@/components/canvas/Toolbar';
 import MobileChrome from '@/components/canvas/MobileChrome';
 import AppSidebar from '@/components/shell/AppSidebar';
-import AgentDock from '@/components/shell/AgentDock';
+import NewNodeDock from '@/components/shell/NewNodeDock';
 import NodeEditDialog from '@/components/canvas/NodeEditDialog';
 import WorkspaceEditDialog from '@/components/canvas/WorkspaceEditDialog';
 import TextExportDialog from '@/components/canvas/TextExportDialog';
@@ -97,7 +97,7 @@ function clampZoom(z) {
 function RestoreScreen() {
   return (
     <div className="flex h-full w-full items-center justify-center bg-nm-canvas text-sm text-nm-text-muted">
-      Restoring workspaces…
+      Restoring canvases…
     </div>
   );
 }
@@ -800,7 +800,7 @@ function CanvasReady({
         dispatch({ type: 'IMPORT_WORKSPACES', workspaces: imported.workspaces });
         clearReceived();
       } catch (err) {
-        if (!cancelled) alert(err?.message || 'Could not import the received workspace.');
+        if (!cancelled) alert(err?.message || 'Could not import the received canvas.');
         clearReceived();
       }
     })();
@@ -835,15 +835,15 @@ function CanvasReady({
       if (!imported.workspaces.length) {
         alert(
           imported.skipped
-            ? `Nothing new to import — ${imported.skipped} workspace${imported.skipped === 1 ? '' : 's'} already present.`
-            : 'Backup contains no workspaces.'
+            ? `Nothing new to import — ${imported.skipped} canvas${imported.skipped === 1 ? '' : 'es'} already present.`
+            : 'Backup contains no canvases.'
         );
         return;
       }
       dispatch({ type: 'IMPORT_WORKSPACES', workspaces: imported.workspaces });
       if (imported.skipped) {
         alert(
-          `Imported ${imported.workspaces.length} workspace${imported.workspaces.length === 1 ? '' : 's'}. Skipped ${imported.skipped} duplicate${imported.skipped === 1 ? '' : 's'} (same name and contents).`
+          `Imported ${imported.workspaces.length} canvas${imported.workspaces.length === 1 ? '' : 'es'}. Skipped ${imported.skipped} duplicate${imported.skipped === 1 ? '' : 's'} (same name and contents).`
         );
       }
     } catch (err) {
@@ -852,7 +852,7 @@ function CanvasReady({
   };
 
   const handleClear = () => {
-    if (window.confirm('Clear all nodes and connections in this workspace? The workspace itself is kept.')) {
+    if (window.confirm('Clear all nodes and connections in this canvas? The canvas itself is kept.')) {
       dispatch({ type: 'CLEAR_CONTENT' });
     }
   };
@@ -919,6 +919,23 @@ function CanvasReady({
     });
   };
 
+  const addNodeFromChrome = (anchor) => {
+    const clientX = anchor?.clientX ?? window.innerWidth / 2;
+    const clientY = anchor?.clientY ?? 72;
+    const rect = document.querySelector('[data-canvas-board]')?.getBoundingClientRect();
+    const left = rect?.left ?? 0;
+    const top = rect?.top ?? 0;
+    openNodePicker({
+      source: 'toolbar',
+      x: -nodeWidthForTitle('') / 2,
+      y: -TOP_BAR_HEIGHT / 2,
+      worldX: (clientX - left - pan.x) / zoom,
+      worldY: (clientY - top - pan.y) / zoom,
+      clientX,
+      clientY,
+    });
+  };
+
   const toolbar = (
     <Toolbar
       onClear={handleClear}
@@ -938,22 +955,6 @@ function CanvasReady({
       onBackgroundArtChange={(patch) =>
         dispatch({ type: 'UPDATE_BACKGROUND_ART', patch })
       }
-      onAddNodeCenter={(anchor) => {
-        const clientX = anchor?.clientX ?? window.innerWidth / 2;
-        const clientY = anchor?.clientY ?? 72;
-        const rect = document.querySelector('[data-canvas-board]')?.getBoundingClientRect();
-        const left = rect?.left ?? 0;
-        const top = rect?.top ?? 0;
-        openNodePicker({
-          source: 'toolbar',
-          x: -nodeWidthForTitle('') / 2,
-          y: -TOP_BAR_HEIGHT / 2,
-          worldX: (clientX - left - pan.x) / zoom,
-          worldY: (clientY - top - pan.y) / zoom,
-          clientX,
-          clientY,
-        });
-      }}
     />
   );
 
@@ -969,7 +970,10 @@ function CanvasReady({
         onClose={() => setMobileSidebarOpen(false)}
         onSelect={selectWorkspace}
         onCreate={() => setCreatingWorkspace(true)}
-        onEdit={() => setEditingWorkspace(true)}
+        onEdit={(id) => {
+          if (id && id !== state.activeId) selectWorkspace(id);
+          setEditingWorkspace(true);
+        }}
         onOpenSettings={() => setSettingsOpen(true)}
       />
       <div className="nm-shell__main">
@@ -1074,7 +1078,7 @@ function CanvasReady({
         onClose={closeSelectionMenu}
         onPick={pickSelectionOp}
       />
-      {isDesktop ? <AgentDock /> : null}
+      {isDesktop ? <NewNodeDock onAdd={addNodeFromChrome} /> : null}
       </div>
 
       <NodeEditDialog
@@ -1097,7 +1101,7 @@ function CanvasReady({
       <WorkspaceEditDialog
         workspace={{
           id: 'new',
-          name: `Workspace ${state.workspaces.length + 1}`,
+          name: `Canvas ${state.workspaces.length + 1}`,
           colour: '#6366f1',
           icon: 'note',
           orientation: 'horizontal',
@@ -1122,7 +1126,7 @@ function CanvasReady({
         onClose={() => setShareMenuOpen(false)}
         title="Share"
         icon={Share2}
-        description="Send this workspace to another device, or share a canvas image."
+        description="Send this canvas to another device, or share a canvas image."
         actions={[
           {
             id: 'nearby',
@@ -1161,19 +1165,19 @@ function CanvasReady({
         onClose={() => setSaveMenuOpen(false)}
         title="Save"
         icon={Save}
-        description="Import or export this workspace as a Noded file."
+        description="Import or export this canvas as a Noded file."
         actions={[
           {
             id: 'import',
             label: 'Import',
-            description: 'Load a workspace or backup from a file',
+            description: 'Load a canvas or backup from a file',
             icon: Upload,
             onClick: () => importFileRef.current?.click(),
           },
           {
             id: 'export',
             label: 'Export',
-            description: 'Download this workspace as a JSON file',
+            description: 'Download this canvas as a JSON file',
             icon: Download,
             onClick: () => {
               void handleExport();
@@ -1182,7 +1186,7 @@ function CanvasReady({
           {
             id: 'copy',
             label: 'Copy text',
-            description: 'Copy a text outline of this workspace',
+            description: 'Copy a text outline of this canvas',
             icon: Copy,
             onClick: () => setTextExportOpen(true),
           },

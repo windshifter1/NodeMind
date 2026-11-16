@@ -18,7 +18,6 @@ import {
   Hand,
 } from 'lucide-react';
 import { emitTutorial } from '@/lib/tutorialEvents';
-import AgentDock from '@/components/shell/AgentDock';
 import { normalizeBackgroundArt } from '@/lib/backgroundArt';
 import { useSheetDragDismiss } from '@/hooks/useSheetDragDismiss';
 import { addBackgroundImage } from './BackgroundDrawLayer';
@@ -309,9 +308,7 @@ export default function MobileChrome({
             </>
           )}
         </div>
-        <div className="nm-mobile__top-side nm-mobile__top-side--end">
-          <AgentDock variant="icon" />
-        </div>
+        <div className="nm-mobile__top-side nm-mobile__top-side--end" />
       </div>
 
       {drawMode ? (

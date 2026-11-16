@@ -85,18 +85,18 @@ export default function NearbyShareDialog({
             : nearby.outgoing.phase === 'sent'
               ? `Sent to ${nearby.outgoing.peerName}.`
               : nearby.peers.length
-                ? 'Connected — sending this workspace…'
+                ? 'Connected — sending this canvas…'
                 : 'Waiting for the other device to enter this joining code…'
           : joining
             ? nearby.incoming?.received
-              ? 'Workspace added.'
+              ? 'Canvas added.'
               : nearby.incoming?.receiving
-                ? 'Receiving the workspace…'
+                ? 'Receiving the canvas…'
                 : nearby.peers.length
-                  ? 'Connected — the workspace is on its way.'
-                  : 'Waiting to receive the workspace…'
+                  ? 'Connected — the canvas is on its way.'
+                  : 'Waiting to receive the canvas…'
             : nearby.peers.length
-              ? 'Tap a device to send this workspace.'
+              ? 'Tap a device to send this canvas.'
               : anywhere
                 ? 'Create a joining code, or enter one from the other device.'
                 : 'No other Noded session on this network yet.';
@@ -153,10 +153,10 @@ export default function NearbyShareDialog({
 
         <div className="overflow-auto p-4">
           <p className="text-xs text-nm-text-muted">
-            Send <span className="font-medium text-nm-text">{workspaceName || 'this workspace'}</span> to
+            Send <span className="font-medium text-nm-text">{workspaceName || 'this canvas'}</span> to
             another open Noded session
             {anywhere
-              ? '. Entering the joining code sends this workspace — no device tap needed'
+              ? '. Entering the joining code sends this canvas — no device tap needed'
               : ' on this network. The other device must accept'}
             .
           </p>
@@ -191,7 +191,7 @@ export default function NearbyShareDialog({
                   {hosting
                     ? 'Waiting for them to enter the code…'
                     : joining
-                      ? 'Waiting to receive the workspace…'
+                      ? 'Waiting to receive the canvas…'
                       : 'Waiting for another session…'}
                 </p>
               </div>
@@ -234,7 +234,7 @@ export default function NearbyShareDialog({
                 Joining code
               </h3>
               <p className="mt-1 text-xs text-nm-text-muted">
-                On the other device, open Share → Any device and type this code. The workspace sends
+                On the other device, open Share → Any device and type this code. The canvas sends
                 as soon as they join.
               </p>
               <p className="mt-3 text-center font-mono text-2xl tracking-[0.28em] text-nm-text">
@@ -256,7 +256,7 @@ export default function NearbyShareDialog({
                 Joining code
               </h3>
               <p className="mt-1 text-xs text-nm-text-muted">
-                Joined {formatSessionCode(nearby.sessionCode)}. The workspace is coming from the other
+                Joined {formatSessionCode(nearby.sessionCode)}. The canvas is coming from the other
                 device — you do not need to pick anyone.
               </p>
               <button

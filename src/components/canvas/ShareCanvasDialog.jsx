@@ -157,7 +157,7 @@ export default function ShareCanvasDialog({
         </div>
         <div className="space-y-4 p-4">
           <p className="text-sm text-nm-text-secondary">
-            Capture this workspace as it looks on the canvas — including note text, math, drawings, and
+            Capture this canvas as it looks on screen — including note text, math, drawings, and
             loaded images — then download or open your device share sheet.
           </p>
           {ios && (

@@ -83,7 +83,7 @@ export const DESKTOP_TUTORIAL_SECTIONS = [
   {
     id: 'create-nodes',
     title: 'Create nodes',
-    body: 'Add ideas your way! Create nodes with the + button or place them directly on the canvas, then choose a node type.',
+    body: 'Add ideas your way! Create nodes with the + in the lower-right corner or place them directly on the canvas, then choose a node type.',
     target: 'toolbar-add',
     tasks: [
       {
@@ -103,7 +103,7 @@ export const DESKTOP_TUTORIAL_SECTIONS = [
   {
     id: 'navigate',
     title: 'Navigate the canvas',
-    body: 'Move around your workspace! Use the middle mouse button or hold Space to pan, and the scroll wheel to zoom.',
+    body: 'Move around your canvas! Use the middle mouse button or hold Space to pan, and the scroll wheel to zoom.',
     target: 'canvas',
     tasks: [
       {
@@ -233,7 +233,7 @@ export const DESKTOP_TUTORIAL_SECTIONS = [
   {
     id: 'tools',
     title: 'Tools drawer',
-    body: 'Use the Tools drawer to organise your workspace automatically.',
+    body: 'Use the Tools drawer to organise your canvas automatically.',
     target: 'toolbar-tools',
     tasks: [
       {
@@ -246,25 +246,25 @@ export const DESKTOP_TUTORIAL_SECTIONS = [
   },
   {
     id: 'workspaces',
-    title: 'Workspaces',
-    body: 'Switch between different boards and customise each workspace.',
+    title: 'Canvases',
+    body: 'Switch between different boards and customise each canvas.',
     target: 'workspace-bar',
     tasks: [
       {
         id: 'create',
-        label: 'Create a new workspace using +. Edit the details, then Save to create it.',
+        label: 'Create a new canvas using +. Edit the details, then Save to create it.',
         event: 'workspace.create.save',
         target: 'workspace-create',
       },
       {
         id: 'switch',
-        label: 'Switch to the previous workspace.',
+        label: 'Switch to the previous canvas.',
         event: 'workspace.switch',
         target: 'workspace-bar',
       },
       {
         id: 'edit',
-        label: 'Click the pencil icon to edit the current workspace’s details. Click Cancel or Save to close it.',
+        label: 'Hover a canvas in the list and click the pencil to edit it. Click Cancel or Save to close.',
         event: 'workspace.edit.close',
         target: 'workspace-edit',
       },
@@ -355,7 +355,7 @@ export const MOBILE_TUTORIAL_SECTIONS = [
   {
     id: 'navigate',
     title: 'Navigate the canvas',
-    body: 'Move around your workspace! Use touch gestures to explore your canvas.',
+    body: 'Move around your canvas! Use touch gestures to explore.',
     target: 'canvas',
     tasks: [
       {
@@ -479,7 +479,7 @@ export const MOBILE_TUTORIAL_SECTIONS = [
   {
     id: 'tools',
     title: 'More actions',
-    body: 'Open More for organise, share, save, and other workspace actions.',
+    body: 'Open More for organise, share, save, and other canvas actions.',
     target: 'toolbar-tools',
     tasks: [
       {
@@ -492,25 +492,25 @@ export const MOBILE_TUTORIAL_SECTIONS = [
   },
   {
     id: 'workspaces',
-    title: 'Workspaces',
-    body: 'Use the menu (top left) to switch boards and customise each workspace.',
+    title: 'Canvases',
+    body: 'Use the menu (top left) to switch boards and customise each canvas.',
     target: 'workspace-bar',
     tasks: [
       {
         id: 'create',
-        label: 'In the Workspaces sheet, tap + to create a board. Edit the details, then Save.',
+        label: 'In the sidebar, tap + to create a canvas. Edit the details, then Save.',
         event: 'workspace.create.save',
         target: 'workspace-create',
       },
       {
         id: 'switch',
-        label: 'Switch to the previous workspace.',
+        label: 'Switch to the previous canvas.',
         event: 'workspace.switch',
         target: 'workspace-bar',
       },
       {
         id: 'edit',
-        label: 'Tap Edit to change the current workspace’s details. Tap Cancel or Save to close it.',
+        label: 'On the active canvas in the list, tap the pencil to edit it. Tap Cancel or Save to close.',
         event: 'workspace.edit.close',
         target: 'workspace-edit',
       },

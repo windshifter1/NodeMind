@@ -47,7 +47,7 @@ main.jsx → App.jsx → Canvas.jsx
                           ├── AppSidebar       (workspaces, settings)
                           ├── top bar          (current workspace + workflow tools)
                           ├── CanvasBoard      (nodes, edges)
-                          ├── AgentDock        (coming soon)
+                          ├── NewNodeDock      (add node)
                           └── dialogs / OnboardingTour
 ```
 
@@ -95,7 +95,7 @@ CLI smoke test: `node scripts/test-layout.mjs`.
 | `NoteNode.jsx` | Node chrome, edit affordances |
 | `Toolbar.jsx` | Top-bar workflow: add, draw, organise, share, save, terminal |
 | `shell/AppSidebar.jsx` | Collapsible left rail: workspaces + settings |
-| `shell/AgentDock.jsx` | Bottom-right Coming soon Agent |
+| `shell/NewNodeDock.jsx` | Bottom-right new node |
 | `NodeEditDialog.jsx`, `WorkspaceEditDialog.jsx` | Metadata editors |
 | `TextExportDialog.jsx` | Plain-text export |
 | `SettingsDialog.jsx` | Light/dark node theme |

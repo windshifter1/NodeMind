@@ -71,7 +71,7 @@ export default function SettingsDialog({
   };
 
   const wipeLabel =
-    workspaceCount === 1 ? '1 workspace' : `${workspaceCount} workspaces`;
+    workspaceCount === 1 ? '1 canvas' : `${workspaceCount} canvases`;
 
   return (
     <div className="nm-dialog-root">
@@ -187,8 +187,8 @@ export default function SettingsDialog({
                 <div>
                   <h3 className="text-sm font-semibold text-nm-text">Storage</h3>
                   <p className="mt-1 text-xs text-nm-text-muted">
-                    Workspaces stay on this device in IndexedDB. Export a zip backup (workspaces and
-                    loaded files) before clearing browser data. Import skips workspaces that already
+                    Canvases stay on this device in IndexedDB. Export a zip backup (canvases and
+                    loaded files) before clearing browser data. Import skips canvases that already
                     match by name and contents.
                   </p>
                 </div>
@@ -196,7 +196,7 @@ export default function SettingsDialog({
                 <div>
                   <h3 className="text-sm font-semibold text-nm-text">This device</h3>
                   <p className="mt-1 text-xs text-nm-text-muted">
-                    Nearby Noded sessions see this name when you send a workspace.
+                    Nearby Noded sessions see this name when you send a canvas.
                   </p>
                   <input
                     value={deviceName}
@@ -299,9 +299,9 @@ export default function SettingsDialog({
                   <div className="flex items-start gap-2">
                     <AlertTriangle size={16} className="mt-0.5 shrink-0 text-rose-400" />
                     <div className="min-w-0">
-                      <h4 className="text-sm font-semibold text-nm-text">Delete all workspaces</h4>
+                      <h4 className="text-sm font-semibold text-nm-text">Delete all canvases</h4>
                       <p className="mt-1 text-xs leading-relaxed text-nm-text-muted">
-                        Removes every workspace, including the Tutorial board and attached files,
+                        Removes every canvas, including the Tutorial board and attached files,
                         and starts a blank canvas. Currently {wipeLabel}.
                       </p>
                     </div>
@@ -314,7 +314,7 @@ export default function SettingsDialog({
                       className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-rose-500/40 bg-rose-500/15 px-3 py-2.5 text-sm font-medium text-rose-400 transition hover:bg-rose-500/25 active:scale-[0.98]"
                     >
                       <Trash2 size={16} />
-                      Delete all workspaces
+                      Delete all canvases
                     </button>
                   ) : (
                     <div className="mt-3 space-y-2">

@@ -18,10 +18,10 @@ export default function TextExportDialog({ open, onClose, workspaceName, nodes, 
         : { src: e.toNode, dst: e.fromNode };
 
     const lines = [];
-    lines.push(`Workspace: ${workspaceName || 'Untitled'}`);
+    lines.push(`Canvas: ${workspaceName || 'Untitled'}`);
     lines.push('');
     if (!nodes || nodes.length === 0) {
-      lines.push('This workspace has no notes.');
+      lines.push('This canvas has no notes.');
       return lines.join('\n');
     }
     nodes.forEach((n, i) => {

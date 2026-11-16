@@ -124,7 +124,7 @@ function reducer(state, action) {
         : normalizeDocument(action.state);
     case 'ADD_WORKSPACE': {
       const ws = newWorkspace({
-        name: action.workspace?.name || `Workspace ${state.workspaces.length + 1}`,
+        name: action.workspace?.name || `Canvas ${state.workspaces.length + 1}`,
         colour: action.workspace?.colour,
         icon: action.workspace?.icon,
         orientation: action.workspace?.orientation,

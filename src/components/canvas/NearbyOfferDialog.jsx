@@ -28,11 +28,11 @@ export default function NearbyOfferDialog({ offer, progress = 0 }) {
         {!receiving ? (
           <>
             <h2 className="text-base font-semibold text-nm-text">
-              {offer.fromName} wants to send a workspace
+              {offer.fromName} wants to send a canvas
             </h2>
             <p className="mt-1 text-sm text-nm-text-muted">
               Accept to add <span className="font-medium text-nm-text">{offer.workspaceName}</span> as
-              a new workspace. Your current boards stay as they are.
+              a new canvas. Your current boards stay as they are.
             </p>
             <div className="mt-4 flex gap-2">
               <button
@@ -53,7 +53,7 @@ export default function NearbyOfferDialog({ offer, progress = 0 }) {
           </>
         ) : (
           <>
-            <h2 className="text-base font-semibold text-nm-text">Receiving workspace…</h2>
+            <h2 className="text-base font-semibold text-nm-text">Receiving canvas…</h2>
             <p className="mt-2 text-sm text-nm-text-muted">{Math.round(progress * 100)}%</p>
           </>
         )}

@@ -1,8 +1,9 @@
-/* Mobile chrome — square frosted glass over the canvas (backdrop-filter, not glow fakery). */
+/* Mobile chrome — curved frosted glass over the canvas (backdrop-filter, not glow fakery). */
 
 .nm-mobile__chrome {
-  --nm-mobile-radius: 0px;
-  border-radius: var(--nm-mobile-radius);
+  --nm-mobile-radius-pill: 999px;
+  --nm-mobile-radius-sheet: 22px;
+  --nm-mobile-radius-tile: 14px;
   border: 1px solid oklch(1 0 0 / 0.2);
   background: oklch(0.98 0.002 260 / 0.55);
   box-shadow: none;
@@ -40,7 +41,7 @@ html[data-a11y-contrast='high'] .nm-mobile__chrome {
   min-width: 40px;
   min-height: 40px;
   padding: 0;
-  border-radius: var(--nm-mobile-radius);
+  border-radius: var(--nm-mobile-radius-pill);
   color: var(--nm-text-secondary);
   font-size: 0.8125rem;
   font-weight: var(--nm-weight-chrome-active);
@@ -79,6 +80,7 @@ html[data-theme='dark'] .nm-mobile__btn--active {
   height: 44px;
   min-width: 44px;
   min-height: 44px;
+  border-radius: var(--nm-mobile-radius-pill);
   color: var(--nm-text);
 }
 
@@ -121,6 +123,8 @@ html[data-a11y-font='xl'] .nm-mobile__orb {
   max-width: 14.5rem;
   height: 44px;
   min-height: 44px;
+  border-radius: var(--nm-mobile-radius-pill);
+  overflow: hidden;
 }
 
 html[data-a11y-font='large'] .nm-mobile__split,
@@ -176,6 +180,7 @@ html[data-a11y-font='xl'] .nm-mobile__split {
   max-width: 36rem;
   min-height: 48px;
   padding: 0.3rem 0.4rem 0.3rem 0.3rem;
+  border-radius: var(--nm-mobile-radius-pill);
 }
 
 .nm-mobile__composer-add {
@@ -216,6 +221,7 @@ html[data-a11y-font='xl'] .nm-mobile__split {
   bottom: calc(var(--nm-keyboard-inset, 0px) + 4.25rem + var(--safe-bottom));
   max-height: min(52%, 360px);
   overflow: auto;
+  border-radius: var(--nm-mobile-radius-sheet);
   padding: 0.5rem 0.65rem 0.75rem;
   overscroll-behavior: contain;
   touch-action: pan-y;
@@ -242,6 +248,7 @@ html[data-a11y-font='xl'] .nm-mobile__split {
 .nm-mobile__sheet-handle {
   width: 36px;
   height: 3px;
+  border-radius: 999px;
   background: var(--nm-divider);
   pointer-events: none;
 }
@@ -275,7 +282,7 @@ html[data-a11y-font='xl'] .nm-mobile__split {
   gap: 0.3rem;
   padding: 0.55rem 0.25rem;
   min-height: 68px;
-  border-radius: var(--nm-mobile-radius);
+  border-radius: var(--nm-mobile-radius-tile);
   color: var(--nm-text-secondary);
   background: oklch(1 0 0 / 0.08);
   border: 1px solid var(--nm-border);

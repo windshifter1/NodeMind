@@ -12,7 +12,7 @@ Built by **Windshifter**.
 - Send the current workspace to another open NodeMind session on this network, or outside it with a 6-character code
 - Copy workspace contents as plain text
 - Dark/light note themes
-- No login, no server — works fully offline after first load
+- No login, no server — works fully offline after first load (fonts are bundled in the build; install from Safari once while online, then use from the home screen)
 
 ## Local development
 

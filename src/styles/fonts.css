@@ -1,0 +1,9 @@
+/* Bundled UI fonts — shipped in the build for offline PWA (no Google Fonts CDN). */
+
+@import '@fontsource/syne/400.css';
+@import '@fontsource/syne/500.css';
+@import '@fontsource/syne/600.css';
+@import '@fontsource/syne/700.css';
+@import '@fontsource/syne/800.css';
+@import '@fontsource/jetbrains-mono/400.css';
+@import '@fontsource/jetbrains-mono/500.css';

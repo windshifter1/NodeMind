@@ -261,6 +261,7 @@ export default function MobileChrome({
         <div className="nm-mobile__composer nm-mobile__chrome">
           <ChromeButton
             title="Add node"
+            primary
             className="nm-mobile__composer-add"
             data-onboarding="toolbar-add"
             onClick={() => {

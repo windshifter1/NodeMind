@@ -89,33 +89,13 @@ a.bg-indigo-500 {
 }
 
 .bg-nm-chrome,
-.bg-nm-panel,
-.nm-mobile__chrome {
+.bg-nm-panel {
   backdrop-filter: none !important;
 }
 
 .fixed .rounded-2xl,
 .fixed .rounded-xl {
   border-radius: var(--nm-radius-panel);
-}
-
-.nm-mobile__chrome {
-  box-shadow: none;
-  border-radius: 0;
-}
-
-.nm-mobile__top {
-  border-radius: 0;
-  border-left: 0;
-  border-right: 0;
-  border-top: 0;
-}
-
-.nm-mobile__btn--active,
-.nm-mobile__btn--primary {
-  color: var(--nm-accent-ink);
-  background: var(--nm-accent);
-  box-shadow: none;
 }
 
 .nm-mobile__ws-tab,

@@ -1,11 +1,11 @@
 /* iOS-style interactive glass: compress on hold, spring back on release. */
 
 :root {
-  --nm-glass-press-scale: 0.94;
-  --nm-glass-press-scale-tight: 0.92;
-  --nm-glass-press-scale-segment: 0.97;
-  --nm-glass-press-in: 120ms;
-  --nm-glass-press-out: 520ms;
+  --nm-glass-press-scale: 0.88;
+  --nm-glass-press-scale-tight: 0.86;
+  --nm-glass-press-scale-segment: 0.94;
+  --nm-glass-press-in: 90ms;
+  --nm-glass-press-out: 480ms;
   --nm-glass-spring: cubic-bezier(0.34, 1.45, 0.64, 1);
   --nm-glass-press-ease: cubic-bezier(0.32, 0.72, 0, 1);
 }

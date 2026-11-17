@@ -1,9 +1,22 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { PanelLeft, PanelLeftClose, Plus, Search, Settings, SlidersHorizontal, Trash2, X } from 'lucide-react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import {
+  PanelLeft,
+  PanelLeftClose,
+  Pencil,
+  Plus,
+  Search,
+  Settings,
+  SlidersHorizontal,
+  Trash2,
+  X,
+} from 'lucide-react';
 import { PRODUCT_NAME } from '@/lib/brand';
 import WorkspaceIcon from '@/components/shell/WorkspaceIcon';
 import { emitTutorial } from '@/lib/tutorialEvents';
 import { glassPressClasses, glassPressState, useGlassPress } from '@/hooks/useGlassPress';
+
+const LONG_PRESS_MS = 420;
 
 function PushSidebarSearchToggle({ searchOpen, onToggle }) {
   const { pressed, pressProps } = useGlassPress();
@@ -64,6 +77,145 @@ function PushSidebarSettingsOrb({ onClick }) {
   );
 }
 
+function PushWorkspaceRow({ ws, active, onSelect, onEdit, onDelete, onCloseDrawer }) {
+  const { pressed, pressProps } = useGlassPress();
+  const timerRef = useRef(0);
+  const longPressRef = useRef(false);
+  const [menu, setMenu] = useState(null);
+
+  const clearTimer = () => {
+    if (timerRef.current) {
+      window.clearTimeout(timerRef.current);
+      timerRef.current = 0;
+    }
+  };
+
+  const openMenuAt = (clientX, clientY) => {
+    longPressRef.current = true;
+    setMenu({ x: clientX, y: clientY });
+  };
+
+  return (
+    <>
+      <div className={`nm-sidebar__row ${active ? 'nm-sidebar__row--on' : ''}`}>
+        <button
+          type="button"
+          className={glassPressClasses(
+            'nm-sidebar__item',
+            active ? 'nm-sidebar__item--on' : '',
+            glassPressState({ pressed }),
+          )}
+          title={ws.name}
+          {...pressProps}
+          onPointerDown={(event) => {
+            pressProps.onPointerDown?.(event);
+            longPressRef.current = false;
+            clearTimer();
+            const { clientX, clientY } = event;
+            timerRef.current = window.setTimeout(() => openMenuAt(clientX, clientY), LONG_PRESS_MS);
+          }}
+          onPointerUp={(event) => {
+            pressProps.onPointerUp?.(event);
+            clearTimer();
+          }}
+          onPointerCancel={(event) => {
+            pressProps.onPointerCancel?.(event);
+            clearTimer();
+          }}
+          onClick={() => {
+            if (longPressRef.current) {
+              longPressRef.current = false;
+              return;
+            }
+            if (!active) emitTutorial('workspace.switch');
+            onSelect?.(ws.id);
+            onCloseDrawer?.();
+          }}
+          onContextMenu={(event) => {
+            event.preventDefault();
+            openMenuAt(event.clientX, event.clientY);
+          }}
+        >
+          <WorkspaceIcon icon={ws.icon} colour={ws.colour} size={16} strokeWidth={1.75} />
+          <span>{ws.name}</span>
+        </button>
+      </div>
+      {menu ? (
+        <WorkspaceGlassMenu
+          x={menu.x}
+          y={menu.y}
+          name={ws.name}
+          onRename={() => {
+            onEdit?.(ws.id);
+            emitTutorial('workspace.edit.open');
+            onCloseDrawer?.();
+            setMenu(null);
+          }}
+          onDelete={() => {
+            onDelete?.(ws);
+            onCloseDrawer?.();
+            setMenu(null);
+          }}
+          onClose={() => setMenu(null)}
+        />
+      ) : null}
+    </>
+  );
+}
+
+function WorkspaceGlassMenu({ x, y, name, onRename, onDelete, onClose }) {
+  const { pressed: renamePressed, pressProps: renamePress } = useGlassPress();
+  const { pressed: deletePressed, pressProps: deletePress } = useGlassPress();
+
+  useEffect(() => {
+    const close = (event) => {
+      if (event.target instanceof Element && event.target.closest('.nm-sidebar__glass-menu')) return;
+      onClose?.();
+    };
+    window.addEventListener('pointerdown', close, true);
+    return () => window.removeEventListener('pointerdown', close, true);
+  }, [onClose]);
+
+  const left = Math.min(Math.max(12, x - 8), window.innerWidth - 220);
+  const top = Math.min(Math.max(12, y - 12), window.innerHeight - 160);
+
+  const menu = (
+    <div
+      className="nm-sidebar__glass-menu nm-mobile__chrome"
+      role="menu"
+      aria-label={`${name} actions`}
+      style={{ left, top }}
+      onPointerDown={(event) => event.stopPropagation()}
+    >
+      <button
+        type="button"
+        role="menuitem"
+        className={glassPressClasses('nm-sidebar__glass-menu-item', glassPressState({ pressed: renamePressed }))}
+        onClick={onRename}
+        {...renamePress}
+      >
+        <Pencil size={16} strokeWidth={1.75} />
+        Rename
+      </button>
+      <button
+        type="button"
+        role="menuitem"
+        className={glassPressClasses(
+          'nm-sidebar__glass-menu-item nm-sidebar__glass-menu-item--danger',
+          glassPressState({ pressed: deletePressed }),
+        )}
+        onClick={onDelete}
+        {...deletePress}
+      >
+        <Trash2 size={16} strokeWidth={1.75} />
+        Delete
+      </button>
+    </div>
+  );
+
+  return typeof document !== 'undefined' ? createPortal(menu, document.body) : menu;
+}
+
 function BrandMark() {
   return (
     <svg width="20" height="20" viewBox="0 0 32 32" fill="none" aria-hidden="true">
@@ -92,6 +244,7 @@ export default function AppSidebar({
 }) {
   const [query, setQuery] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
+  const searchInputRef = useRef(null);
   const isDrawer = overlay || push;
 
   useEffect(() => {
@@ -109,6 +262,15 @@ export default function AppSidebar({
       setQuery('');
     }
   }, [open]);
+
+  useEffect(() => {
+    if (!searchOpen) {
+      searchInputRef.current?.blur();
+      return undefined;
+    }
+    const id = window.setTimeout(() => searchInputRef.current?.focus(), 20);
+    return () => window.clearTimeout(id);
+  }, [searchOpen]);
 
   const railCollapsed = collapsed && !isDrawer;
   const filtered = useMemo(() => {
@@ -166,17 +328,21 @@ export default function AppSidebar({
           </div>
         )}
 
-        {push && searchOpen ? (
-          <div className="nm-sidebar__search">
-            <Search size={16} strokeWidth={1.75} aria-hidden />
-            <input
-              type="search"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search canvases"
-              aria-label="Search canvases"
-              autoFocus
-            />
+        {push ? (
+          <div className={`nm-sidebar__search-slot ${searchOpen ? 'is-open' : ''}`}>
+            <div className="nm-sidebar__search-slot-inner">
+              <div className="nm-sidebar__search">
+                <Search size={16} strokeWidth={1.75} aria-hidden />
+                <input
+                  ref={searchInputRef}
+                  type="search"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Search canvases"
+                  aria-label="Search canvases"
+                />
+              </div>
+            </div>
           </div>
         ) : null}
 
@@ -184,6 +350,19 @@ export default function AppSidebar({
         <nav className="nm-sidebar__nav" aria-label="Canvases">
           {filtered.map((ws) => {
             const active = ws.id === activeId;
+            if (push) {
+              return (
+                <PushWorkspaceRow
+                  key={ws.id}
+                  ws={ws}
+                  active={active}
+                  onSelect={onSelect}
+                  onEdit={onEdit}
+                  onDelete={onDelete}
+                  onCloseDrawer={closeIfDrawer}
+                />
+              );
+            }
             return (
               <div
                 key={ws.id}

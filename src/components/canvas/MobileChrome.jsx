@@ -235,26 +235,28 @@ export default function MobileChrome({
   return (
     <>
       <div className="nm-mobile__top" data-mobile-chrome data-onboarding="mobile-top">
-        <ChromeButton
-          title="Menu"
-          className="nm-mobile__orb nm-mobile__chrome"
-          onClick={() => onOpenSidebar?.()}
-          data-mobile-chrome
-          data-onboarding="workspace-bar"
-        >
-          <PanelLeft size={18} strokeWidth={1.75} />
-        </ChromeButton>
+        <div className="nm-mobile__cluster">
+          <ChromeButton
+            title="Menu"
+            className="nm-mobile__orb nm-mobile__chrome"
+            onClick={() => onOpenSidebar?.()}
+            data-mobile-chrome
+            data-onboarding="workspace-bar"
+          >
+            <PanelLeft size={18} strokeWidth={1.75} />
+          </ChromeButton>
 
-        <div className="nm-mobile__split nm-mobile__chrome" role="group" aria-label="Save and share">
-          <SplitChromeButton onClick={() => onOpenSave?.()}>
-            <Save size={14} strokeWidth={1.75} />
-            Save
-          </SplitChromeButton>
-          <span className="nm-mobile__split-div" aria-hidden="true" />
-          <SplitChromeButton onClick={() => onOpenShare?.()}>
-            <Share2 size={14} strokeWidth={1.75} />
-            Share
-          </SplitChromeButton>
+          <div className="nm-mobile__split nm-mobile__chrome" role="group" aria-label="Save and share">
+            <SplitChromeButton onClick={() => onOpenSave?.()}>
+              <Save size={14} strokeWidth={1.75} />
+              Save
+            </SplitChromeButton>
+            <span className="nm-mobile__split-div" aria-hidden="true" />
+            <SplitChromeButton onClick={() => onOpenShare?.()}>
+              <Share2 size={14} strokeWidth={1.75} />
+              Share
+            </SplitChromeButton>
+          </div>
         </div>
 
         <div className="nm-mobile__top-end" data-onboarding="toolbar-recenter">

@@ -122,17 +122,24 @@ export function applyAppFrameHeight() {
   pinScroll();
 }
 
+function setKeyboardOpenClass(open) {
+  document.documentElement.classList.toggle('nm-keyboard-open', open);
+}
+
 /** Lift floating mobile chrome with the software keyboard (iOS visualViewport). */
 function applyKeyboardInset(layoutHeight) {
   const root = document.documentElement;
   const vv = window.visualViewport;
   if (!vv || !isMobileLike()) {
     root.style.setProperty('--nm-keyboard-inset', '0px');
+    setKeyboardOpenClass(false);
     return;
   }
   const frame = layoutHeight || lockedHeight || Math.round(window.innerHeight || 0);
   const inset = Math.max(0, Math.round(frame - vv.height - vv.offsetTop));
-  root.style.setProperty('--nm-keyboard-inset', `${inset > 48 ? inset : 0}px`);
+  const open = inset > 12;
+  root.style.setProperty('--nm-keyboard-inset', `${open ? inset : 0}px`);
+  setKeyboardOpenClass(open);
 }
 
 export function lockMobileViewport() {

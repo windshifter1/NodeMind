@@ -1,10 +1,5 @@
 import React, { memo, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  isDrawCaptureTool,
-  newImageId,
-  newStrokeId,
-  normalizeBackgroundArt,
-} from '@/lib/backgroundArt';
+import { isDrawCaptureTool, newStrokeId } from '@/lib/backgroundArt';
 import {
   boundsForImage,
   boundsForStroke,
@@ -15,7 +10,7 @@ import {
   NODES_LAYER_INDEX,
 } from '@/lib/backgroundArtLayers';
 import AnnotationLayerBar from '@/components/canvas/AnnotationLayerBar';
-import { getBlobUrl, putFileFromFileList } from '@/lib/mediaStore';
+import { getBlobUrl } from '@/lib/mediaStore';
 import {
   eraseAreaFromStrokes,
   pointHitsStroke,
@@ -574,18 +569,3 @@ const StrokeGraphic = memo(function StrokeGraphic({ stroke, selected, smooth = f
   );
 });
 
-export async function addBackgroundImage(art, file, at = { x: 80, y: 80 }) {
-  const bg = normalizeBackgroundArt(art);
-  const meta = await putFileFromFileList(file);
-  const layered = migrateBackgroundArtLayers(bg);
-  const img = {
-    id: newImageId(),
-    fileId: meta.fileId,
-    x: at.x,
-    y: at.y,
-    w: 240,
-    h: 180,
-    layer: nextLayerBelowNodes(layered),
-  };
-  return { ...layered, images: [...layered.images, img], tool: 'select' };
-}

@@ -8,7 +8,7 @@ import {
   X,
 } from 'lucide-react';
 import { normalizeBackgroundArt, PEN_WIDTH_PRESETS } from '@/lib/backgroundArt';
-import { addBackgroundImage } from '@/components/canvas/BackgroundDrawLayer';
+import { addBackgroundImage } from '@/lib/backgroundArtImages';
 
 function PillButton({ active, title, onClick, children }) {
   return (

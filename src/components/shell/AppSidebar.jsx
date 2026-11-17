@@ -3,6 +3,66 @@ import { PanelLeft, PanelLeftClose, Plus, Search, Settings, SlidersHorizontal, T
 import { PRODUCT_NAME } from '@/lib/brand';
 import WorkspaceIcon from '@/components/shell/WorkspaceIcon';
 import { emitTutorial } from '@/lib/tutorialEvents';
+import { glassPressClasses, glassPressState, useGlassPress } from '@/hooks/useGlassPress';
+
+function PushSidebarSearchToggle({ searchOpen, onToggle }) {
+  const { pressed, pressProps } = useGlassPress();
+  return (
+    <button
+      type="button"
+      className={glassPressClasses(
+        'nm-sidebar__search-btn',
+        glassPressState({ pressed, glass: true }),
+      )}
+      title={searchOpen ? 'Close search' : 'Search canvases'}
+      aria-label={searchOpen ? 'Close search' : 'Search canvases'}
+      onClick={onToggle}
+      {...pressProps}
+    >
+      {searchOpen ? <X size={18} strokeWidth={1.75} /> : <Search size={18} strokeWidth={1.75} />}
+    </button>
+  );
+}
+
+function PushSidebarNew({ onClick }) {
+  const { pressed, pressProps } = useGlassPress();
+  return (
+    <button
+      type="button"
+      className={glassPressClasses(
+        'nm-sidebar__new',
+        glassPressState({ pressed, solid: true }),
+      )}
+      data-onboarding="workspace-create"
+      title="New canvas"
+      onClick={onClick}
+      {...pressProps}
+    >
+      <Plus size={18} strokeWidth={2.25} />
+      <span>New canvas</span>
+    </button>
+  );
+}
+
+function PushSidebarSettingsOrb({ onClick }) {
+  const { pressed, pressProps } = useGlassPress();
+  return (
+    <button
+      type="button"
+      className={glassPressClasses(
+        'nm-sidebar__settings-orb',
+        glassPressState({ pressed, glass: true }),
+      )}
+      data-onboarding="toolbar-settings"
+      title="Settings"
+      aria-label="Settings"
+      onClick={onClick}
+      {...pressProps}
+    >
+      <Settings size={18} strokeWidth={1.75} />
+    </button>
+  );
+}
 
 function BrandMark() {
   return (
@@ -81,18 +141,13 @@ export default function AppSidebar({
         {push ? (
           <div className="nm-sidebar__hero">
             <h1 className="nm-sidebar__product">{PRODUCT_NAME}</h1>
-            <button
-              type="button"
-              className="nm-sidebar__search-btn"
-              title={searchOpen ? 'Close search' : 'Search canvases'}
-              aria-label={searchOpen ? 'Close search' : 'Search canvases'}
-              onClick={() => {
+            <PushSidebarSearchToggle
+              searchOpen={searchOpen}
+              onToggle={() => {
                 setSearchOpen((v) => !v);
                 if (searchOpen) setQuery('');
               }}
-            >
-              {searchOpen ? <X size={18} strokeWidth={1.75} /> : <Search size={18} strokeWidth={1.75} />}
-            </button>
+            />
           </div>
         ) : (
           <div className="nm-sidebar__top">
@@ -182,33 +237,19 @@ export default function AppSidebar({
 
         {push ? (
           <div className="nm-sidebar__dock">
-            <button
-              type="button"
-              className="nm-sidebar__new"
-              data-onboarding="workspace-create"
-              title="New canvas"
+            <PushSidebarNew
               onClick={() => {
                 onCreate?.();
                 closeIfDrawer();
               }}
-            >
-              <Plus size={18} strokeWidth={2.25} />
-              <span>New canvas</span>
-            </button>
-            <button
-              type="button"
-              className="nm-sidebar__settings-orb"
-              data-onboarding="toolbar-settings"
-              title="Settings"
-              aria-label="Settings"
+            />
+            <PushSidebarSettingsOrb
               onClick={() => {
                 onOpenSettings?.();
                 emitTutorial('toolbar.settings.open');
                 closeIfDrawer();
               }}
-            >
-              <Settings size={18} strokeWidth={1.75} />
-            </button>
+            />
           </div>
         ) : (
           <>

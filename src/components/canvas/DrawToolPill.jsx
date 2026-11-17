@@ -9,8 +9,10 @@ import {
 } from 'lucide-react';
 import { normalizeBackgroundArt, PEN_WIDTH_PRESETS } from '@/lib/backgroundArt';
 import { addBackgroundImage } from '@/lib/backgroundArtImages';
+import { glassPressClasses, glassPressState, useGlassPress } from '@/hooks/useGlassPress';
 
 function PillButton({ active, title, onClick, children }) {
+  const { pressed, pressProps } = useGlassPress();
   return (
     <button
       type="button"
@@ -18,7 +20,12 @@ function PillButton({ active, title, onClick, children }) {
       aria-label={title}
       aria-pressed={active}
       onClick={onClick}
-      className={`nm-draw-pill__btn ${active ? 'is-on' : ''}`}
+      className={glassPressClasses(
+        'nm-draw-pill__btn',
+        active ? 'is-on' : '',
+        glassPressState({ pressed }),
+      )}
+      {...pressProps}
     >
       {children}
     </button>

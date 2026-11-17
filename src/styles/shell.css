@@ -605,10 +605,6 @@
   box-shadow: none;
 }
 
-.nm-sidebar__new:active {
-  transform: scale(0.98);
-}
-
 .nm-sidebar__settings-orb {
   display: inline-flex;
   align-items: center;

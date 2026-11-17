@@ -16,6 +16,7 @@ import { createPortal } from 'react-dom';
 import { emitTutorial } from '@/lib/tutorialEvents';
 import { normalizeBackgroundArt } from '@/lib/backgroundArt';
 import { useSheetDragDismiss } from '@/hooks/useSheetDragDismiss';
+import { glassPressClasses, glassPressState, useGlassPress } from '@/hooks/useGlassPress';
 import './mobileChrome.css';
 
 function ChromeButton({
@@ -30,6 +31,9 @@ function ChromeButton({
   'data-mobile-chrome': dataMobileChrome,
   'data-selection-arm-button': selectionArmButton,
 }) {
+  const { pressed, pressProps } = useGlassPress({ disabled });
+  const isChrome = className.includes('nm-mobile__chrome');
+
   return (
     <button
       type="button"
@@ -40,14 +44,31 @@ function ChromeButton({
       data-onboarding={dataOnboarding}
       data-mobile-chrome={dataMobileChrome != null ? '' : undefined}
       data-selection-arm-button={selectionArmButton ? '' : undefined}
-      className={[
+      className={glassPressClasses(
         'nm-mobile__btn',
         active ? 'nm-mobile__btn--active' : '',
         primary ? 'nm-mobile__btn--primary' : '',
+        glassPressState({ pressed, glass: isChrome, solid: primary }),
         className,
-      ]
-        .filter(Boolean)
-        .join(' ')}
+      )}
+      {...pressProps}
+    >
+      {children}
+    </button>
+  );
+}
+
+function SplitChromeButton({ children, onClick }) {
+  const { pressed, pressProps } = useGlassPress();
+  return (
+    <button
+      type="button"
+      className={glassPressClasses(
+        'nm-mobile__split-btn',
+        glassPressState({ pressed, segment: true }),
+      )}
+      onClick={onClick}
+      {...pressProps}
     >
       {children}
     </button>
@@ -132,13 +153,18 @@ function MoreSheet({ open, onClose, title, children }) {
 }
 
 function SheetItem({ icon: Icon, label, onClick, disabled = false, dataOnboarding }) {
+  const { pressed, pressProps } = useGlassPress({ disabled });
   return (
     <button
       type="button"
-      className="nm-mobile__sheet-item"
+      className={glassPressClasses(
+        'nm-mobile__sheet-item',
+        glassPressState({ pressed, tile: true }),
+      )}
       onClick={onClick}
       disabled={disabled}
       data-onboarding={dataOnboarding}
+      {...pressProps}
     >
       <Icon size={18} />
       <span>{label}</span>
@@ -220,23 +246,15 @@ export default function MobileChrome({
         </ChromeButton>
 
         <div className="nm-mobile__split nm-mobile__chrome" role="group" aria-label="Save and share">
-          <button
-            type="button"
-            className="nm-mobile__split-btn"
-            onClick={() => onOpenSave?.()}
-          >
+          <SplitChromeButton onClick={() => onOpenSave?.()}>
             <Save size={14} strokeWidth={1.75} />
             Save
-          </button>
+          </SplitChromeButton>
           <span className="nm-mobile__split-div" aria-hidden="true" />
-          <button
-            type="button"
-            className="nm-mobile__split-btn"
-            onClick={() => onOpenShare?.()}
-          >
+          <SplitChromeButton onClick={() => onOpenShare?.()}>
             <Share2 size={14} strokeWidth={1.75} />
             Share
-          </button>
+          </SplitChromeButton>
         </div>
 
         <div className="nm-mobile__top-end" data-onboarding="toolbar-recenter">

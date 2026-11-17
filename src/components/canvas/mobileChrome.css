@@ -47,13 +47,8 @@ html[data-a11y-contrast='high'] .nm-mobile__chrome {
   font-weight: var(--nm-weight-chrome-active);
   background: transparent;
   transition:
-    transform 0.12s ease,
     background 0.15s ease,
     color 0.15s ease;
-}
-
-.nm-mobile__btn:active {
-  transform: scale(0.96);
 }
 
 .nm-mobile__btn:disabled {
@@ -145,10 +140,6 @@ html[data-a11y-font='xl'] .nm-mobile__split {
   letter-spacing: normal;
   color: var(--nm-accent);
   background: transparent;
-}
-
-.nm-mobile__split-btn:active {
-  background: color-mix(in srgb, var(--nm-accent) 10%, transparent);
 }
 
 .nm-mobile__split-div {
@@ -312,10 +303,6 @@ html[data-a11y-contrast='high'] .nm-mobile__sheet-item {
   backdrop-filter: none;
 }
 
-.nm-mobile__sheet-item:active {
-  background: var(--nm-hover);
-}
-
 .nm-mobile__sheet-item:disabled {
   opacity: 0.4;
 }
@@ -351,6 +338,7 @@ html[data-a11y-contrast='high'] .nm-mobile__sheet-item {
   .nm-mobile__btn {
     transition: none;
   }
+  /* nm-glass-press handles reduced motion in glassPress.css */
 }
 
 @media (prefers-reduced-transparency: reduce) {

@@ -8,6 +8,7 @@ import '@/styles/ui-chrome-layout.css'
 import '@/styles/gen-ii.css'
 import '@/styles/shell.css'
 import '@/styles/motion.css'
+import '@/styles/glassPress.css'
 import {
   applyA11yContrast,
   applyA11yFont,

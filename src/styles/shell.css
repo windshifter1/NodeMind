@@ -168,6 +168,45 @@
   pointer-events: auto;
 }
 
+/*
+ * Mobile chrome (matches isDesktopPlatform() === false): full-bleed shell.
+ * Desktop keeps the elevated 8px inset frame; phones must edge-attach top/bottom bars.
+ */
+@media (hover: none), (pointer: coarse) {
+  .nm-shell {
+    padding: 0;
+  }
+
+  .nm-shell__main {
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .nm-sidebar--overlay {
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: min(var(--nm-sidebar-width), 88vw);
+    padding-top: var(--safe-top);
+    padding-bottom: var(--safe-bottom);
+    padding-left: var(--safe-left);
+    border-radius: 0;
+    transform: translateX(-100%);
+  }
+
+  .nm-sidebar--overlay.is-open {
+    transform: none;
+  }
+
+  /* Clear mobile top + bottom chrome when drawing. */
+  .nm-draw-pill {
+    max-height: min(
+      72vh,
+      calc(100% - 7.25rem - var(--safe-top) - var(--safe-bottom))
+    );
+  }
+}
+
 .nm-sidebar-backdrop {
   position: fixed;
   inset: 0;

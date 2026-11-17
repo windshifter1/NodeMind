@@ -11,7 +11,9 @@ import {
   Wrench,
   Menu,
   Paintbrush,
+  X,
 } from 'lucide-react';
+import { createPortal } from 'react-dom';
 import { emitTutorial } from '@/lib/tutorialEvents';
 import { normalizeBackgroundArt } from '@/lib/backgroundArt';
 import { useSheetDragDismiss } from '@/hooks/useSheetDragDismiss';
@@ -56,7 +58,7 @@ function ChromeButton({
 function MoreSheet({ open, onClose, title, children, layout = 'grid' }) {
   const { sheetRef, backdropRef, handleProps } = useSheetDragDismiss(onClose, { open });
   if (!open) return null;
-  return (
+  const sheetUi = (
     <>
       <button
         ref={backdropRef}
@@ -86,6 +88,9 @@ function MoreSheet({ open, onClose, title, children, layout = 'grid' }) {
       </div>
     </>
   );
+  // Portal like NodeTypeMenu sheets so fixed positioning is viewport-relative
+  // even if shell ancestors gain transform/filter later.
+  return typeof document !== 'undefined' ? createPortal(sheetUi, document.body) : sheetUi;
 }
 
 function SheetItem({ icon: Icon, label, onClick, disabled = false, dataOnboarding }) {
@@ -177,7 +182,6 @@ export default function MobileChrome({
           <ChromeButton
             title="Menu"
             onClick={() => onOpenSidebar?.()}
-            className="!min-h-10 !min-w-10"
             data-mobile-chrome
             data-onboarding="workspace-bar"
           >
@@ -264,7 +268,10 @@ export default function MobileChrome({
             <ChromeButton
               title="More"
               active={moreSheetOpen}
-              onClick={() => openMoreSheet({ fromTools: true })}
+              onClick={() => {
+                if (moreSheetOpen) closeMoreSheet();
+                else openMoreSheet({ fromTools: true });
+              }}
             >
               <MoreHorizontal size={18} />
             </ChromeButton>

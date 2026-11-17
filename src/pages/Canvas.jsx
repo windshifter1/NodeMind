@@ -981,12 +981,13 @@ function CanvasReady({
   );
 
   return (
-    <div className="nm-shell">
+    <div className={`nm-shell${!isDesktop && mobileSidebarOpen ? ' nm-shell--menu-open' : ''}`}>
       <AppSidebar
         workspaces={state.workspaces}
         activeId={state.activeId}
         collapsed={sidebarCollapsed}
-        overlay={!isDesktop}
+        overlay={false}
+        push={!isDesktop}
         open={isDesktop || mobileSidebarOpen}
         onToggleCollapsed={toggleSidebarCollapsed}
         onClose={() => setMobileSidebarOpen(false)}
@@ -1000,6 +1001,14 @@ function CanvasReady({
         onOpenSettings={() => setSettingsOpen(true)}
       />
       <div className="nm-shell__main">
+        {!isDesktop && mobileSidebarOpen ? (
+          <button
+            type="button"
+            className="nm-shell__menu-dismiss"
+            aria-label="Close menu"
+            onClick={() => setMobileSidebarOpen(false)}
+          />
+        ) : null}
         {isDesktop ? (
           <header className="nm-topbar">
             <h1 className="nm-topbar__title">{active.name}</h1>
@@ -1008,7 +1017,6 @@ function CanvasReady({
           </header>
         ) : (
           <MobileChrome
-            workspaceName={active.name}
             onOpenSidebar={() => setMobileSidebarOpen(true)}
             onClear={handleClear}
             onOpenShare={() => setShareMenuOpen(true)}

@@ -118,7 +118,21 @@ export function applyAppFrameHeight() {
     root.style.setProperty('--vv-width', `${width}px`);
   }
 
+  applyKeyboardInset(height);
   pinScroll();
+}
+
+/** Lift floating mobile chrome with the software keyboard (iOS visualViewport). */
+function applyKeyboardInset(layoutHeight) {
+  const root = document.documentElement;
+  const vv = window.visualViewport;
+  if (!vv || !isMobileLike()) {
+    root.style.setProperty('--nm-keyboard-inset', '0px');
+    return;
+  }
+  const frame = layoutHeight || lockedHeight || Math.round(window.innerHeight || 0);
+  const inset = Math.max(0, Math.round(frame - vv.height - vv.offsetTop));
+  root.style.setProperty('--nm-keyboard-inset', `${inset > 48 ? inset : 0}px`);
 }
 
 export function lockMobileViewport() {

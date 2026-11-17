@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react';
-import { PanelLeft, PanelLeftClose, Plus, Settings, SlidersHorizontal, Trash2 } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { PanelLeft, PanelLeftClose, Plus, Search, Settings, SlidersHorizontal, Trash2, X } from 'lucide-react';
 import { PRODUCT_NAME } from '@/lib/brand';
 import WorkspaceIcon from '@/components/shell/WorkspaceIcon';
 import { emitTutorial } from '@/lib/tutorialEvents';
@@ -20,6 +20,7 @@ export default function AppSidebar({
   activeId,
   collapsed = false,
   overlay = false,
+  push = false,
   open = true,
   onToggleCollapsed,
   onClose,
@@ -29,16 +30,36 @@ export default function AppSidebar({
   onDelete,
   onOpenSettings,
 }) {
+  const [query, setQuery] = useState('');
+  const [searchOpen, setSearchOpen] = useState(false);
+  const isDrawer = overlay || push;
+
   useEffect(() => {
-    if (!overlay || !open) return undefined;
+    if (!isDrawer || !open) return undefined;
     const onKey = (e) => {
       if (e.key === 'Escape') onClose?.();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [overlay, open, onClose]);
+  }, [isDrawer, open, onClose]);
 
-  const railCollapsed = collapsed && !overlay;
+  useEffect(() => {
+    if (!open) {
+      setSearchOpen(false);
+      setQuery('');
+    }
+  }, [open]);
+
+  const railCollapsed = collapsed && !isDrawer;
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return workspaces;
+    return workspaces.filter((ws) => String(ws.name || '').toLowerCase().includes(q));
+  }, [workspaces, query]);
+
+  const closeIfDrawer = () => {
+    if (isDrawer) onClose?.();
+  };
 
   return (
     <>
@@ -52,29 +73,61 @@ export default function AppSidebar({
         />
       ) : null}
       <aside
-        className={`nm-sidebar ${railCollapsed ? 'nm-sidebar--collapsed' : ''} ${overlay ? 'nm-sidebar--overlay' : ''} ${overlay && open ? 'is-open' : ''}`}
+        className={`nm-sidebar ${railCollapsed ? 'nm-sidebar--collapsed' : ''} ${overlay ? 'nm-sidebar--overlay' : ''} ${push ? 'nm-sidebar--push' : ''} ${isDrawer && open ? 'is-open' : ''}`}
         data-onboarding="workspace-bar"
         aria-label="Sidebar"
-        aria-hidden={overlay && !open ? true : undefined}
+        aria-hidden={isDrawer && !open ? true : undefined}
       >
-        <div className="nm-sidebar__top">
-          <div className="nm-sidebar__brand" title={PRODUCT_NAME}>
-            <BrandMark />
-            <span>{PRODUCT_NAME}</span>
+        {push ? (
+          <div className="nm-sidebar__hero">
+            <h1 className="nm-sidebar__product">{PRODUCT_NAME}</h1>
+            <button
+              type="button"
+              className="nm-sidebar__search-btn"
+              title={searchOpen ? 'Close search' : 'Search canvases'}
+              aria-label={searchOpen ? 'Close search' : 'Search canvases'}
+              onClick={() => {
+                setSearchOpen((v) => !v);
+                if (searchOpen) setQuery('');
+              }}
+            >
+              {searchOpen ? <X size={18} strokeWidth={1.75} /> : <Search size={18} strokeWidth={1.75} />}
+            </button>
           </div>
-          <button
-            type="button"
-            className="nm-sidebar__iconbtn"
-            title={overlay ? 'Close sidebar' : railCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            onClick={overlay ? onClose : onToggleCollapsed}
-          >
-            {overlay || !railCollapsed ? <PanelLeftClose size={16} strokeWidth={1.75} /> : <PanelLeft size={16} strokeWidth={1.75} />}
-          </button>
-        </div>
+        ) : (
+          <div className="nm-sidebar__top">
+            <div className="nm-sidebar__brand" title={PRODUCT_NAME}>
+              <BrandMark />
+              <span>{PRODUCT_NAME}</span>
+            </div>
+            <button
+              type="button"
+              className="nm-sidebar__iconbtn"
+              title={overlay ? 'Close sidebar' : railCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+              onClick={overlay ? onClose : onToggleCollapsed}
+            >
+              {overlay || !railCollapsed ? <PanelLeftClose size={16} strokeWidth={1.75} /> : <PanelLeft size={16} strokeWidth={1.75} />}
+            </button>
+          </div>
+        )}
 
-        <div className="nm-sidebar__label">Canvases</div>
+        {push && searchOpen ? (
+          <div className="nm-sidebar__search">
+            <Search size={16} strokeWidth={1.75} aria-hidden />
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search canvases"
+              aria-label="Search canvases"
+              autoFocus
+            />
+          </div>
+        ) : null}
+
+        {push ? null : <div className="nm-sidebar__label">Canvases</div>}
         <nav className="nm-sidebar__nav" aria-label="Canvases">
-          {workspaces.map((ws) => {
+          {filtered.map((ws) => {
             const active = ws.id === activeId;
             return (
               <div
@@ -88,7 +141,7 @@ export default function AppSidebar({
                   onClick={() => {
                     if (ws.id !== activeId) emitTutorial('workspace.switch');
                     onSelect?.(ws.id);
-                    if (overlay) onClose?.();
+                    closeIfDrawer();
                   }}
                 >
                   <WorkspaceIcon icon={ws.icon} colour={ws.colour} size={16} strokeWidth={1.75} />
@@ -104,7 +157,7 @@ export default function AppSidebar({
                       e.stopPropagation();
                       onEdit?.(ws.id);
                       emitTutorial('workspace.edit.open');
-                      if (overlay) onClose?.();
+                      closeIfDrawer();
                     }}
                   >
                     <SlidersHorizontal size={14} strokeWidth={1.75} />
@@ -116,7 +169,7 @@ export default function AppSidebar({
                     onClick={(e) => {
                       e.stopPropagation();
                       onDelete?.(ws);
-                      if (overlay) onClose?.();
+                      closeIfDrawer();
                     }}
                   >
                     <Trash2 size={14} strokeWidth={1.75} />
@@ -127,38 +180,72 @@ export default function AppSidebar({
           })}
         </nav>
 
-        <div className="nm-sidebar__actions">
-          <button
-            type="button"
-            className="nm-sidebar__item"
-            data-onboarding="workspace-create"
-            title="New canvas"
-            onClick={() => {
-              onCreate?.();
-              if (overlay) onClose?.();
-            }}
-          >
-            <Plus size={16} strokeWidth={1.75} />
-            <span>New canvas</span>
-          </button>
-        </div>
+        {push ? (
+          <div className="nm-sidebar__dock">
+            <button
+              type="button"
+              className="nm-sidebar__new"
+              data-onboarding="workspace-create"
+              title="New canvas"
+              onClick={() => {
+                onCreate?.();
+                closeIfDrawer();
+              }}
+            >
+              <Plus size={18} strokeWidth={2.25} />
+              <span>New canvas</span>
+            </button>
+            <button
+              type="button"
+              className="nm-sidebar__settings-orb"
+              data-onboarding="toolbar-settings"
+              title="Settings"
+              aria-label="Settings"
+              onClick={() => {
+                onOpenSettings?.();
+                emitTutorial('toolbar.settings.open');
+                closeIfDrawer();
+              }}
+            >
+              <Settings size={18} strokeWidth={1.75} />
+            </button>
+          </div>
+        ) : (
+          <>
+            <div className="nm-sidebar__actions">
+              <button
+                type="button"
+                className="nm-sidebar__item"
+                data-onboarding="workspace-create"
+                title="New canvas"
+                onClick={() => {
+                  onCreate?.();
+                  closeIfDrawer();
+                }}
+              >
+                <Plus size={16} strokeWidth={1.75} />
+                <span>New canvas</span>
+              </button>
+            </div>
 
-        <div className="nm-sidebar__foot">
-          <button
-            type="button"
-            className="nm-sidebar__item"
-            data-onboarding="toolbar-settings"
-            title="Settings"
-            onClick={() => {
-              onOpenSettings?.();
-              emitTutorial('toolbar.settings.open');
-              if (overlay) onClose?.();
-            }}
-          >
-            <Settings size={16} strokeWidth={1.75} />
-            <span>Settings</span>
-          </button>
-        </div>
+            <div className="nm-sidebar__foot">
+              <button
+                type="button"
+                className="nm-sidebar__item"
+                data-onboarding="toolbar-settings"
+                title="Settings"
+                onClick={() => {
+                  onOpenSettings?.();
+                  emitTutorial('toolbar.settings.open');
+                  closeIfDrawer();
+                }}
+              >
+                <Settings size={16} strokeWidth={1.75} />
+                <span>Settings</span>
+              </button>
+            </div>
+          </>
+        )}
       </aside>
     </>
   );

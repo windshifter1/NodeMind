@@ -36,3 +36,14 @@ export function matchDevOrganisePath(path = getAppPath()) {
 export function isDevOrganisePath(path = getAppPath()) {
   return matchDevOrganisePath(path) != null;
 }
+
+/**
+ * Font specimen pages:
+ * - `/syne`  → Syne
+ * - `/space` → Space Grotesk
+ */
+export function matchFontSpecimenPath(path = getAppPath()) {
+  if (path === '/syne') return 'syne';
+  if (path === '/space') return 'space';
+  return null;
+}

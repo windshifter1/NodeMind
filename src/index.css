@@ -69,6 +69,19 @@
   }
 }
 
+/* Infinite canvas dot grid — lives in the world layer, not CSS background-position on the board. */
+.nm-canvas-dots {
+  background-image: radial-gradient(circle, var(--nm-canvas-dot) 1px, transparent 1px);
+  backface-visibility: hidden;
+}
+
+@media (pointer: coarse) {
+  .nm-canvas-dots {
+    /* Slightly softer dots reduce moiré while pinch-zooming on mobile GPUs. */
+    background-image: radial-gradient(circle, var(--nm-canvas-dot) 1.25px, transparent 1.25px);
+  }
+}
+
 /* Short canvas socket / connection hint near a node */
 @keyframes nm-socket-hint {
   0%,

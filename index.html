@@ -29,18 +29,12 @@
           probe.remove();
           var height = Math.max(window.innerHeight || 0, Math.round(rect.height) || 0);
           var width = Math.max(window.innerWidth || 0, Math.round(rect.width) || 0);
-          if (standalone && window.screen) {
-            var portrait =
-              (window.matchMedia && window.matchMedia('(orientation: portrait)').matches) ||
-              window.screen.height >= window.screen.width;
-            var screenH = portrait
-              ? Math.max(window.screen.width, window.screen.height)
-              : Math.min(window.screen.width, window.screen.height);
-            var screenW = portrait
-              ? Math.min(window.screen.width, window.screen.height)
-              : Math.max(window.screen.width, window.screen.height);
-            height = Math.max(height, screenH || 0);
-            width = Math.max(width, screenW || 0);
+          var vv = window.visualViewport;
+          if (vv) {
+            var visibleH = Math.round(vv.height + vv.offsetTop) || 0;
+            var visibleW = Math.round(vv.width + vv.offsetLeft) || 0;
+            if (visibleH >= 80) height = Math.min(height, visibleH);
+            if (visibleW >= 80) width = Math.min(width, visibleW);
           }
           if (height >= 80) {
             document.documentElement.style.setProperty('--app-frame-height', Math.round(height) + 'px');

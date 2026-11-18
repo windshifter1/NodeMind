@@ -8,6 +8,7 @@ import {
   TOP_BAR_HEIGHT,
   MIN_ZOOM,
   MAX_ZOOM,
+  CANVAS_DOT_STEP,
   bezierPath,
   bezierPathZoomStable,
   connectedNodePositionAtSocket,
@@ -27,6 +28,10 @@ import { isDesktopPlatform } from '@/lib/onboarding';
 
 function clampZoom(z) {
   return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z));
+}
+
+function worldLayerTransform(pan, zoom) {
+  return `translate3d(${pan.x}px, ${pan.y}px, 0) scale(${zoom})`;
 }
 
 const PAN_DRAG_THRESHOLD = 3;
@@ -1307,19 +1312,17 @@ export default function CanvasBoard({
         })()
       : null) ||
     (marqueeRect ? 'crosshair' : panState.current.panning ? 'grabbing' : 'grab');
-  const dotSize = `${24 * zoom}px ${24 * zoom}px`;
   const boardBackground = {
     backgroundColor: 'var(--nm-canvas)',
     backgroundImage: [
-      // Black / grey wash only — no accent hues.
+      // Black / grey wash only — no accent hues (screen-fixed; not tied to pan/zoom).
       'radial-gradient(1200px 700px at 50% -10%, var(--nm-canvas-glow-a), transparent 60%)',
       'radial-gradient(900px 600px at 100% 100%, var(--nm-canvas-glow-b), transparent 55%)',
       'radial-gradient(800px 500px at 0% 80%, var(--nm-canvas-glow-c), transparent 50%)',
-      'radial-gradient(circle, var(--nm-canvas-dot) 1px, transparent 1px)',
     ].join(', '),
-    backgroundSize: `auto, auto, auto, ${dotSize}`,
-    backgroundPosition: `0 0, 0 0, 0 0, ${pan.x}px ${pan.y}px`,
   };
+
+  const worldTransform = worldLayerTransform(pan, zoom);
 
   return (
     <div
@@ -1437,16 +1440,25 @@ export default function CanvasBoard({
         })()}
       </svg>
 
-      {/* Nodes layer (world-space, transformed) */}
+      {/* Nodes + dot grid (single world transform — avoids iOS dot/grid shimmer while panning). */}
       <div
-        className="absolute top-0 left-0"
+        className="absolute inset-0 overflow-visible"
         style={{
-          transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+          transform: worldTransform,
           transformOrigin: '0 0',
+          willChange: 'transform',
           zIndex: 2,
           pointerEvents: drawMode ? 'none' : 'auto',
         }}
       >
+        <div
+          className="nm-canvas-dots pointer-events-none absolute inset-0"
+          style={{
+            backgroundSize: `${CANVAS_DOT_STEP}px ${CANVAS_DOT_STEP}px`,
+            zIndex: 0,
+          }}
+          aria-hidden="true"
+        />
         {(spawnRipples || []).map((ripple) => (
           <React.Fragment key={ripple.key}>
             <div

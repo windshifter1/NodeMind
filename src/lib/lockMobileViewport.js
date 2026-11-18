@@ -26,18 +26,6 @@ function isMobileLike() {
   );
 }
 
-function screenHeightForOrientation() {
-  const { width, height } = window.screen;
-  const portrait = window.matchMedia?.('(orientation: portrait)').matches ?? height >= width;
-  return portrait ? Math.max(width, height) : Math.min(width, height);
-}
-
-function screenWidthForOrientation() {
-  const { width, height } = window.screen;
-  const portrait = window.matchMedia?.('(orientation: portrait)').matches ?? height >= width;
-  return portrait ? Math.min(width, height) : Math.max(width, height);
-}
-
 function isKeyboardLikelyOpen(layoutHeight) {
   const vv = window.visualViewport;
   if (!vv || layoutHeight < 80) return false;
@@ -59,23 +47,39 @@ function measureFixedInsetSize() {
   };
 }
 
+/** Pixel size of the region actually on screen (not screen.height — that overshoots in iOS PWA). */
+function visibleLayoutSize() {
+  const vv = window.visualViewport;
+  const innerH = Math.round(window.innerHeight || 0);
+  const innerW = Math.round(window.innerWidth || 0);
+  if (!vv) return { height: innerH, width: innerW };
+  return {
+    height: Math.max(innerH, Math.round(vv.height + vv.offsetTop) || 0),
+    width: Math.max(innerW, Math.round(vv.width + vv.offsetLeft) || 0),
+  };
+}
+
 function measureLayoutSize() {
   const vv = window.visualViewport;
   const innerH = Math.round(window.innerHeight || 0);
   const innerW = Math.round(window.innerWidth || 0);
   const inset = measureFixedInsetSize();
-  const vvH = vv ? Math.round(vv.height) : 0;
-  const vvW = vv ? Math.round(vv.width) : 0;
+  const visible = visibleLayoutSize();
 
   // Prefer the fixed-inset probe — that is the area the canvas shell can fill.
   let height = Math.max(innerH, inset.height || 0);
   let width = Math.max(innerW, inset.width || 0);
 
-  if (isStandalonePwa()) {
-    height = Math.max(height, Math.round(screenHeightForOrientation() || 0));
-    width = Math.max(width, Math.round(screenWidthForOrientation() || 0));
-  } else if (isMobileLike()) {
-    // Grow with a larger visual viewport (chrome retracted); never shrink to vv (keyboard).
+  if (isStandalonePwa() || isMobileLike()) {
+    // Cap to the visible layout viewport so bottom chrome stays on-screen (no dead band).
+    height = Math.min(height, visible.height || height);
+    width = Math.min(width, visible.width || width);
+  }
+
+  if (!isStandalonePwa() && isMobileLike() && vv) {
+  // Browser tab: grow when Safari retracts its UI; never shrink to keyboard height.
+    const vvH = Math.round(vv.height);
+    const vvW = Math.round(vv.width);
     if (vvH > height) height = vvH;
     if (vvW > width) width = vvW;
   }
@@ -95,6 +99,7 @@ function pinScroll() {
 
 export function applyAppFrameHeight() {
   const root = document.documentElement;
+  root.classList.toggle('nm-standalone-pwa', isStandalonePwa());
   const { height: measuredH, width: measuredW } = measureLayoutSize();
   const keyboardOpen =
     isMobileLike() && lockedHeight >= 80 && isKeyboardLikelyOpen(lockedHeight);

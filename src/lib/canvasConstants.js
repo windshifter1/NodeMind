@@ -52,8 +52,6 @@ export const SOCKET_RADIUS = 8;
 
 export const MIN_ZOOM = 0.2;
 export const MAX_ZOOM = 3;
-/** World-space spacing for the canvas dot grid. */
-export const CANVAS_DOT_STEP = 24;
 
 export const GRAPH_ORIENTATIONS = {
   HORIZONTAL: 'horizontal',

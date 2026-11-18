@@ -312,7 +312,7 @@ export default function AppSidebar({
             <div className="nm-sidebar__product-lockup">
               <BrandMark className="nm-sidebar__brand-mark" />
               <h1 className="nm-sidebar__product" aria-label={PRODUCT_NAME}>
-                noded
+                Noded
               </h1>
             </div>
             <PushSidebarSearchToggle

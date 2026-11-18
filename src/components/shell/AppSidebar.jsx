@@ -216,9 +216,16 @@ function WorkspaceGlassMenu({ x, y, name, onRename, onDelete, onClose }) {
   return typeof document !== 'undefined' ? createPortal(menu, document.body) : menu;
 }
 
-function BrandMark() {
+function BrandMark({ className = '' }) {
   return (
-    <svg width="20" height="20" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+    <svg
+      className={className || undefined}
+      width="20"
+      height="20"
+      viewBox="0 0 32 32"
+      fill="none"
+      aria-hidden="true"
+    >
       <path d="M16 6v9.5M16 15.5 8 24M16 15.5l8 8.5" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
       <circle cx="16" cy="5.5" r="2.25" fill="currentColor" />
       <circle cx="7.6" cy="24.6" r="2.25" fill="currentColor" />
@@ -302,7 +309,12 @@ export default function AppSidebar({
       >
         {push ? (
           <div className="nm-sidebar__hero">
-            <h1 className="nm-sidebar__product">{PRODUCT_NAME}</h1>
+            <div className="nm-sidebar__product-lockup">
+              <BrandMark className="nm-sidebar__brand-mark" />
+              <h1 className="nm-sidebar__product" aria-label={PRODUCT_NAME}>
+                noded
+              </h1>
+            </div>
             <PushSidebarSearchToggle
               searchOpen={searchOpen}
               onToggle={() => {

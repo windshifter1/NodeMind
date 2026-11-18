@@ -521,15 +521,31 @@
   padding: 0.85rem 1rem 0.35rem calc(var(--nm-sidebar-inset) * 2);
 }
 
-.nm-sidebar__product {
-  margin: 0;
+.nm-sidebar__product-lockup {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
   flex: 1;
   min-width: 0;
-  font-size: 1.125rem;
-  font-weight: var(--nm-weight-chrome-title);
-  letter-spacing: -0.02em;
-  line-height: 1.2;
+}
+
+.nm-sidebar__product-lockup .nm-sidebar__brand-mark {
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
   color: var(--nm-text);
+}
+
+.nm-sidebar__product {
+  margin: 0;
+  min-width: 0;
+  font-family: 'Nodes', var(--font-body);
+  font-size: 1.125rem;
+  font-weight: 400;
+  letter-spacing: 0.03em;
+  line-height: 1;
+  color: var(--nm-text);
+  text-transform: lowercase;
 }
 
 .nm-sidebar__search-btn {
@@ -673,8 +689,14 @@ html[data-theme='light'] .nm-sidebar__glass-menu {
 }
 
 .nm-sidebar--push .nm-sidebar__product {
-  font-size: 1.35rem;
-  font-weight: var(--nm-weight-chrome-title);
+  font-size: 1.75rem;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+}
+
+.nm-sidebar--push .nm-sidebar__product-lockup .nm-sidebar__brand-mark {
+  width: 28px;
+  height: 28px;
 }
 
 .nm-sidebar--push .nm-sidebar__new {

@@ -26,6 +26,18 @@ function isMobileLike() {
   );
 }
 
+function screenHeightForOrientation() {
+  const { width, height } = window.screen;
+  const portrait = window.matchMedia?.('(orientation: portrait)').matches ?? height >= width;
+  return portrait ? Math.max(width, height) : Math.min(width, height);
+}
+
+function screenWidthForOrientation() {
+  const { width, height } = window.screen;
+  const portrait = window.matchMedia?.('(orientation: portrait)').matches ?? height >= width;
+  return portrait ? Math.min(width, height) : Math.max(width, height);
+}
+
 function isKeyboardLikelyOpen(layoutHeight) {
   const vv = window.visualViewport;
   if (!vv || layoutHeight < 80) return false;
@@ -47,39 +59,32 @@ function measureFixedInsetSize() {
   };
 }
 
-/** Pixel size of the region actually on screen (not screen.height — that overshoots in iOS PWA). */
-function visibleLayoutSize() {
-  const vv = window.visualViewport;
-  const innerH = Math.round(window.innerHeight || 0);
-  const innerW = Math.round(window.innerWidth || 0);
-  if (!vv) return { height: innerH, width: innerW };
-  return {
-    height: Math.max(innerH, Math.round(vv.height + vv.offsetTop) || 0),
-    width: Math.max(innerW, Math.round(vv.width + vv.offsetLeft) || 0),
-  };
-}
-
 function measureLayoutSize() {
   const vv = window.visualViewport;
   const innerH = Math.round(window.innerHeight || 0);
   const innerW = Math.round(window.innerWidth || 0);
   const inset = measureFixedInsetSize();
-  const visible = visibleLayoutSize();
+  const vvH = vv ? Math.round(vv.height) : 0;
+  const vvW = vv ? Math.round(vv.width) : 0;
 
   // Prefer the fixed-inset probe — that is the area the canvas shell can fill.
   let height = Math.max(innerH, inset.height || 0);
   let width = Math.max(innerW, inset.width || 0);
 
-  if (isStandalonePwa() || isMobileLike()) {
-    // Cap to the visible layout viewport so bottom chrome stays on-screen (no dead band).
-    height = Math.min(height, visible.height || height);
-    width = Math.min(width, visible.width || width);
-  }
-
-  if (!isStandalonePwa() && isMobileLike() && vv) {
-  // Browser tab: grow when Safari retracts its UI; never shrink to keyboard height.
-    const vvH = Math.round(vv.height);
-    const vvW = Math.round(vv.width);
+  if (isStandalonePwa()) {
+    const vvLayoutH = vv ? Math.round(vv.height + vv.offsetTop) : 0;
+    const vvLayoutW = vv ? Math.round(vv.width + vv.offsetLeft) : 0;
+    if (vvLayoutH > 0) height = Math.max(height, vvLayoutH);
+    if (vvLayoutW > 0) width = Math.max(width, vvLayoutW);
+    // screen.* can exceed the visible layout and causes a false keyboard inset (bottom gap).
+    if (height < innerH * 0.9) {
+      height = Math.max(height, Math.round(screenHeightForOrientation() || 0));
+    }
+    if (width < innerW * 0.9) {
+      width = Math.max(width, Math.round(screenWidthForOrientation() || 0));
+    }
+  } else if (isMobileLike()) {
+    // Grow with a larger visual viewport (chrome retracted); never shrink to vv (keyboard).
     if (vvH > height) height = vvH;
     if (vvW > width) width = vvW;
   }
@@ -99,7 +104,6 @@ function pinScroll() {
 
 export function applyAppFrameHeight() {
   const root = document.documentElement;
-  root.classList.toggle('nm-standalone-pwa', isStandalonePwa());
   const { height: measuredH, width: measuredW } = measureLayoutSize();
   const keyboardOpen =
     isMobileLike() && lockedHeight >= 80 && isKeyboardLikelyOpen(lockedHeight);
@@ -123,8 +127,26 @@ export function applyAppFrameHeight() {
     root.style.setProperty('--vv-width', `${width}px`);
   }
 
+  applySafeAreaInsets();
   applyKeyboardInset(height);
   pinScroll();
+}
+
+/** When env(safe-area-*) undershoots in standalone, match visualViewport offsets. */
+function applySafeAreaInsets() {
+  if (!isMobileLike()) return;
+  const root = document.documentElement;
+  const vv = window.visualViewport;
+  if (!vv) return;
+
+  const top = Math.max(0, Math.round(vv.offsetTop));
+  const left = Math.max(0, Math.round(vv.offsetLeft));
+  if (top >= 20) {
+    root.style.setProperty('--safe-top', `${top}px`);
+  }
+  if (left >= 8) {
+    root.style.setProperty('--safe-left', `${left}px`);
+  }
 }
 
 function setKeyboardOpenClass(open) {
@@ -140,11 +162,19 @@ function applyKeyboardInset(layoutHeight) {
     setKeyboardOpenClass(false);
     return;
   }
-  const frame = layoutHeight || lockedHeight || Math.round(window.innerHeight || 0);
-  const inset = Math.max(0, Math.round(frame - vv.height - vv.offsetTop));
-  const open = inset > 12;
-  root.style.setProperty('--nm-keyboard-inset', `${open ? inset : 0}px`);
-  setKeyboardOpenClass(open);
+  const frameBase = layoutHeight || lockedHeight || Math.round(window.innerHeight || 0);
+  const keyboardOpen = isKeyboardLikelyOpen(frameBase);
+  if (!keyboardOpen) {
+    root.style.setProperty('--nm-keyboard-inset', '0px');
+    setKeyboardOpenClass(false);
+    return;
+  }
+
+  const layoutBottom = Math.round(vv.height + vv.offsetTop);
+  const frame = Math.min(frameBase, layoutBottom + 8);
+  const inset = Math.max(0, Math.round(frame - layoutBottom));
+  root.style.setProperty('--nm-keyboard-inset', `${inset}px`);
+  setKeyboardOpenClass(inset > 12);
 }
 
 export function lockMobileViewport() {

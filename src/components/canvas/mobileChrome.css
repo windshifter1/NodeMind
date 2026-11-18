@@ -7,8 +7,6 @@
   border: 1px solid oklch(1 0 0 / 0.2);
   background: oklch(0.98 0.002 260 / 0.55);
   box-shadow: none;
-  isolation: isolate;
-  contain: layout paint;
 }
 
 html[data-theme='dark'] .nm-mobile__chrome {
@@ -25,17 +23,6 @@ html[data-theme='dark'] .nm-mobile__chrome {
 
   html[data-theme='dark'] .nm-mobile__chrome {
     background: oklch(0.16 0.006 260 / 0.28);
-  }
-
-  /* iOS PWA: stronger fill so status-bar region does not smear the canvas under the bar */
-  html.nm-standalone-pwa .nm-mobile__top .nm-mobile__chrome {
-    -webkit-backdrop-filter: blur(10px) saturate(150%);
-    backdrop-filter: blur(10px) saturate(150%);
-    background: oklch(0.99 0.002 260 / 0.42);
-  }
-
-  html.nm-standalone-pwa[data-theme='dark'] .nm-mobile__top .nm-mobile__chrome {
-    background: oklch(0.16 0.006 260 / 0.58);
   }
 }
 
@@ -110,19 +97,15 @@ html[data-a11y-font='xl'] .nm-mobile__orb {
   align-items: center;
   gap: 0.45rem;
   pointer-events: none;
-  padding: calc(0.5rem + var(--safe-top)) calc(0.65rem + var(--safe-right)) 0.35rem
+  padding: calc(0.65rem + var(--safe-top)) calc(0.65rem + var(--safe-right)) 0
     calc(0.65rem + var(--safe-left));
-  background: linear-gradient(
-    to bottom,
-    color-mix(in srgb, var(--nm-page) 92%, transparent) 0%,
-    transparent 100%
-  );
-  background-size: 100% calc(5.75rem + var(--safe-top));
-  background-repeat: no-repeat;
 }
 
-html.nm-standalone-pwa .nm-mobile__top {
-  padding-top: calc(0.65rem + var(--safe-top));
+/* Standalone PWA: keep tap targets below the status bar (not under iOS blur). */
+@supports (padding-top: env(safe-area-inset-top)) {
+  html:not(.nm-keyboard-open) .nm-mobile__top {
+    padding-top: calc(0.65rem + max(var(--safe-top), 12px));
+  }
 }
 
 .nm-mobile__cluster {
@@ -204,16 +187,12 @@ html[data-a11y-font='xl'] .nm-mobile__split {
   justify-content: center;
   pointer-events: none;
   padding: 0 calc(0.65rem + var(--safe-right))
-    calc(0.35rem + var(--safe-bottom))
+    calc(0.55rem + var(--safe-bottom))
     calc(0.65rem + var(--safe-left));
 }
 
 html.nm-keyboard-open .nm-mobile__dock {
   padding-bottom: 0.35rem;
-}
-
-html.nm-standalone-pwa .nm-mobile__dock {
-  padding-bottom: max(0.35rem, var(--safe-bottom));
 }
 
 .nm-mobile__composer {

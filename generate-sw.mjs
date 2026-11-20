@@ -1,8 +1,9 @@
-import { readdir, stat, writeFile } from 'node:fs/promises';
+import { copyFile, readdir, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 const distDir = path.resolve('dist');
-const basePath = '/NodeMind/';
+const rawBase = process.env.VITE_BASE || '/NodeMind/';
+const basePath = rawBase.endsWith('/') ? rawBase : `${rawBase}/`;
 const ignoredFiles = new Set(['sw.js']);
 
 async function listFiles(dir, prefix = '') {
@@ -108,7 +109,7 @@ self.addEventListener('fetch', (event) => {
   if (!isAppRequest(event.request)) return;
 
   // Always prefer network for HTML so hashed asset references stay current.
-  if (isNavigationRequest(event.request) || event.request.url.endsWith('/NodeMind/') || event.request.url.endsWith('/NodeMind/index.html')) {
+  if (isNavigationRequest(event.request) || event.request.url.endsWith(BASE_PATH) || event.request.url.endsWith(\`\${BASE_PATH}index.html\`)) {
     event.respondWith(networkThenCache(event.request));
     return;
   }
@@ -124,4 +125,6 @@ self.addEventListener('fetch', (event) => {
 `;
 
 await writeFile(path.join(distDir, 'sw.js'), serviceWorker);
+// GitHub Pages: unknown paths like /NodeMind/mockup1 serve this SPA shell.
+await copyFile(path.join(distDir, 'index.html'), path.join(distDir, '404.html'));
 console.log(`Generated service worker with ${urls.length} precached URLs.`);

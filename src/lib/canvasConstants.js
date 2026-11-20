@@ -1,6 +1,52 @@
 import { autoOrganiseGraph } from './layout/index.js';
+import {
+  EXPRESSION_NODE_BODY_HEIGHT,
+  GRAPH_NODE_BASIC_BODY_HEIGHT,
+  GRAPH_NODE_BODY_HEIGHT,
+  MATH_NODE_BASIC_BODY_HEIGHT,
+  MATH_NODE_BODY_HEIGHT,
+  MATH_VIEW,
+  displayNodeTitle,
+  getMathView,
+  isDefaultExprEqTitle,
+  isExpressionNode,
+  isGraphNode,
+  isMathNode,
+  isNodeBodyCollapsed,
+  isSubstituteNode,
+  normalizeNodeKind,
+} from './nodeTypes.js';
+import {
+  migrateSubstituteEdges,
+  normalizeSubstituteTexts,
+  parseSlotId,
+  substituteSlotOffsetY,
+} from './substituteSlots.js';
+import {
+  graphSlotsBlockHeight,
+  graphSocketOffsetY,
+  isGraphSlotId,
+  measureGraphSlotCenterFromNode,
+  migrateGraphEdges,
+  normalizeGraphExprs,
+  parseGraphSlotId,
+} from './graphSlots.js';
+
+/** Graph full-view body: dynamic slots block + fixed plot panel. */
+function estimateGraphFullBodyHeight(node) {
+  const slotsH = graphSlotsBlockHeight(node, []);
+  const plotH = Math.max(200, GRAPH_NODE_BODY_HEIGHT - 48);
+  return Math.max(GRAPH_NODE_BODY_HEIGHT, slotsH + plotH + 24);
+}
 
 export const NODE_WIDTH = 180; // default (empty title) width
+/** Typical Math node width; nodes grow with the equation up to 2× this. */
+export const MATH_NODE_MIN_WIDTH = 260;
+export const MATH_NODE_MAX_WIDTH = MATH_NODE_MIN_WIDTH * 2;
+/** Horizontal chrome around the Math preview (body px-3 + preview padding). */
+export const MATH_NODE_PREVIEW_PAD_X = 32;
+/** Clear gap between a source output and the next node’s input (and vertical equivalent). */
+export const NODE_CLEARANCE = 48;
 export const TOP_BAR_HEIGHT = 44;
 export const SOCKET_RADIUS = 8;
 
@@ -21,6 +67,7 @@ export const LAYOUT_DENSITIES = {
   COMPACT: 'compact',
   DEFAULT: 'default',
   SPACIOUS: 'spacious',
+  CUSTOM: 'custom',
 };
 
 export const DEFAULT_LAYOUT_SETTINGS = {
@@ -52,6 +99,13 @@ export function layoutPresetForDensity(density) {
   if (density === LAYOUT_DENSITIES.SPACIOUS) {
     return { horizontalSpacing: 300, verticalSpacing: 170, graphSpacing: 360 };
   }
+  if (density === LAYOUT_DENSITIES.CUSTOM) {
+    return {
+      horizontalSpacing: DEFAULT_LAYOUT_SETTINGS.horizontalSpacing,
+      verticalSpacing: DEFAULT_LAYOUT_SETTINGS.verticalSpacing,
+      graphSpacing: DEFAULT_LAYOUT_SETTINGS.graphSpacing,
+    };
+  }
   return {
     horizontalSpacing: DEFAULT_LAYOUT_SETTINGS.horizontalSpacing,
     verticalSpacing: DEFAULT_LAYOUT_SETTINGS.verticalSpacing,
@@ -75,6 +129,15 @@ export function normalizeLayoutSettings(settings = {}) {
     : LAYOUT_DENSITIES.DEFAULT;
   const preset = layoutPresetForDensity(density);
 
+  if (density === LAYOUT_DENSITIES.CUSTOM) {
+    return {
+      horizontalSpacing: numberOrDefault(settings.horizontalSpacing, preset.horizontalSpacing),
+      verticalSpacing: numberOrDefault(settings.verticalSpacing, preset.verticalSpacing),
+      graphSpacing: numberOrDefault(settings.graphSpacing, preset.graphSpacing),
+      density: LAYOUT_DENSITIES.CUSTOM,
+    };
+  }
+
   return {
     horizontalSpacing: numberOrDefault(settings.horizontalSpacing, preset.horizontalSpacing),
     verticalSpacing: numberOrDefault(settings.verticalSpacing, preset.verticalSpacing),
@@ -84,13 +147,31 @@ export function normalizeLayoutSettings(settings = {}) {
 }
 
 export function nodeWidthForTitle(title) {
-  const t = title && title.length ? title : 'Untitled';
+  const t = title && title.length ? title : displayNodeTitle('note');
   return Math.max(180, Math.min(460, t.length * 7.5 + 96));
 }
 
 export function nodeHeightForLayout(nodeOrTitle = '') {
-  const collapsed = typeof nodeOrTitle === 'object' && nodeOrTitle?.collapsed;
-  if (collapsed) return TOP_BAR_HEIGHT;
+  if (typeof nodeOrTitle === 'object' && isNodeBodyCollapsed(nodeOrTitle)) {
+    return TOP_BAR_HEIGHT;
+  }
+  if (typeof nodeOrTitle === 'object' && isMathNode(nodeOrTitle)) {
+    if (isGraphNode(nodeOrTitle)) {
+      if (getMathView(nodeOrTitle) === MATH_VIEW.BASIC) {
+        return TOP_BAR_HEIGHT + GRAPH_NODE_BASIC_BODY_HEIGHT;
+      }
+      // Full view: slots (with optional expanded chrome) + plot panel.
+      // Exact height prefers DOM measurement via nodeSizeForLayout when mounted.
+      return TOP_BAR_HEIGHT + estimateGraphFullBodyHeight(nodeOrTitle);
+    }
+    if (getMathView(nodeOrTitle) === MATH_VIEW.BASIC) {
+      return TOP_BAR_HEIGHT + MATH_NODE_BASIC_BODY_HEIGHT;
+    }
+    if (isExpressionNode(nodeOrTitle)) {
+      return TOP_BAR_HEIGHT + EXPRESSION_NODE_BODY_HEIGHT;
+    }
+    return TOP_BAR_HEIGHT + MATH_NODE_BODY_HEIGHT;
+  }
   const content = typeof nodeOrTitle === 'object' ? nodeOrTitle.content || '' : '';
   const lineCount = Math.max(1, content.split('\n').length);
   const textHeight = Math.max(64, lineCount * 20) + 24;
@@ -98,9 +179,24 @@ export function nodeHeightForLayout(nodeOrTitle = '') {
 }
 
 export function nodeSizeForLayout(nodeOrTitle = '') {
-  const title = typeof nodeOrTitle === 'object' ? nodeOrTitle.title : nodeOrTitle;
+  if (typeof nodeOrTitle === 'object' && nodeOrTitle?.id && typeof document !== 'undefined') {
+    const el = document.querySelector(`[data-note-node="${nodeOrTitle.id}"]`);
+    if (el) {
+      const width = el.offsetWidth;
+      const height = el.offsetHeight;
+      if (width > 0 && height > 0) return { width, height };
+    }
+  }
+  const title =
+    typeof nodeOrTitle === 'object' ? displayNodeTitle(nodeOrTitle) : nodeOrTitle;
+  let width = nodeWidthForTitle(title);
+  if (typeof nodeOrTitle === 'object' && isMathNode(nodeOrTitle)) {
+    width = isGraphNode(nodeOrTitle)
+      ? MATH_NODE_MAX_WIDTH
+      : Math.max(width, MATH_NODE_MIN_WIDTH);
+  }
   return {
-    width: nodeWidthForTitle(title),
+    width,
     height: nodeHeightForLayout(nodeOrTitle),
   };
 }
@@ -139,50 +235,379 @@ export function zoomToFrameBounds(bounds, viewportW, viewportH, padding = 64) {
   return Math.min(availW / w, availH / h);
 }
 
-export function socketWorld(node, type, orientation = GRAPH_ORIENTATIONS.HORIZONTAL, size = nodeSizeForLayout(node)) {
+/**
+ * World-space socket centre.
+ * @param {{ inputSlot?: string|null, slotIndex?: number|null }} [opts]
+ *   For Substitute input sockets, pass `inputSlot` (A / B0…) or `slotIndex`.
+ */
+export function socketWorld(
+  node,
+  type,
+  orientation = GRAPH_ORIENTATIONS.HORIZONTAL,
+  size = nodeSizeForLayout(node),
+  opts = null
+) {
   const o = normalizeOrientation(orientation);
-  if (o === GRAPH_ORIENTATIONS.VERTICAL) {
-    const x = node.x + size.width / 2;
-    return type === 'output' ? { x, y: node.y + size.height } : { x, y: node.y };
-  }
-
-  const y = node.y + TOP_BAR_HEIGHT / 2;
-  return type === 'output' ? { x: node.x + size.width, y } : { x: node.x, y };
-}
-
-export function bezierPath(x1, y1, x2, y2, reversed = false, orientation = GRAPH_ORIENTATIONS.HORIZONTAL) {
-  const o = normalizeOrientation(orientation);
-  if (o === GRAPH_ORIENTATIONS.VERTICAL) {
-    const dy = Math.max(60, Math.abs(y2 - y1) * 0.5);
-    if (reversed) {
-      return `M ${x1} ${y1} C ${x1} ${y1 - dy}, ${x2} ${y2 + dy}, ${x2} ${y2}`;
+  const slotIndex = (() => {
+    // Body slot sockets only while a slotted Math node is in Full view.
+    if (type !== 'input' || getMathView(node) !== MATH_VIEW.FULL) return null;
+    if (Number.isFinite(opts?.slotIndex)) return opts.slotIndex;
+    if (isSubstituteNode(node)) {
+      const parsed = parseSlotId(opts?.inputSlot);
+      if (!parsed) return null;
+      return parsed.kind === 'A' ? 0 : parsed.index + 1;
     }
-    return `M ${x1} ${y1} C ${x1} ${y1 + dy}, ${x2} ${y2 - dy}, ${x2} ${y2}`;
-  }
+    if (isGraphNode(node)) {
+      if (!isGraphSlotId(opts?.inputSlot)) return null;
+      return parseGraphSlotId(opts.inputSlot);
+    }
+    return null;
+  })();
 
-  const dx = Math.max(60, Math.abs(x2 - x1) * 0.5);
-  if (reversed) {
-    return `M ${x1} ${y1} C ${x1 - dx} ${y1}, ${x2 + dx} ${y2}, ${x2} ${y2}`;
-  }
+  const slotTop = (index) =>
+    isGraphNode(node)
+      ? graphSocketOffsetY(node, index, { edges: opts?.edges, seriesBySlot: opts?.seriesBySlot })
+      : substituteSlotOffsetY(index);
 
-  return `M ${x1} ${y1} C ${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}`;
-}
-
-export function connectedNodePositionAtSocket(point, fromType, orientation = GRAPH_ORIENTATIONS.HORIZONTAL, title = '') {
-  const o = normalizeOrientation(orientation);
-  const size = nodeSizeForLayout(title);
+  const graphSlotY = (index) => {
+    const slotId = isGraphSlotId(opts?.inputSlot) ? opts.inputSlot : null;
+    const measured = slotId ? measureGraphSlotCenterFromNode(node.id, slotId) : null;
+    if (measured != null) return node.y + measured;
+    return node.y + TOP_BAR_HEIGHT + slotTop(index);
+  };
 
   if (o === GRAPH_ORIENTATIONS.VERTICAL) {
+    if (type === 'output') {
+      return { x: node.x + size.width / 2, y: node.y + size.height };
+    }
+    if (slotIndex != null) {
+      // Body-left slotted inputs even in vertical orientation.
+      return {
+        x: node.x,
+        y: isGraphNode(node) ? graphSlotY(slotIndex) : node.y + TOP_BAR_HEIGHT + slotTop(slotIndex),
+      };
+    }
+    return { x: node.x + size.width / 2, y: node.y };
+  }
+
+  if (type === 'output') {
+    return { x: node.x + size.width, y: node.y + TOP_BAR_HEIGHT / 2 };
+  }
+  if (slotIndex != null) {
     return {
-      x: point.x - size.width / 2,
-      y: fromType === 'output' ? point.y : point.y - size.height,
+      x: node.x,
+      y: isGraphNode(node) ? graphSlotY(slotIndex) : node.y + TOP_BAR_HEIGHT + slotTop(slotIndex),
+    };
+  }
+  return { x: node.x, y: node.y + TOP_BAR_HEIGHT / 2 };
+}
+
+/** Cubic control points for a socket-to-socket edge (same coordinate space as inputs). */
+export function bezierControls(
+  x1,
+  y1,
+  x2,
+  y2,
+  reversed = false,
+  orientation = GRAPH_ORIENTATIONS.HORIZONTAL,
+  lateral = 0
+) {
+  const o = normalizeOrientation(orientation);
+  // `reversed` means the path starts at an input socket (left/top) rather than an output.
+  const startDir = reversed ? -1 : 1;
+  const endDir = reversed ? 1 : -1;
+  const lat = Number(lateral) || 0;
+
+  if (o === GRAPH_ORIENTATIONS.VERTICAL) {
+    const dist = Math.abs(y2 - y1);
+    const dy = Math.max(60, dist * 0.5);
+    const fan = lat * (dist < 160 ? 1.55 : 1.2);
+    const against = (!reversed && y2 < y1) || (reversed && y2 > y1);
+    if (against) {
+      const dx = Math.max(50, dist * 0.35 + 40) + Math.abs(fan);
+      return {
+        x1,
+        y1,
+        cx1: x1 + dx + fan,
+        cy1: y1 + startDir * dy,
+        cx2: x2 + dx + fan,
+        cy2: y2 + endDir * dy,
+        x2,
+        y2,
+      };
+    }
+    return {
+      x1,
+      y1,
+      cx1: x1 + fan,
+      cy1: y1 + startDir * dy,
+      cx2: x2 + fan,
+      cy2: y2 + endDir * dy,
+      x2,
+      y2,
     };
   }
 
+  const dist = Math.abs(x2 - x1);
+  const dx = Math.max(60, dist * 0.5);
+  // Amplify lateral fan near short spans so multi-input hubs stay readable.
+  const fan = lat * (dist < 160 ? 1.55 : 1.2);
+  const against = (!reversed && x2 < x1) || (reversed && x2 > x1);
+  if (against) {
+    // Keep socket exit/entry sides, but arc so the curve doesn’t look handle-reversed.
+    const dy = Math.max(50, dist * 0.35 + 40) + Math.abs(fan);
+    return {
+      x1,
+      y1,
+      cx1: x1 + startDir * dx,
+      cy1: y1 + dy + fan,
+      cx2: x2 + endDir * dx,
+      cy2: y2 + dy + fan,
+      x2,
+      y2,
+    };
+  }
   return {
-    x: fromType === 'output' ? point.x : point.x - size.width,
-    y: point.y - TOP_BAR_HEIGHT / 2,
+    x1,
+    y1,
+    cx1: x1 + startDir * dx,
+    cy1: y1 + fan,
+    cx2: x2 + endDir * dx,
+    cy2: y2 + fan,
+    x2,
+    y2,
   };
+}
+
+function formatBezierPath({ x1, y1, cx1, cy1, cx2, cy2, x2, y2 }) {
+  return `M ${x1} ${y1} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${x2} ${y2}`;
+}
+
+export function bezierPath(
+  x1,
+  y1,
+  x2,
+  y2,
+  reversed = false,
+  orientation = GRAPH_ORIENTATIONS.HORIZONTAL,
+  lateral = 0
+) {
+  return formatBezierPath(bezierControls(x1, y1, x2, y2, reversed, orientation, lateral));
+}
+
+/**
+ * Build the cubic in world space, then map to screen — curve shape is zoom-invariant.
+ * Used by the /dev edge-aware canvas; main app keeps screen-space beziers.
+ */
+export function bezierPathZoomStable(
+  worldX1,
+  worldY1,
+  worldX2,
+  worldY2,
+  reversed = false,
+  orientation = GRAPH_ORIENTATIONS.HORIZONTAL,
+  lateral = 0,
+  zoom = 1,
+  pan = { x: 0, y: 0 }
+) {
+  const c = bezierControls(worldX1, worldY1, worldX2, worldY2, reversed, orientation, lateral);
+  const z = zoom || 1;
+  const px = pan?.x || 0;
+  const py = pan?.y || 0;
+  const mapX = (x) => x * z + px;
+  const mapY = (y) => y * z + py;
+  return formatBezierPath({
+    x1: mapX(c.x1),
+    y1: mapY(c.y1),
+    cx1: mapX(c.cx1),
+    cy1: mapY(c.cy1),
+    cx2: mapX(c.cx2),
+    cy2: mapY(c.cy2),
+    x2: mapX(c.x2),
+    y2: mapY(c.y2),
+  });
+}
+
+export function connectedNodePositionAtSocket(
+  point,
+  fromType,
+  orientation = GRAPH_ORIENTATIONS.HORIZONTAL,
+  title = '',
+  sourceNode = null
+) {
+  const o = normalizeOrientation(orientation);
+  const size = nodeSizeForLayout(title);
+  const sourceSize = sourceNode ? nodeSizeForLayout(sourceNode) : null;
+
+  if (o === GRAPH_ORIENTATIONS.VERTICAL) {
+    let x = point.x - size.width / 2;
+    let y = fromType === 'output' ? point.y : point.y - size.height;
+    if (sourceNode && sourceSize) {
+      if (fromType === 'output') {
+        y = Math.max(y, sourceNode.y + sourceSize.height + NODE_CLEARANCE);
+      } else {
+        y = Math.min(y, sourceNode.y - NODE_CLEARANCE - size.height);
+      }
+    }
+    return { x, y };
+  }
+
+  let x = fromType === 'output' ? point.x : point.x - size.width;
+  let y = point.y - TOP_BAR_HEIGHT / 2;
+  if (sourceNode && sourceSize) {
+    if (fromType === 'output') {
+      x = Math.max(x, sourceNode.x + sourceSize.width + NODE_CLEARANCE);
+    } else {
+      x = Math.min(x, sourceNode.x - NODE_CLEARANCE - size.width);
+    }
+  }
+  return { x, y };
+}
+
+/** World-space point at the centre of the visible canvas board. */
+export function viewCenterWorld(pan, zoom, boardRect) {
+  const left = boardRect?.left ?? 0;
+  const top = boardRect?.top ?? 0;
+  const width = boardRect?.width ?? (typeof window !== 'undefined' ? window.innerWidth : 0);
+  const height = boardRect?.height ?? (typeof window !== 'undefined' ? window.innerHeight : 0);
+  const z = zoom || 1;
+  return {
+    x: (width / 2 - (pan?.x || 0)) / z,
+    y: (height / 2 - (pan?.y || 0)) / z,
+  };
+}
+
+/**
+ * Prefer (preferredX, preferredY); if that overlaps an existing node, return the
+ * nearest free top-left on a spiral grid around that point.
+ */
+export function freeNodePositionNear(nodes, preferredX, preferredY, newNodeLike = '', padding = 24) {
+  const size = nodeSizeForLayout(newNodeLike);
+  const others = nodes || [];
+
+  const overlaps = (x, y) =>
+    others.some((node) => {
+      const other = nodeSizeForLayout(node);
+      return !(
+        x + size.width + padding < node.x ||
+        node.x + other.width + padding < x ||
+        y + size.height + padding < node.y ||
+        node.y + other.height + padding < y
+      );
+    });
+
+  if (!overlaps(preferredX, preferredY)) {
+    return { x: preferredX, y: preferredY };
+  }
+
+  const step = Math.max(48, Math.min(size.width, size.height) * 0.55);
+  let best = null;
+  let bestDist = Infinity;
+  for (let ring = 1; ring <= 48; ring++) {
+    for (let dx = -ring; dx <= ring; dx++) {
+      for (let dy = -ring; dy <= ring; dy++) {
+        if (Math.max(Math.abs(dx), Math.abs(dy)) !== ring) continue;
+        const x = preferredX + dx * step;
+        const y = preferredY + dy * step;
+        if (overlaps(x, y)) continue;
+        const dist = dx * dx + dy * dy;
+        if (dist < bestDist) {
+          bestDist = dist;
+          best = { x, y };
+        }
+      }
+    }
+    if (best) return best;
+  }
+
+  return { x: preferredX, y: preferredY };
+}
+
+/** Place a node off a socket, then stack along the cross-axis so it does not overlap existing nodes. */
+export function connectedNodePositionAvoidingOverlap(
+  nodes,
+  sourceNode,
+  fromType,
+  orientation = GRAPH_ORIENTATIONS.HORIZONTAL,
+  newNodeLike = ''
+) {
+  const o = normalizeOrientation(orientation);
+  const size = nodeSizeForLayout(newNodeLike);
+  const sourceSize = nodeSizeForLayout(sourceNode);
+  const others = nodes || [];
+
+  const overlaps = (x, y) =>
+    others.some((node) => {
+      const other = nodeSizeForLayout(node);
+      return !(
+        x + size.width + 24 < node.x ||
+        node.x + other.width + 24 < x ||
+        y + size.height + 24 < node.y ||
+        node.y + other.height + 24 < y
+      );
+    });
+
+  if (o === GRAPH_ORIENTATIONS.VERTICAL) {
+    let x = sourceNode.x + (sourceSize.width - size.width) / 2;
+    let y =
+      fromType === 'output'
+        ? sourceNode.y + sourceSize.height + NODE_CLEARANCE
+        : sourceNode.y - NODE_CLEARANCE - size.height;
+    while (overlaps(x, y)) x += Math.max(240, size.width + NODE_CLEARANCE);
+    return { x, y };
+  }
+
+  let x =
+    fromType === 'output'
+      ? sourceNode.x + sourceSize.width + NODE_CLEARANCE
+      : sourceNode.x - NODE_CLEARANCE - size.width;
+  let y = sourceNode.y;
+  while (overlaps(x, y)) y += Math.max(96, size.height + 24);
+  return { x, y };
+}
+
+/** Push targets so each output→input edge keeps a clear forward gap (fixes backwards Math beziers). */
+export function clearanceFixesForEdges(nodes, edges, orientation = GRAPH_ORIENTATIONS.HORIZONTAL) {
+  const o = normalizeOrientation(orientation);
+  const byId = new Map(nodes.map((node) => [node.id, { ...node }]));
+  const fixes = new Map();
+
+  const ordered = [...(edges || [])];
+  // Multiple passes so chains of wide Math nodes separate cleanly.
+  for (let pass = 0; pass < nodes.length; pass++) {
+    let moved = false;
+    ordered.forEach((edge) => {
+      const sourceId = edge.fromType === 'output' ? edge.fromNode : edge.toNode;
+      const targetId = edge.fromType === 'output' ? edge.toNode : edge.fromNode;
+      const source = byId.get(sourceId);
+      const target = byId.get(targetId);
+      if (!source || !target) return;
+      const sourceSize = nodeSizeForLayout(source);
+      const targetSize = nodeSizeForLayout(target);
+
+      if (o === GRAPH_ORIENTATIONS.VERTICAL) {
+        const minY = source.y + sourceSize.height + NODE_CLEARANCE;
+        if (target.y < minY) {
+          target.y = minY;
+          byId.set(targetId, target);
+          fixes.set(targetId, { x: target.x, y: target.y });
+          moved = true;
+        }
+        return;
+      }
+
+      const minX = source.x + sourceSize.width + NODE_CLEARANCE;
+      if (target.x < minX) {
+        target.x = minX;
+        byId.set(targetId, target);
+        fixes.set(targetId, { x: target.x, y: target.y });
+        moved = true;
+      }
+    });
+    if (!moved) break;
+  }
+
+  return [...fixes.entries()].map(([id, pos]) => ({ id, ...pos }));
 }
 
 export function nextChildGraphPosition(nodes, parentId, title = '', orientation = GRAPH_ORIENTATIONS.HORIZONTAL) {
@@ -276,6 +701,8 @@ export function autoOrganiseNodes(
     fixedIds,
     preferredRootIds: options.preferredRootIds || [],
     fixComponentRoots: !!options.fixComponentRoots,
+    edgeAwareLayout: !!options.edgeAwareLayout,
+    edgeAwareMode: options.edgeAwareMode || null,
   }).nodes;
 }
 
@@ -294,7 +721,8 @@ export function autoOrganiseSelectedNodes(
   selectedIds,
   orientation = GRAPH_ORIENTATIONS.HORIZONTAL,
   layoutSettings = {},
-  centre = { x: 0, y: 0 }
+  centre = { x: 0, y: 0 },
+  options = {}
 ) {
   const idSet = new Set(selectedIds);
   const selected = allNodes.filter((n) => idSet.has(n.id));
@@ -304,6 +732,8 @@ export function autoOrganiseSelectedNodes(
   const arranged = autoOrganiseNodes(selected, internalEdges, orientation, layoutSettings, centre, {
     fixComponentRoots: true,
     preferredRootIds: selectedIds,
+    edgeAwareLayout: !!options.edgeAwareLayout,
+    edgeAwareMode: options.edgeAwareMode || null,
   });
   const posMap = new Map(arranged.map((n) => [n.id, { x: n.x, y: n.y }]));
   return allNodes.map((n) => (posMap.has(n.id) ? { ...n, ...posMap.get(n.id) } : n));
@@ -341,8 +771,68 @@ export function migrateWorkspaceNodeIds(workspace) {
   const orientation = normalizeOrientation(workspace.orientation);
   const layoutOnOrientationChange = normalizeLayoutOnOrientationChange(workspace.layoutOnOrientationChange);
   const layoutSettings = normalizeLayoutSettings(workspace.layoutSettings);
+  const withKinds = (list) =>
+    list.map((node) => {
+      const kind = normalizeNodeKind(node.kind);
+      const next = { ...node, kind };
+      if (kind === 'expression' && node.expr == null) next.expr = '';
+      // Collapse legacy Equation kind; keep text so role can be re-derived.
+      if (node.kind === 'equation') {
+        next.kind = 'expression';
+        if (next.expr == null) next.expr = '';
+        if (isDefaultExprEqTitle(next.title) || next.title === 'Equation') {
+          // Title will refresh on edit; keep Equation if content looks like one.
+          const raw = String(next.expr || '');
+          next.title = raw.includes('=') ? 'Equation' : 'Expression/Equation';
+        }
+      }
+      if (kind === 'substitute') {
+        const texts = normalizeSubstituteTexts(next);
+        if (next.subA == null) next.subA = texts.subA;
+        if (!Array.isArray(next.subB)) next.subB = texts.subB;
+      }
+      if (kind === 'graph') {
+        if (next.xMin == null) next.xMin = '-10';
+        if (next.xMax == null) next.xMax = '10';
+        if (!Array.isArray(next.graphExprs)) next.graphExprs = normalizeGraphExprs(next);
+      }
+      if (isMathNode(next)) {
+        const view = getMathView(next);
+        next.mathView = view;
+        next.collapsed = view === MATH_VIEW.COLLAPSED;
+      }
+      if (node.mode == null && node.field == null) return next;
+      return next;
+    });
+
+  const finish = (list, edges) => {
+    let nextNodes = withKinds(list);
+    let nextEdges = edges || [];
+    nextNodes = nextNodes.map((node) => {
+      if (isSubstituteNode(node)) {
+        const migrated = migrateSubstituteEdges(node, nextEdges);
+        nextEdges = migrated.edges;
+        return migrated.nodePatch ? { ...node, ...migrated.nodePatch } : node;
+      }
+      if (isGraphNode(node)) {
+        const migrated = migrateGraphEdges(node, nextEdges);
+        nextEdges = migrated.edges;
+        return migrated.nodePatch ? { ...node, ...migrated.nodePatch } : node;
+      }
+      return node;
+    });
+    return {
+      ...workspace,
+      orientation,
+      layoutOnOrientationChange,
+      layoutSettings,
+      nodes: nextNodes,
+      edges: nextEdges,
+    };
+  };
+
   if (!nodes.length || nodes.every((node) => /^0*\d+$/.test(node.id))) {
-    return { ...workspace, orientation, layoutOnOrientationChange, layoutSettings };
+    return finish(nodes, workspace.edges || []);
   }
   const idMap = new Map();
   const migratedNodes = nodes.map((node, index) => {
@@ -355,5 +845,5 @@ export function migrateWorkspaceNodeIds(workspace) {
     fromNode: idMap.get(edge.fromNode) ?? edge.fromNode,
     toNode: idMap.get(edge.toNode) ?? edge.toNode,
   }));
-  return { ...workspace, orientation, layoutOnOrientationChange, layoutSettings, nodes: migratedNodes, edges: migratedEdges };
+  return finish(migratedNodes, migratedEdges);
 }

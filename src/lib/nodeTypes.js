@@ -1,0 +1,803 @@
+export const NODE_KIND = {
+  NOTE: 'note',
+  /** Merged Expression/Equation value node (role derived from text). */
+  EXPRESSION: 'expression',
+  /** @deprecated Normalised to EXPRESSION; role comes from expr text. */
+  EQUATION: 'equation',
+  BASIC_OPERATION: 'basicOperation',
+  MANIPULATION: 'manipulation',
+  /** Core Solve node (variable dropdown). Stored id kept for compatibility. */
+  EQUATION_OP: 'equationOp',
+  /** @deprecated Prefer MANIPULATION; kept so older graphs still evaluate. */
+  CAS_OP: 'casOp',
+  COMBINE_LIKE: 'combineLike',
+  EXPAND: 'expand',
+  FACTOR: 'factor',
+  COLLECT: 'collect',
+  SIMPLIFY_FRAC: 'simplifyFrac',
+  POWERS: 'powers',
+  SAME_DENOM: 'sameDenom',
+  MULT_BY_ONE: 'multByOne',
+  POLY_DIV: 'polyDiv',
+  PARTIAL_FRAC: 'partialFrac',
+  APPLY_BOTH: 'applyBoth',
+  DIFF: 'diff',
+  INTEGRATE: 'integrate',
+  APPLY_INVERSE: 'applyInverse',
+  TRIG_IDENTITY: 'trigIdentity',
+  LOG_REWRITE: 'logRewrite',
+  EXP_REWRITE: 'expRewrite',
+  COMPLEX: 'complex',
+  EVALUATE: 'evaluate',
+  CONVERT: 'convert',
+  SUBSTITUTE: 'substitute',
+  /** 2D Cartesian graph of explicit equations / expressions (any named axes). */
+  GRAPH: 'graph',
+  /** @deprecated Rewrite-style solve; hidden from picker in favour of EQUATION_OP. */
+  SOLVE: 'solve',
+  /** Checklist / task list (Text). */
+  CHECKLIST: 'checklist',
+  /** Unit conversion (Math Core) — distinct from CAS CONVERT. */
+  UNIT_CONVERT: 'unitConvert',
+  /** Spreadsheet-like table (Data). */
+  TABLE: 'table',
+  /** Data chart (bar/line/pie/scatter) — distinct from CAS Graph. */
+  CHART: 'chart',
+  /** Stats summaries from table/chart data. */
+  STATS: 'stats',
+  /** Attach + preview a file. */
+  LOAD_FILE: 'loadFile',
+  /** Convert attached files (Manipulation-style suggestions). */
+  FILE_CONVERTER: 'fileConverter',
+  /** Interactive geometry board + proof checks. */
+  GEOMETRY: 'geometry',
+};
+
+export const DEFAULT_NODE_KIND = NODE_KIND.NOTE;
+
+export const NODE_CATEGORIES = [
+  { id: 'text', label: 'Text' },
+  { id: 'math', label: 'Math' },
+  { id: 'data', label: 'Data' },
+  { id: 'media', label: 'Media' },
+];
+
+export const MATH_GROUPS = [
+  { id: 'values', label: 'Core' },
+  { id: 'algebra', label: 'Algebra' },
+  { id: 'calculus', label: 'Calculus' },
+  { id: 'trig', label: 'Trig' },
+  { id: 'logexp', label: 'Log / Exp' },
+  { id: 'complex', label: 'Complex' },
+  { id: 'evaluate', label: 'Evaluate' },
+  { id: 'solve', label: 'Solve' },
+];
+
+export const NODE_TYPE_DEFS = [
+  { id: NODE_KIND.NOTE, category: 'text', label: 'Text' },
+  { id: NODE_KIND.CHECKLIST, category: 'text', label: 'Checklist' },
+  {
+    id: NODE_KIND.EXPRESSION,
+    category: 'math',
+    group: 'values',
+    label: 'Expression/Equation',
+    field: {
+      key: 'expr',
+      label: 'Expression/Equation',
+      placeholder: 'x^2+2*x+1 or x^2-1=0',
+    },
+  },
+  {
+    id: NODE_KIND.BASIC_OPERATION,
+    category: 'math',
+    group: 'values',
+    label: 'Basic operation',
+    modes: [
+      { id: '+', label: 'Plus' },
+      { id: '-', label: 'Minus' },
+      { id: '*', label: 'Times' },
+      { id: '/', label: 'Divide' },
+    ],
+  },
+  {
+    id: NODE_KIND.SUBSTITUTE,
+    category: 'math',
+    group: 'values',
+    label: 'Substitute',
+  },
+  {
+    id: NODE_KIND.GRAPH,
+    category: 'math',
+    group: 'values',
+    label: 'Graph',
+  },
+  {
+    id: NODE_KIND.MANIPULATION,
+    category: 'math',
+    group: 'values',
+    label: 'Manipulation',
+  },
+  {
+    id: NODE_KIND.EQUATION_OP,
+    category: 'math',
+    group: 'values',
+    label: 'Solve',
+    field: { key: 'field', label: 'Variable', placeholder: 'x' },
+  },
+  {
+    id: NODE_KIND.UNIT_CONVERT,
+    category: 'math',
+    group: 'values',
+    label: 'Unit conversion',
+  },
+  {
+    id: NODE_KIND.GEOMETRY,
+    category: 'math',
+    group: 'values',
+    label: 'Geometry',
+  },
+  {
+    id: NODE_KIND.TABLE,
+    category: 'data',
+    group: 'values',
+    label: 'Table',
+  },
+  {
+    id: NODE_KIND.CHART,
+    category: 'data',
+    group: 'values',
+    label: 'Chart',
+  },
+  {
+    id: NODE_KIND.STATS,
+    category: 'data',
+    group: 'values',
+    label: 'Stats',
+  },
+  {
+    id: NODE_KIND.LOAD_FILE,
+    category: 'media',
+    group: 'values',
+    label: 'Load file',
+  },
+  {
+    id: NODE_KIND.FILE_CONVERTER,
+    category: 'media',
+    group: 'values',
+    label: 'File converter',
+  },
+  {
+    id: NODE_KIND.CAS_OP,
+    category: 'math',
+    group: 'algebra',
+    label: 'Operation',
+    picker: false,
+  },
+  {
+    id: NODE_KIND.COMBINE_LIKE,
+    category: 'math',
+    group: 'algebra',
+    label: 'Combine like terms',
+    picker: false,
+  },
+  {
+    id: NODE_KIND.EXPAND,
+    category: 'math',
+    group: 'algebra',
+    label: 'Expand',
+    modes: [
+      { id: 'polynomial', label: 'Polynomial' },
+      { id: 'fraction', label: 'Fraction' },
+      { id: 'power', label: 'Power' },
+      { id: 'neg1', label: 'Factor ±1' },
+    ],
+  },
+  {
+    id: NODE_KIND.FACTOR,
+    category: 'math',
+    group: 'algebra',
+    label: 'Factor',
+    modes: [
+      { id: 'factor', label: 'Factor' },
+      { id: 'polynomial', label: 'Polynomial' },
+      { id: 'completeSquare', label: 'Complete the square' },
+    ],
+  },
+  {
+    id: NODE_KIND.COLLECT,
+    category: 'math',
+    group: 'algebra',
+    label: 'Collect',
+    field: { key: 'field', label: 'Collect', placeholder: 'x' },
+  },
+  {
+    id: NODE_KIND.SIMPLIFY_FRAC,
+    category: 'math',
+    group: 'algebra',
+    label: 'Simplify fraction',
+  },
+  {
+    id: NODE_KIND.POWERS,
+    category: 'math',
+    group: 'algebra',
+    label: 'Powers',
+    modes: [
+      { id: 'addPowers', label: 'Multiply by adding powers' },
+      { id: 'combine', label: 'x^a y^a = (xy)^a' },
+      { id: 'positive', label: 'Make powers positive' },
+      { id: 'negative', label: 'Make power negative' },
+    ],
+  },
+  {
+    id: NODE_KIND.SAME_DENOM,
+    category: 'math',
+    group: 'algebra',
+    label: 'Same denominator',
+  },
+  {
+    id: NODE_KIND.MULT_BY_ONE,
+    category: 'math',
+    group: 'algebra',
+    label: 'Multiply by one',
+    modes: [
+      { id: 'conjugate', label: 'Denominator conjugate' },
+      { id: 'fracOverFrac', label: '(form)/(form)' },
+      { id: 'e2piik', label: 'e^(2πik)' },
+      { id: 'negi2', label: '-i²' },
+      { id: 'powpow', label: 'x = (x^(1/a))^a' },
+    ],
+    field: { key: 'field', label: 'Power', placeholder: 'a (optional)', modes: ['powpow'] },
+  },
+  {
+    id: NODE_KIND.POLY_DIV,
+    category: 'math',
+    group: 'algebra',
+    label: 'Polynomial division',
+    field: { key: 'field', label: 'Variable', placeholder: 'x' },
+  },
+  {
+    id: NODE_KIND.PARTIAL_FRAC,
+    category: 'math',
+    group: 'algebra',
+    label: 'Partial fractions',
+    field: { key: 'field', label: 'Variable', placeholder: 'x' },
+  },
+  {
+    id: NODE_KIND.APPLY_BOTH,
+    category: 'math',
+    group: 'algebra',
+    label: 'Apply',
+    modes: [
+      { id: '+', label: 'Add to both sides' },
+      { id: '*', label: 'Multiply both sides' },
+      { id: '/', label: 'Divide both sides' },
+      { id: '^', label: 'Raise both sides' },
+    ],
+    field: { key: 'field', label: 'Operand', placeholder: '1' },
+  },
+  {
+    id: NODE_KIND.DIFF,
+    category: 'math',
+    group: 'calculus',
+    label: 'Diff',
+    modes: [
+      { id: 'calculate', label: 'Calculate' },
+      { id: 'swap', label: 'Swap order' },
+      { id: 'productRule', label: 'Collect product-rule terms' },
+    ],
+  },
+  {
+    id: NODE_KIND.INTEGRATE,
+    category: 'math',
+    group: 'calculus',
+    label: 'Integrate',
+    modes: [
+      { id: 'simple', label: 'Simple integral' },
+      { id: 'byParts', label: 'By parts' },
+      { id: 'splitSum', label: 'Split sum' },
+      { id: 'combineSum', label: 'Combine sum' },
+      { id: 'constOut', label: 'Constants out' },
+      { id: 'constIn', label: 'Constants in' },
+      { id: 'splitLimits', label: 'Split limits' },
+      { id: 'swapLimits', label: 'Swap limits' },
+    ],
+    field: { key: 'field', label: 'Split at', placeholder: '0', modes: ['splitLimits'] },
+  },
+  {
+    id: NODE_KIND.APPLY_INVERSE,
+    category: 'math',
+    group: 'trig',
+    label: 'Apply inverse',
+  },
+  {
+    id: NODE_KIND.TRIG_IDENTITY,
+    category: 'math',
+    group: 'trig',
+    label: 'Trig identity',
+    modes: [
+      { id: 'angleSum', label: 'Angle sum' },
+      { id: 'double', label: 'Double angle' },
+      { id: 'triple', label: 'Triple angle' },
+      { id: 'nAngle', label: 'Multiple angle' },
+      { id: 'powerReduction', label: 'Power reduction' },
+      { id: 'productToSum', label: 'Product to sum' },
+      { id: 'tanToSinCos', label: 'tan = sin/cos' },
+      { id: 'sinCosToTan', label: 'sin/cos = tan' },
+      { id: 'sec2ToTan', label: '1/cos² = 1+tan²' },
+      { id: 'tanToSec2', label: '1+tan² = 1/cos²' },
+      { id: 'odd', label: 'Odd (f(-x) = -f(x))' },
+      { id: 'even', label: 'Even (cos(-x) = cos(x))' },
+      { id: 'pythagorean', label: 'Pythagorean' },
+      { id: 'oneMinusCos', label: '1-cos² = sin²' },
+      { id: 'oneMinusSin', label: '1-sin² = cos²' },
+      { id: 'sinSq', label: 'sin² = 1-cos²' },
+      { id: 'cosSq', label: 'cos² = 1-sin²' },
+      { id: 'asinBcos', label: 'A sin + B cos' },
+      { id: 'weierstrassSin', label: 'Weierstrass sin' },
+      { id: 'weierstrassCos', label: 'Weierstrass cos' },
+      { id: 'eulerSin', label: 'Euler sin' },
+      { id: 'eulerCos', label: 'Euler cos' },
+      { id: 'eulerTan', label: 'Euler tan' },
+      { id: 'eulerArcsin', label: 'Euler arcsin' },
+      { id: 'eulerArccos', label: 'Euler arccos' },
+      { id: 'eulerArctan', label: 'Euler arctan' },
+    ],
+  },
+  {
+    id: NODE_KIND.LOG_REWRITE,
+    category: 'math',
+    group: 'logexp',
+    label: 'Log',
+    modes: [
+      { id: 'powerOut', label: 'Move power out' },
+      { id: 'coeffIn', label: 'Move coefficient in' },
+      { id: 'combine', label: 'Combine logs' },
+      { id: 'split', label: 'Split into sum' },
+      { id: 'complex', label: 'Complex logarithm' },
+    ],
+  },
+  {
+    id: NODE_KIND.EXP_REWRITE,
+    category: 'math',
+    group: 'logexp',
+    label: 'Exp',
+    modes: [
+      { id: 'sumToProduct', label: 'Sum in power → product' },
+      { id: 'baseE', label: 'Make base e' },
+      { id: 'base10', label: 'Make base 10' },
+    ],
+  },
+  {
+    id: NODE_KIND.COMPLEX,
+    category: 'math',
+    group: 'complex',
+    label: 'Complex',
+    modes: [
+      { id: 'sinArg', label: 'sin(arg z)' },
+      { id: 'cosArg', label: 'cos(arg z)' },
+      { id: 'tanArg', label: 'tan(arg z)' },
+      { id: 'real', label: 'real(z) definition' },
+      { id: 'imag', label: 'imag(z) definition' },
+      { id: 'absToConj', label: '|x| = √(x conj x)' },
+      { id: 'conjToAbs', label: '√(x conj x) = |x|' },
+      { id: 'argTrig', label: 'arg, trigonometric' },
+      { id: 'argLog', label: 'arg, logarithmic' },
+      { id: 'conj', label: 'Evaluate conjugate' },
+      { id: 'polarToCart', label: 'Polar → Cartesian' },
+      { id: 'cartToPolar', label: 'Cartesian → polar' },
+      { id: 'simplifyI', label: 'Simplify i^n' },
+    ],
+  },
+  {
+    id: NODE_KIND.EVALUATE,
+    category: 'math',
+    group: 'evaluate',
+    label: 'Evaluate',
+    modes: [
+      { id: 'exact', label: 'Function exactly' },
+      { id: 'principal', label: 'All principal solutions' },
+      { id: 'decimal', label: 'To decimal' },
+    ],
+  },
+  {
+    id: NODE_KIND.CONVERT,
+    category: 'math',
+    group: 'evaluate',
+    label: 'Convert',
+    modes: [
+      { id: 'factors', label: 'Prime factors' },
+      { id: 'fraction', label: 'To fraction' },
+      { id: 'decimal', label: 'To decimal' },
+    ],
+  },
+  {
+    id: NODE_KIND.SOLVE,
+    category: 'math',
+    group: 'solve',
+    label: 'Solve (rewrite)',
+    picker: false,
+    field: { key: 'field', label: 'Variable', placeholder: 'x' },
+  },
+];
+
+export const EXPRESSION_NODE_BODY_HEIGHT = 120;
+/** @deprecated Use EXPRESSION_NODE_BODY_HEIGHT */
+export const NUMBER_NODE_BODY_HEIGHT = EXPRESSION_NODE_BODY_HEIGHT;
+export const MATH_NODE_BODY_HEIGHT = 168;
+/** Compact Math body: equation preview only (no inputs / selectors). */
+export const MATH_NODE_BASIC_BODY_HEIGHT = 72;
+/** Graph node body ≈ 2× standard Math body (plot panel). */
+export const GRAPH_NODE_BODY_HEIGHT = MATH_NODE_BODY_HEIGHT * 2;
+/** Graph basic view: plot only (still large). */
+export const GRAPH_NODE_BASIC_BODY_HEIGHT = Math.round(GRAPH_NODE_BODY_HEIGHT * 0.85);
+
+/** Math node body presentation: full controls, preview-only, or title bar only. */
+export const MATH_VIEW = {
+  FULL: 'full',
+  BASIC: 'basic',
+  COLLAPSED: 'collapsed',
+};
+
+const MATH_VIEW_SET = new Set(Object.values(MATH_VIEW));
+
+/** Resolve stored Math view, migrating legacy `collapsed` boolean. */
+export function getMathView(node) {
+  if (!isMathNode(node)) return MATH_VIEW.FULL;
+  const stored = node?.mathView;
+  if (MATH_VIEW_SET.has(stored)) return stored;
+  return node?.collapsed ? MATH_VIEW.COLLAPSED : MATH_VIEW.FULL;
+}
+
+export function isMathCollapsed(node) {
+  return getMathView(node) === MATH_VIEW.COLLAPSED;
+}
+
+export function isMathBasicView(node) {
+  return getMathView(node) === MATH_VIEW.BASIC;
+}
+
+/** True when the node body (below the title bar) is hidden. */
+export function isNodeBodyCollapsed(node) {
+  if (isMathNode(node)) return isMathCollapsed(node);
+  return Boolean(node?.collapsed);
+}
+
+/** Cycle Full → Basic → Collapsed → Full. Also keeps `collapsed` in sync. */
+export function nextMathViewPatch(node) {
+  const current = getMathView(node);
+  const mathView =
+    current === MATH_VIEW.FULL
+      ? MATH_VIEW.BASIC
+      : current === MATH_VIEW.BASIC
+        ? MATH_VIEW.COLLAPSED
+        : MATH_VIEW.FULL;
+  return { mathView, collapsed: mathView === MATH_VIEW.COLLAPSED };
+}
+
+export function mathViewLabel(view) {
+  if (view === MATH_VIEW.BASIC) return 'Basic';
+  if (view === MATH_VIEW.COLLAPSED) return 'Collapsed';
+  return 'Full';
+}
+
+export function defForKind(kind) {
+  return NODE_TYPE_DEFS.find((item) => item.id === kind) || null;
+}
+
+export function normalizeNodeKind(kind) {
+  // Legacy standalone Equation nodes collapse into the merged Expression kind.
+  if (kind === NODE_KIND.EQUATION) return NODE_KIND.EXPRESSION;
+  return NODE_TYPE_DEFS.some((def) => def.id === kind) ? kind : DEFAULT_NODE_KIND;
+}
+
+const DEFAULT_EXPR_EQ_TITLES = new Set([
+  '',
+  'expression/equation',
+  'expression',
+  'equation',
+  'untitled',
+]);
+
+/** True when the title is still a default Expression/Equation label. */
+export function isDefaultExprEqTitle(title) {
+  return DEFAULT_EXPR_EQ_TITLES.has(String(title || '').trim().toLowerCase());
+}
+
+/** Auto title for the merged Expression/Equation node from classified role. */
+export function titleForExprEqRole(role) {
+  if (role === 'equation') return 'Equation';
+  if (role === 'expression') return 'Expression';
+  return 'Expression/Equation';
+}
+
+function isPickerDef(def) {
+  if (!def || def.picker === false) return false;
+  if (def.category === 'text' || def.category === 'data' || def.category === 'media') {
+    return true;
+  }
+  return def.group === 'values';
+}
+
+export function typesForCategory(categoryId) {
+  return NODE_TYPE_DEFS.filter((def) => def.category === categoryId && isPickerDef(def));
+}
+
+export function mathTypesByGroup() {
+  return MATH_GROUPS.map((group) => ({
+    ...group,
+    types: NODE_TYPE_DEFS.filter(
+      (def) => def.category === 'math' && def.group === group.id && isPickerDef(def)
+    ),
+  })).filter((group) => group.types.length);
+}
+
+export function fieldsForKind(kind) {
+  const normalised = normalizeNodeKind(kind);
+  const def = defForKind(normalised);
+  const fields = { kind: normalised, title: def?.label || 'Text', content: '' };
+  if (def?.category === 'math') {
+    fields.mathView = MATH_VIEW.FULL;
+  }
+  if (normalised === NODE_KIND.EXPRESSION) {
+    fields.expr = '';
+  }
+  if (normalised === NODE_KIND.SUBSTITUTE) {
+    fields.subA = '';
+    fields.subB = [''];
+  }
+  if (normalised === NODE_KIND.GRAPH) {
+    fields.xMin = '-10';
+    fields.xMax = '10';
+    fields.graphExprs = ['', ''];
+    fields.graphSlotOpts = {};
+  }
+  if (
+    normalised === NODE_KIND.CAS_OP ||
+    normalised === NODE_KIND.MANIPULATION ||
+    normalised === NODE_KIND.EQUATION_OP
+  ) {
+    fields.method = '';
+    fields.selection = null;
+    fields.opId = '';
+  }
+  if (normalised === NODE_KIND.CHECKLIST) {
+    fields.items = [{ id: 'i1', text: '', done: false }];
+  }
+  if (normalised === NODE_KIND.UNIT_CONVERT) {
+    fields.value = '';
+    fields.fromUnit = 'm';
+    fields.toUnit = 'km';
+  }
+  if (normalised === NODE_KIND.TABLE) {
+    fields.columns = [
+      { id: 'c1', name: 'A' },
+      { id: 'c2', name: 'B' },
+      { id: 'c3', name: 'C' },
+    ];
+    fields.rows = [
+      { c1: '', c2: '', c3: '' },
+      { c1: '', c2: '', c3: '' },
+      { c1: '', c2: '', c3: '' },
+    ];
+  }
+  if (normalised === NODE_KIND.CHART) {
+    fields.chartType = 'bar';
+    fields.xKey = 'c1';
+    fields.yKeys = ['c2'];
+  }
+  if (normalised === NODE_KIND.STATS) {
+    fields.statsColumn = '';
+    fields.statsMetrics = ['mean', 'min', 'max'];
+  }
+  if (normalised === NODE_KIND.LOAD_FILE) {
+    fields.fileId = '';
+    fields.fileName = '';
+    fields.fileMime = '';
+    fields.fileSize = 0;
+    fields.previewCollapsed = false;
+  }
+  if (normalised === NODE_KIND.FILE_CONVERTER) {
+    fields.conversionId = '';
+    fields.outputFileId = '';
+    fields.outputFileName = '';
+    fields.outputMime = '';
+    fields.outputFileSize = 0;
+    fields.previewCollapsed = false;
+  }
+  if (normalised === NODE_KIND.GEOMETRY) {
+    fields.geometry = {
+      points: [
+        { id: 'A', x: 40, y: 140, free: true },
+        { id: 'B', x: 200, y: 140, free: true },
+        { id: 'C', x: 120, y: 40, free: true },
+      ],
+      segments: [
+        { id: 'AB', a: 'A', b: 'B' },
+        { id: 'BC', a: 'B', b: 'C' },
+        { id: 'CA', a: 'C', b: 'A' },
+      ],
+      circles: [],
+    };
+    fields.proofSteps = [];
+  }
+  if (def?.modes?.length) fields.mode = def.modes[0].id;
+  if (def?.field?.key && def.field.key !== 'expr') fields.field = '';
+  return fields;
+}
+
+export function nodeTypeLabel(kind) {
+  const def = defForKind(normalizeNodeKind(kind));
+  return def ? def.label : 'Text';
+}
+
+/** Display title: stored title, else type name (never a blank “Untitled”). */
+export function displayNodeTitle(nodeOrKind, title) {
+  const stored =
+    typeof nodeOrKind === 'object' && nodeOrKind
+      ? (nodeOrKind.title || '').trim()
+      : (title || '').trim();
+  if (stored && stored.toLowerCase() !== 'untitled') return stored;
+  const kind = typeof nodeOrKind === 'object' ? nodeOrKind?.kind : nodeOrKind;
+  return nodeTypeLabel(kind);
+}
+
+/** Merged Expression/Equation value node (stored kind `expression`). */
+export function isExpressionNode(nodeOrKind) {
+  const kind = typeof nodeOrKind === 'object' ? nodeOrKind?.kind : nodeOrKind;
+  return normalizeNodeKind(kind) === NODE_KIND.EXPRESSION;
+}
+
+/** @deprecated Use isExpressionNode */
+export function isNumberNode(nodeOrKind) {
+  return isExpressionNode(nodeOrKind);
+}
+
+/**
+ * True when a value node currently behaves as an equation
+ * (`=` with something on both sides).
+ */
+export function isEquationNode(nodeOrKind) {
+  if (typeof nodeOrKind !== 'object' || !nodeOrKind) return false;
+  if (!isExpressionNode(nodeOrKind)) return false;
+  // Lazy classify from text — avoid importing engine at module top in cycles.
+  const raw = String(nodeOrKind.expr ?? '');
+  if (!raw.includes('=')) return false;
+  const segments = raw.split('=');
+  return segments.length >= 2 && segments.every((part) => String(part).replace(/\s+/g, ''));
+}
+
+/** Expression/Equation — valid sources when filling a Math input socket. */
+export function isValueSourceKind(nodeOrKind) {
+  const kind = typeof nodeOrKind === 'object' ? nodeOrKind?.kind : nodeOrKind;
+  return normalizeNodeKind(kind) === NODE_KIND.EXPRESSION;
+}
+
+export function isBasicOperationNode(nodeOrKind) {
+  const kind = typeof nodeOrKind === 'object' ? nodeOrKind?.kind : nodeOrKind;
+  return normalizeNodeKind(kind) === NODE_KIND.BASIC_OPERATION;
+}
+
+export function isSubstituteNode(nodeOrKind) {
+  const kind = typeof nodeOrKind === 'object' ? nodeOrKind?.kind : nodeOrKind;
+  return normalizeNodeKind(kind) === NODE_KIND.SUBSTITUTE;
+}
+
+export function isGraphNode(nodeOrKind) {
+  const kind = typeof nodeOrKind === 'object' ? nodeOrKind?.kind : nodeOrKind;
+  return normalizeNodeKind(kind) === NODE_KIND.GRAPH;
+}
+
+/**
+ * Math nodes that may accept more than one inbound edge on a single
+ * anonymous input socket (Basic operation). Graph / Substitute use labelled slots.
+ */
+export function allowsMultipleInputs(nodeOrKind) {
+  return isBasicOperationNode(nodeOrKind);
+}
+
+/** Math nodes with labelled body input sockets (Substitute A/B…, Graph A/B/C…). */
+export function usesInputSlots(nodeOrKind) {
+  return isSubstituteNode(nodeOrKind) || isGraphNode(nodeOrKind);
+}
+
+/** Selection-menu driven Math nodes with a method/op picker (Manipulation). */
+export function isSelectionOpNode(nodeOrKind) {
+  const kind = typeof nodeOrKind === 'object' ? nodeOrKind?.kind : nodeOrKind;
+  const normalised = normalizeNodeKind(kind);
+  return normalised === NODE_KIND.MANIPULATION || normalised === NODE_KIND.CAS_OP;
+}
+
+/** Core Solve node (variable dropdown). */
+export function isEquationOpNode(nodeOrKind) {
+  const kind = typeof nodeOrKind === 'object' ? nodeOrKind?.kind : nodeOrKind;
+  return normalizeNodeKind(kind) === NODE_KIND.EQUATION_OP;
+}
+
+export function isSolveNode(nodeOrKind) {
+  return isEquationOpNode(nodeOrKind);
+}
+
+export function isMathNode(nodeOrKind) {
+  const kind = typeof nodeOrKind === 'object' ? nodeOrKind?.kind : nodeOrKind;
+  const def = defForKind(normalizeNodeKind(kind));
+  return def?.category === 'math';
+}
+
+export function isChecklistNode(nodeOrKind) {
+  const kind = typeof nodeOrKind === 'object' ? nodeOrKind?.kind : nodeOrKind;
+  return normalizeNodeKind(kind) === NODE_KIND.CHECKLIST;
+}
+
+export function isUnitConvertNode(nodeOrKind) {
+  const kind = typeof nodeOrKind === 'object' ? nodeOrKind?.kind : nodeOrKind;
+  return normalizeNodeKind(kind) === NODE_KIND.UNIT_CONVERT;
+}
+
+export function isTableNode(nodeOrKind) {
+  const kind = typeof nodeOrKind === 'object' ? nodeOrKind?.kind : nodeOrKind;
+  return normalizeNodeKind(kind) === NODE_KIND.TABLE;
+}
+
+export function isChartNode(nodeOrKind) {
+  const kind = typeof nodeOrKind === 'object' ? nodeOrKind?.kind : nodeOrKind;
+  return normalizeNodeKind(kind) === NODE_KIND.CHART;
+}
+
+export function isStatsNode(nodeOrKind) {
+  const kind = typeof nodeOrKind === 'object' ? nodeOrKind?.kind : nodeOrKind;
+  return normalizeNodeKind(kind) === NODE_KIND.STATS;
+}
+
+export function isLoadFileNode(nodeOrKind) {
+  const kind = typeof nodeOrKind === 'object' ? nodeOrKind?.kind : nodeOrKind;
+  return normalizeNodeKind(kind) === NODE_KIND.LOAD_FILE;
+}
+
+export function isFileConverterNode(nodeOrKind) {
+  const kind = typeof nodeOrKind === 'object' ? nodeOrKind?.kind : nodeOrKind;
+  return normalizeNodeKind(kind) === NODE_KIND.FILE_CONVERTER;
+}
+
+export function isGeometryNode(nodeOrKind) {
+  const kind = typeof nodeOrKind === 'object' ? nodeOrKind?.kind : nodeOrKind;
+  return normalizeNodeKind(kind) === NODE_KIND.GEOMETRY;
+}
+
+/** Nodes that use a custom body (not the plain note textarea). */
+export function isCustomBodyNode(nodeOrKind) {
+  return (
+    isMathNode(nodeOrKind) ||
+    isChecklistNode(nodeOrKind) ||
+    isTableNode(nodeOrKind) ||
+    isChartNode(nodeOrKind) ||
+    isStatsNode(nodeOrKind) ||
+    isLoadFileNode(nodeOrKind) ||
+    isFileConverterNode(nodeOrKind)
+  );
+}
+
+/** Single anonymous inbound socket (like Manipulation). */
+export function isSingleInputTransformNode(nodeOrKind) {
+  return (
+    isUnitConvertNode(nodeOrKind) ||
+    isChartNode(nodeOrKind) ||
+    isStatsNode(nodeOrKind) ||
+    isFileConverterNode(nodeOrKind)
+  );
+}
+
+export function isNoteNode(nodeOrKind) {
+  const kind = typeof nodeOrKind === 'object' ? nodeOrKind?.kind : nodeOrKind;
+  return normalizeNodeKind(kind) === NODE_KIND.NOTE;
+}
+
+/** True when Math body chrome (view cycle) applies. */
+export function usesMathViewChrome(nodeOrKind) {
+  return isMathNode(nodeOrKind) && !isUnitConvertNode(nodeOrKind) && !isGeometryNode(nodeOrKind);
+}
+
+export function fieldVisibleForNode(def, node) {
+  if (!def?.field) return false;
+  if (!def.field.modes) return true;
+  return def.field.modes.includes(node?.mode || def.modes?.[0]?.id);
+}

@@ -14,6 +14,14 @@ import {
 } from '@/lib/appVersion';
 import { isDesktopPlatform } from '@/lib/onboarding';
 import { normalizeTerminal } from '@/hooks/useWorkspaces';
+import {
+  displayNodeTitle,
+  fieldsForKind,
+  isEquationNode,
+  isExpressionNode,
+  isMathNode,
+  nodeTypeLabel,
+} from '@/lib/nodeTypes';
 import { COMMAND_NAMES, HELP_ALL, helpFor } from '@/lib/terminal/help';
 import { commandMatchesStep, getTerminalTutorialSteps } from '@/lib/terminal/tutorial';
 import TerminalTutorial from './TerminalTutorial';
@@ -58,8 +66,9 @@ function quoteAwareSplit(input) {
   return out;
 }
 
-function normaliseTitle(value) {
-  return (value || '').trim() || 'Untitled';
+function normaliseTitle(nodeOrTitle) {
+  if (typeof nodeOrTitle === 'object' && nodeOrTitle) return displayNodeTitle(nodeOrTitle);
+  return displayNodeTitle('note', nodeOrTitle);
 }
 
 function displayId(_nodes, id) {
@@ -78,7 +87,7 @@ function matchNodeId(nodes, token) {
   }
   const exact = nodes.find((node) => node.id === token);
   if (exact) return exact.id;
-  const titled = nodes.find((node) => normaliseTitle(node.title).toLowerCase() === token.toLowerCase());
+  const titled = nodes.find((node) => normaliseTitle(node).toLowerCase() === token.toLowerCase());
   return titled ? titled.id : null;
 }
 
@@ -109,7 +118,7 @@ function nodePath(nodes, nodeId) {
   const seen = new Set();
   while (cur && !seen.has(cur.id)) {
     seen.add(cur.id);
-    parts.unshift(normaliseTitle(cur.title));
+    parts.unshift(normaliseTitle(cur));
     cur = byId.get(cur.parentId);
   }
   return parts;
@@ -128,7 +137,7 @@ function resolvePath(nodes, cwdId, rawPath) {
       continue;
     }
     const next = childrenOf(nodes, current).find(
-      (node) => normaliseTitle(node.title).toLowerCase() === part.toLowerCase()
+      (node) => normaliseTitle(node).toLowerCase() === part.toLowerCase()
     );
     if (!next) return undefined;
     current = next.id;
@@ -173,13 +182,29 @@ function commandKey(token) {
 
 function formatNode(nodes, node) {
   const id = displayId(nodes, node.id);
-  return [
-    `Title: ${normaliseTitle(node.title)}`,
+  const lines = [
+    `Title: ${normaliseTitle(node)}`,
     `ID: ${id}`,
+    `Type: ${nodeTypeLabel(node.kind)}`,
     `Path: \\${nodePath(nodes, node.id).join('\\')}`,
     `Colour: ${node.color || '#6366f1'}`,
-    node.content ? `Description: ${node.content}` : 'Description: (empty)',
   ];
+  if (isMathNode(node)) {
+    if (node.expr) {
+      const label = isEquationNode(node)
+        ? 'Equation'
+        : isExpressionNode(node)
+          ? 'Expression'
+          : 'Expr';
+      lines.push(`${label}: ${node.expr}`);
+    }
+    if (node.mode) lines.push(`Mode: ${node.mode}`);
+    if (node.field) lines.push(`Field: ${node.field}`);
+    if (!node.expr && !node.mode && !node.field) lines.push('Math: (empty)');
+  } else {
+    lines.push(node.content ? `Description: ${node.content}` : 'Description: (empty)');
+  }
+  return lines;
 }
 
 function unquote(value) {
@@ -374,7 +399,7 @@ export default function TerminalDialog({
   const nodes = workspace.nodes || [];
   const graphOrientation = normalizeOrientation(orientation || workspace.orientation);
   const pathParts = nodePath(nodes, cwdId);
-  const prompt = `${workspace.name || 'Workspace'}:\\${pathParts.join('\\')}>`;
+  const prompt = `${workspace.name || 'Canvas'}:\\${pathParts.join('\\')}>`;
 
   useEffect(() => {
     linesRef.current = lines;
@@ -402,11 +427,20 @@ export default function TerminalDialog({
       return;
     }
     if (activeWorkspaceIdRef.current !== workspace.id) return;
+    const stored = normalizeTerminal(workspace.terminal);
+    const same =
+      stored.cwdId === cwdId &&
+      stored.welcomeHidden === welcomeHidden &&
+      stored.lines.length === lines.length &&
+      stored.history.length === history.length &&
+      stored.lines.every((line, i) => line === lines[i]) &&
+      stored.history.every((line, i) => line === history[i]);
+    if (same) return;
     dispatch({
       type: 'SET_WORKSPACE_TERMINAL',
       terminal: { lines, history, cwdId, welcomeHidden },
     });
-  }, [lines, history, cwdId, welcomeHidden, dispatch, workspace.id]);
+  }, [lines, history, cwdId, welcomeHidden, dispatch, workspace.id, workspace.terminal]);
 
   useEffect(() => {
     if (open) {
@@ -477,7 +511,7 @@ export default function TerminalDialog({
   }, [cwdId, nodes]);
 
   const welcome = useMemo(
-    () => [`NodeMind Terminal`, `Type help for commands, or tutorial to learn by doing.`, ''],
+    () => [`Noded terminal`, `A local graph for thinking.`, `Type help for commands, or tutorial to learn by doing.`, ''],
     []
   );
 
@@ -620,7 +654,7 @@ export default function TerminalDialog({
       }
       case 'dir': {
         const kids = childrenOf(nodes, cwdId);
-        write(kids.length ? kids.map((node) => `${displayId(nodes, node.id)} ${normaliseTitle(node.title)}`) : '(no child nodes)');
+        write(kids.length ? kids.map((node) => `${displayId(nodes, node.id)} ${normaliseTitle(node)}`) : '(no child nodes)');
         break;
       }
       case 'cd':
@@ -638,7 +672,7 @@ export default function TerminalDialog({
           write(nodes.length ? nodes.flatMap((node) => [...formatNode(nodes, node), '']) : 'No nodes.');
         } else if (flag === '/title') {
           const query = args.slice(1).join(' ').toLowerCase();
-          const matches = nodes.filter((node) => normaliseTitle(node.title).toLowerCase().includes(query));
+          const matches = nodes.filter((node) => normaliseTitle(node).toLowerCase().includes(query));
           write(matches.length ? matches.flatMap((node) => [...formatNode(nodes, node), '']) : 'No matches.');
         } else if (flag === '/id') {
           const id = matchNodeId(nodes, args[1]);
@@ -655,13 +689,13 @@ export default function TerminalDialog({
         const flag = args[0]?.startsWith('/') ? args[0].toLowerCase() : null;
         const query = (flag ? args.slice(1) : args).join(' ').toLowerCase();
         const matches = nodes.filter((node) => {
-          if (flag === '/title') return normaliseTitle(node.title).toLowerCase().includes(query);
+          if (flag === '/title') return normaliseTitle(node).toLowerCase().includes(query);
           if (flag === '/desc' || flag === '/description') return (node.content || '').toLowerCase().includes(query);
           if (flag === '/id') return node.id.includes(query) || displayId(nodes, node.id) === query;
           if (flag === '/date') return matchesDateQuery(node, query);
           return `${node.title || ''} ${node.content || ''} ${node.id}`.toLowerCase().includes(query);
         });
-        write(matches.length ? matches.map((node) => `${displayId(nodes, node.id)} ${normaliseTitle(node.title)}`) : 'No matches.');
+        write(matches.length ? matches.map((node) => `${displayId(nodes, node.id)} ${normaliseTitle(node)}`) : 'No matches.');
         break;
       }
       case 'title':
@@ -721,15 +755,15 @@ export default function TerminalDialog({
           handled = false;
           break;
         }
-        const title = unquote(rest) || 'Untitled';
+        const title = unquote(rest) || nodeTypeLabel('note');
         const pos = nextChildGraphPosition(nodes, cwdId, title, graphOrientation);
         const now = new Date().toISOString();
         const node = {
           id: nextNumericNodeId(nodes),
           x: pos.x,
           y: pos.y,
+          ...fieldsForKind('note'),
           title,
-          content: '',
           color: '#6366f1',
           collapsed: false,
           pinned: false,
@@ -841,8 +875,8 @@ export default function TerminalDialog({
         }
         const outgoing = workspace.edges.filter((edge) => edge.fromNode === current.id).map((edge) => nodes.find((n) => n.id === edge.toNode));
         const incoming = workspace.edges.filter((edge) => edge.toNode === current.id).map((edge) => nodes.find((n) => n.id === edge.fromNode));
-        const outgoingLines = outgoing.filter(Boolean).map((node) => `  ${displayId(nodes, node.id)} ${normaliseTitle(node.title)}`);
-        const incomingLines = incoming.filter(Boolean).map((node) => `  ${displayId(nodes, node.id)} ${normaliseTitle(node.title)}`);
+        const outgoingLines = outgoing.filter(Boolean).map((node) => `  ${displayId(nodes, node.id)} ${normaliseTitle(node)}`);
+        const incomingLines = incoming.filter(Boolean).map((node) => `  ${displayId(nodes, node.id)} ${normaliseTitle(node)}`);
         write([
           'Outgoing:',
           ...(outgoingLines.length ? outgoingLines : ['  (none)']),
@@ -853,7 +887,7 @@ export default function TerminalDialog({
       }
       case 'arrange':
         onArrange?.();
-        write('Workspace arranged.');
+        write('Canvas arranged.');
         break;
       case 'export':
         onExport();
@@ -985,32 +1019,28 @@ export default function TerminalDialog({
       className={`fixed z-[100] flex justify-center ${keyboardOpen ? 'items-end' : 'items-center'}`}
       style={shellStyle}
     >
-      <div className="absolute inset-0 bg-nm-overlay backdrop-blur-md" onClick={onClose} />
+      <div className="nm-dialog-overlay" onClick={onClose} />
       <div
-        className="relative flex w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-nm-border bg-nm-panel font-mono shadow-2xl"
+        className="nm-dialog-panel max-w-3xl font-mono"
         style={{
           height: keyboardOpen ? '100%' : '78vh',
           maxHeight: '100%',
         }}
       >
-        <div className="flex items-center gap-2 border-b border-nm-border bg-nm-header px-3 py-3 sm:px-4">
-          <Terminal size={16} className="text-nm-terminal-prompt" />
-          <h2 className="text-sm font-semibold text-nm-text">NodeMind Terminal</h2>
+        <div className="nm-dialog-head">
+          <Terminal size={16} className="text-nm-text-muted" />
+          <h2>Noded</h2>
           <div className="flex-1" />
           <button
             type="button"
             title="Interactive tutorial"
             onClick={startTutorial}
-            className={`rounded-lg p-2 transition active:scale-95 ${
-              tutorialOpen
-                ? 'bg-indigo-500/30 text-indigo-200'
-                : 'text-nm-text-faint hover:bg-nm-hover hover:text-nm-text'
-            }`}
+            className={`nm-dialog-close ${tutorialOpen ? 'bg-nm-hover-strong text-nm-text' : ''}`}
           >
-            <GraduationCap size={18} />
+            <GraduationCap size={16} strokeWidth={1.75} />
           </button>
-          <button onClick={onClose} className="rounded-lg p-2 text-nm-text-faint transition hover:bg-nm-hover hover:text-nm-text">
-            <X size={18} />
+          <button type="button" onClick={onClose} className="nm-dialog-close" title="Close">
+            <X size={16} strokeWidth={1.75} />
           </button>
         </div>
 

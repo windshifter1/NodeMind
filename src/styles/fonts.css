@@ -1,0 +1,17 @@
+/* Bundled UI fonts — shipped in the build for offline PWA (no Google Fonts CDN). */
+
+@font-face {
+  font-family: 'Nodes';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('../assets/fonts/Nodes.ttf') format('truetype');
+}
+
+@import '@fontsource/syne/400.css';
+@import '@fontsource/syne/500.css';
+@import '@fontsource/syne/600.css';
+@import '@fontsource/syne/700.css';
+@import '@fontsource/syne/800.css';
+@import '@fontsource/jetbrains-mono/400.css';
+@import '@fontsource/jetbrains-mono/500.css';

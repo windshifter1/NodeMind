@@ -3,124 +3,6 @@
 @tailwind utilities;
 
 @layer base {
-  :root,
-  html[data-theme='dark'] {
-    --background: 240 6% 4%;
-    --foreground: 0 0% 98%;
-    --card: 240 6% 10%;
-    --card-foreground: 0 0% 98%;
-    --popover: 240 6% 10%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 9%;
-    --secondary: 240 4% 16%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 240 4% 16%;
-    --muted-foreground: 240 5% 65%;
-    --accent: 240 4% 16%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 63% 31%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 240 4% 16%;
-    --input: 240 4% 16%;
-    --ring: 240 5% 84%;
-    --radius: 0.5rem;
-    --font-heading: ui-sans-serif, system-ui, sans-serif;
-    --font-body: ui-sans-serif, system-ui, sans-serif;
-    --font-display: ui-sans-serif, system-ui, sans-serif;
-    --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-
-    /* NodeMind chrome — dark tiers */
-    --nm-page: #09090b;
-    --nm-canvas: #0b0d12;
-    --nm-canvas-dot: rgba(255, 255, 255, 0.07);
-    --nm-panel: #18181b;
-    --nm-chrome: rgba(24, 24, 27, 0.82);
-    --nm-header: rgba(255, 255, 255, 0.05);
-    --nm-sidebar: rgba(255, 255, 255, 0.03);
-    --nm-hover: rgba(255, 255, 255, 0.1);
-    --nm-hover-strong: rgba(255, 255, 255, 0.15);
-    --nm-border: rgba(255, 255, 255, 0.1);
-    --nm-border-strong: rgba(255, 255, 255, 0.16);
-    --nm-divider: rgba(255, 255, 255, 0.1);
-    --nm-text: #f4f4f5;
-    --nm-text-secondary: rgba(255, 255, 255, 0.8);
-    --nm-text-muted: rgba(255, 255, 255, 0.5);
-    --nm-text-faint: rgba(255, 255, 255, 0.7);
-    --nm-text-subtle: rgba(255, 255, 255, 0.15);
-    --nm-label: #d4d4d8;
-    --nm-overlay: rgba(0, 0, 0, 0.5);
-    --nm-edge: #94a3b8;
-    --nm-input: rgba(255, 255, 255, 0.05);
-    --nm-option: rgba(255, 255, 255, 0.03);
-    --nm-option-text: #d4d4d8;
-    --nm-tooltip: #18181b;
-    --nm-tooltip-text: #ffffff;
-    --nm-terminal-bg: #050806;
-    --nm-terminal-text: #d1fae5;
-    --nm-terminal-prompt: #6ee7b7;
-    --nm-bin: rgba(24, 24, 27, 0.82);
-    --nm-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.55);
-  }
-
-  html[data-theme='light'] {
-    --background: 240 5% 96%;
-    --foreground: 240 6% 10%;
-    --card: 0 0% 100%;
-    --card-foreground: 240 6% 10%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 240 6% 10%;
-    --primary: 240 6% 10%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 240 5% 92%;
-    --secondary-foreground: 240 6% 10%;
-    --muted: 240 5% 92%;
-    --muted-foreground: 240 4% 40%;
-    --accent: 240 5% 92%;
-    --accent-foreground: 240 6% 10%;
-    --destructive: 0 72% 51%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 240 6% 86%;
-    --input: 240 6% 90%;
-    --ring: 240 5% 34%;
-
-    /* NodeMind chrome — light tiers (inverse of dark) */
-    --nm-page: #f4f4f5;
-    --nm-canvas: #e8eaef;
-    --nm-canvas-dot: rgba(15, 23, 42, 0.1);
-    --nm-panel: #ffffff;
-    --nm-chrome: rgba(255, 255, 255, 0.9);
-    --nm-header: rgba(15, 23, 42, 0.04);
-    --nm-sidebar: rgba(15, 23, 42, 0.03);
-    --nm-hover: rgba(15, 23, 42, 0.06);
-    --nm-hover-strong: rgba(15, 23, 42, 0.1);
-    --nm-border: rgba(15, 23, 42, 0.1);
-    --nm-border-strong: rgba(15, 23, 42, 0.16);
-    --nm-divider: rgba(15, 23, 42, 0.1);
-    --nm-text: #18181b;
-    --nm-text-secondary: rgba(24, 24, 27, 0.8);
-    --nm-text-muted: rgba(24, 24, 27, 0.5);
-    --nm-text-faint: rgba(24, 24, 27, 0.65);
-    --nm-text-subtle: rgba(24, 24, 27, 0.2);
-    --nm-label: #52525b;
-    --nm-overlay: rgba(15, 23, 42, 0.35);
-    --nm-edge: #64748b;
-    --nm-input: rgba(15, 23, 42, 0.04);
-    --nm-option: rgba(15, 23, 42, 0.03);
-    --nm-option-text: #52525b;
-    --nm-tooltip: #ffffff;
-    --nm-tooltip-text: #18181b;
-    --nm-terminal-bg: #f3f6f4;
-    --nm-terminal-text: #14532d;
-    --nm-terminal-prompt: #047857;
-    --nm-bin: rgba(255, 255, 255, 0.9);
-    --nm-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.18);
-  }
-}
-
-
-
-@layer base {
   * {
     @apply border-border outline-ring/50;
   }
@@ -137,6 +19,16 @@
     --safe-right: env(safe-area-inset-right, 0px);
     --safe-bottom: env(safe-area-inset-bottom, 0px);
     --safe-left: env(safe-area-inset-left, 0px);
+    --nm-keyboard-inset: 0px;
+  }
+
+  @supports (padding-top: constant(safe-area-inset-top)) {
+    :root {
+      --safe-top: max(constant(safe-area-inset-top), env(safe-area-inset-top, 0px));
+      --safe-right: max(constant(safe-area-inset-right), env(safe-area-inset-right, 0px));
+      --safe-bottom: max(constant(safe-area-inset-bottom), env(safe-area-inset-bottom, 0px));
+      --safe-left: max(constant(safe-area-inset-left), env(safe-area-inset-left, 0px));
+    }
   }
 
   html {
@@ -146,8 +38,7 @@
     overscroll-behavior: none;
     touch-action: manipulation;
     -webkit-text-size-adjust: 100%;
-    /* Match canvas so any edge seam is invisible */
-    background-color: var(--nm-canvas);
+    background-color: var(--nm-page);
   }
 
   body {
@@ -166,7 +57,7 @@
     overscroll-behavior: none;
     touch-action: manipulation;
     -webkit-text-size-adjust: 100%;
-    background-color: var(--nm-canvas);
+    background-color: var(--nm-page);
   }
 
   #root {
@@ -175,7 +66,7 @@
     width: 100%;
     height: 100%;
     overflow: hidden;
-    background-color: var(--nm-canvas);
+    background-color: var(--nm-page);
   }
 
   @media (max-width: 768px) {
@@ -184,6 +75,19 @@
     select {
       font-size: 16px;
     }
+  }
+}
+
+/* Short canvas socket / connection hint near a node */
+@keyframes nm-socket-hint {
+  0%,
+  55% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-4px);
   }
 }
 
@@ -251,6 +155,12 @@ body[data-tutorial-highlight] [data-onboarding] {
   transition: opacity 220ms ease, filter 220ms ease, box-shadow 220ms ease;
 }
 
+/* Spotlighted control stays crisp even when nested (mobile workspace sheet). */
+body[data-tutorial-highlight] [data-tutorial-ring] {
+  opacity: 1 !important;
+  filter: none !important;
+}
+
 body[data-tutorial-highlight='toolbar-add'] [data-onboarding='toolbar'] > :not([data-onboarding='toolbar-add']):not(.w-px),
 body[data-tutorial-highlight='toolbar-recenter'] [data-onboarding='toolbar'] > :not([data-onboarding='toolbar-recenter']):not(.w-px),
 body[data-tutorial-highlight='toolbar-selection'] [data-onboarding='toolbar'] > :not([data-onboarding='toolbar-selection']):not(.w-px),
@@ -260,8 +170,31 @@ body[data-tutorial-highlight='toolbar-settings'] [data-onboarding='toolbar'] > :
   filter: grayscale(0.15);
 }
 
+/* Mobile: settings moved to the top bar — dim the bottom nav + the menu side. */
+body[data-tutorial-highlight='toolbar-settings'] [data-onboarding='toolbar'],
+body[data-tutorial-highlight='toolbar-settings'] [data-onboarding='mobile-top'] .nm-mobile__top-side--start {
+  opacity: 0.38;
+  filter: grayscale(0.15);
+}
+
+body[data-tutorial-highlight='toolbar-settings'] [data-onboarding='toolbar-settings'] {
+  opacity: 1;
+  filter: none;
+}
+
 body[data-tutorial-highlight='workspace-create'] [data-onboarding='workspace-bar'] > :not([data-onboarding='workspace-create']):not(.w-px):not(.nm-workspace-scroll-col),
 body[data-tutorial-highlight='workspace-edit'] [data-onboarding='workspace-bar'] > :not([data-onboarding='workspace-edit']):not(.w-px):not(.nm-workspace-scroll-col) {
+  opacity: 0.4;
+  filter: grayscale(0.1);
+}
+
+/* Mobile workspace sheet nests + inside the strip — keep the strip readable enough. */
+body[data-tutorial-highlight='workspace-create'] [data-onboarding='workspace-bar'] .nm-mobile__ws-strip {
+  opacity: 1;
+  filter: none;
+}
+
+body[data-tutorial-highlight='workspace-create'] [data-onboarding='workspace-bar'] .nm-mobile__ws-tab {
   opacity: 0.4;
   filter: grayscale(0.1);
 }
@@ -371,4 +304,73 @@ html[data-theme='light'] .nm-scrollbar::-webkit-scrollbar-thumb:hover {
 .nm-workspace-icon-glyph {
   transition: transform 300ms cubic-bezier(0.4, 0, 0.2, 1);
   transform-origin: center;
+}
+
+.math-eq-canvas {
+  display: block;
+  cursor: text;
+  max-width: none;
+  touch-action: none;
+}
+
+.math-preview-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: visible;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.55) transparent;
+}
+
+.math-preview-scroll::-webkit-scrollbar {
+  height: 6px;
+}
+
+.math-preview-scroll::-webkit-scrollbar-track {
+  background: transparent;
+  margin: 0 8px;
+}
+
+.math-preview-scroll::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.45);
+  border-radius: 999px;
+}
+
+.math-preview-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.7);
+}
+
+html[data-theme='light'] .math-preview-scroll {
+  scrollbar-color: rgba(100, 116, 139, 0.45) transparent;
+}
+
+html[data-theme='light'] .math-preview-scroll::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.4);
+}
+
+html[data-theme='light'] .math-preview-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.65);
+}
+
+.math-preview .katex-display {
+  margin: 0.2em 0;
+}
+
+.math-preview .katex {
+  font-size: 1.35em;
+  color: inherit;
+}
+
+.math-preview .katex .base,
+.math-preview .katex .mord,
+.math-preview .katex .mbin,
+.math-preview .katex .mrel,
+.math-preview .katex .mopen,
+.math-preview .katex .mclose,
+.math-preview .katex .mpunct,
+.math-preview .katex .minner,
+.math-preview .katex .mfrac,
+.math-preview .katex .msqrt,
+.math-preview .katex .accent {
+  color: inherit;
 }

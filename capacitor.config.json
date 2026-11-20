@@ -1,0 +1,12 @@
+{
+  "appId": "com.windshifter.nodemind",
+  "appName": "NodeMind",
+  "webDir": "dist",
+  "android": {
+    "path": "Android/capacitor"
+  },
+  "server": {
+    "androidScheme": "https",
+    "cleartext": false
+  }
+}

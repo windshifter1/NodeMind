@@ -67,7 +67,7 @@ export function completeOnboarding() {
 export const DESKTOP_TUTORIAL_SECTIONS = [
   {
     id: 'welcome',
-    title: 'Welcome to NodeMind',
+    title: 'Welcome to Noded',
     body: 'A sleek mind map canvas for organising ideas visually. This quick tour will guide you through the basics — complete each task to unlock the next step.',
     target: null,
     tasks: [
@@ -83,18 +83,18 @@ export const DESKTOP_TUTORIAL_SECTIONS = [
   {
     id: 'create-nodes',
     title: 'Create nodes',
-    body: 'Add ideas your way! Create notes with the + button or place them directly on the canvas.',
+    body: 'Add ideas your way! Create nodes with the + in the lower-right corner or place them directly on the canvas, then choose a node type.',
     target: 'toolbar-add',
     tasks: [
       {
         id: 'toolbar-add',
-        label: 'Click + to create a note.',
+        label: 'Click + and pick a node type.',
         event: 'toolbar.node.create',
         target: 'toolbar-add',
       },
       {
         id: 'canvas-add',
-        label: 'Click an empty area of the canvas to create a note there.',
+        label: 'Click an empty area of the canvas and pick a node type.',
         event: 'canvas.node.create-click',
         target: 'canvas',
       },
@@ -103,7 +103,7 @@ export const DESKTOP_TUTORIAL_SECTIONS = [
   {
     id: 'navigate',
     title: 'Navigate the canvas',
-    body: 'Move around your workspace! Use the middle mouse button or hold Space to pan, and the scroll wheel to zoom.',
+    body: 'Move around your canvas! Use the middle mouse button or hold Space to pan, and the scroll wheel to zoom.',
     target: 'canvas',
     tasks: [
       {
@@ -143,7 +143,7 @@ export const DESKTOP_TUTORIAL_SECTIONS = [
   {
     id: 'connect',
     title: 'Connect & disconnect',
-    body: 'Link your thoughts! Drag from a coloured socket to another socket to connect notes. Create new connected notes by dragging from a socket onto empty canvas space.',
+    body: 'Link your thoughts! Drag from a coloured socket to another socket to connect nodes. Create new connected nodes by dragging from a socket onto empty canvas space, then choosing a type.',
     target: 'canvas',
     tasks: [
       {
@@ -154,7 +154,7 @@ export const DESKTOP_TUTORIAL_SECTIONS = [
       },
       {
         id: 'connected-node',
-        label: 'Create a new connected note.',
+        label: 'Create a new connected node.',
         event: 'canvas.node.create-connected',
         target: 'canvas',
       },
@@ -233,7 +233,7 @@ export const DESKTOP_TUTORIAL_SECTIONS = [
   {
     id: 'tools',
     title: 'Tools drawer',
-    body: 'Use the Tools drawer to organise your workspace automatically.',
+    body: 'Use the Tools drawer to organise your canvas automatically.',
     target: 'toolbar-tools',
     tasks: [
       {
@@ -246,25 +246,25 @@ export const DESKTOP_TUTORIAL_SECTIONS = [
   },
   {
     id: 'workspaces',
-    title: 'Workspaces',
-    body: 'Switch between different boards and customise each workspace.',
+    title: 'Canvases',
+    body: 'Switch between different boards and customise each canvas.',
     target: 'workspace-bar',
     tasks: [
       {
         id: 'create',
-        label: 'Create a new workspace using +. Edit the details, then Save to create it.',
+        label: 'Create a new canvas using +. Edit the details, then Save to create it.',
         event: 'workspace.create.save',
         target: 'workspace-create',
       },
       {
         id: 'switch',
-        label: 'Switch to the previous workspace.',
+        label: 'Switch to the previous canvas.',
         event: 'workspace.switch',
         target: 'workspace-bar',
       },
       {
         id: 'edit',
-        label: 'Click the pencil icon to edit the current workspace’s details. Click Cancel or Save to close it.',
+        label: 'Hover a canvas in the list and click the pencil to edit it. Click Cancel or Save to close.',
         event: 'workspace.edit.close',
         target: 'workspace-edit',
       },
@@ -273,7 +273,7 @@ export const DESKTOP_TUTORIAL_SECTIONS = [
   {
     id: 'settings',
     title: 'Settings',
-    body: 'Customise NodeMind and manage your tutorial settings.',
+    body: 'Customise Noded and manage your tutorial settings.',
     target: 'toolbar-settings',
     tasks: [
       {
@@ -299,7 +299,7 @@ export const DESKTOP_TUTORIAL_SECTIONS = [
   {
     id: 'finish',
     title: "You're ready!",
-    body: "You've learned the basics of NodeMind. Start building your ideas — everything stays on this device.",
+    body: "You've learned the basics of Noded. Start building your ideas — everything stays on this device.",
     target: null,
     tasks: [
       {
@@ -319,7 +319,7 @@ export const DESKTOP_TUTORIAL_SECTIONS = [
 export const MOBILE_TUTORIAL_SECTIONS = [
   {
     id: 'welcome',
-    title: 'Welcome to NodeMind',
+    title: 'Welcome to Noded',
     body: 'A sleek mind map canvas for organising ideas visually. This quick tour will guide you through the basics — complete each task to unlock the next step.',
     target: null,
     tasks: [
@@ -335,18 +335,18 @@ export const MOBILE_TUTORIAL_SECTIONS = [
   {
     id: 'create-nodes',
     title: 'Create nodes',
-    body: 'Add ideas your way! Create notes with the + button or place them directly on the canvas.',
+    body: 'Add ideas your way! Use the + button (opens a sheet of node types) or tap the canvas, then choose a type.',
     target: 'toolbar-add',
     tasks: [
       {
         id: 'toolbar-add',
-        label: 'Tap + to create a note.',
+        label: 'Tap + and pick a node type from the sheet.',
         event: 'toolbar.node.create',
         target: 'toolbar-add',
       },
       {
         id: 'canvas-add',
-        label: 'Tap an empty area of the canvas to create a note there.',
+        label: 'Tap an empty area of the canvas and pick a node type.',
         event: 'canvas.node.create-click',
         target: 'canvas',
       },
@@ -355,7 +355,7 @@ export const MOBILE_TUTORIAL_SECTIONS = [
   {
     id: 'navigate',
     title: 'Navigate the canvas',
-    body: 'Move around your workspace! Use touch gestures to explore your canvas.',
+    body: 'Move around your canvas! Use touch gestures to explore.',
     target: 'canvas',
     tasks: [
       {
@@ -389,7 +389,7 @@ export const MOBILE_TUTORIAL_SECTIONS = [
   {
     id: 'connect',
     title: 'Connect & disconnect',
-    body: 'Link your thoughts! Drag from a coloured socket to another socket to connect notes. Create new connected notes by dragging from a socket onto empty canvas space.',
+    body: 'Link your thoughts! Drag from a coloured socket to another socket to connect nodes. Create new connected nodes by dragging from a socket onto empty canvas space, then choosing a type.',
     target: 'canvas',
     tasks: [
       {
@@ -400,7 +400,7 @@ export const MOBILE_TUTORIAL_SECTIONS = [
       },
       {
         id: 'connected-node',
-        label: 'Create a new connected note.',
+        label: 'Create a new connected node.',
         event: 'canvas.node.create-connected',
         target: 'canvas',
       },
@@ -478,13 +478,13 @@ export const MOBILE_TUTORIAL_SECTIONS = [
   },
   {
     id: 'tools',
-    title: 'Tools drawer',
-    body: 'Use the Tools drawer to organise your workspace automatically.',
+    title: 'More actions',
+    body: 'Open More for organise, share, save, and other canvas actions.',
     target: 'toolbar-tools',
     tasks: [
       {
         id: 'tools-open',
-        label: 'Tap the Tools drawer. Tap away to close it.',
+        label: 'Tap More, then tap away or swipe down to close it.',
         event: 'toolbar.tools.close',
         target: 'toolbar-tools',
       },
@@ -492,25 +492,25 @@ export const MOBILE_TUTORIAL_SECTIONS = [
   },
   {
     id: 'workspaces',
-    title: 'Workspaces',
-    body: 'Switch between different boards and customise each workspace.',
+    title: 'Canvases',
+    body: 'Use the menu (top left) to switch boards and customise each canvas.',
     target: 'workspace-bar',
     tasks: [
       {
         id: 'create',
-        label: 'Create a new workspace using +. Edit the details, then Save to create it.',
+        label: 'In the sidebar, tap + to create a canvas. Edit the details, then Save.',
         event: 'workspace.create.save',
         target: 'workspace-create',
       },
       {
         id: 'switch',
-        label: 'Switch to the previous workspace.',
+        label: 'Switch to the previous canvas.',
         event: 'workspace.switch',
         target: 'workspace-bar',
       },
       {
         id: 'edit',
-        label: 'Open workspace options using the pencil icon to edit the current workspace’s details. Tap Cancel or Save to close it.',
+        label: 'On the active canvas in the list, tap the pencil to edit it. Tap Cancel or Save to close.',
         event: 'workspace.edit.close',
         target: 'workspace-edit',
       },
@@ -519,12 +519,12 @@ export const MOBILE_TUTORIAL_SECTIONS = [
   {
     id: 'settings',
     title: 'Settings',
-    body: 'Customise NodeMind and manage your tutorial settings.',
+    body: 'Open Settings from the gear (top right) to customise Noded and manage tutorial settings.',
     target: 'toolbar-settings',
     tasks: [
       {
         id: 'open',
-        label: 'Open Settings.',
+        label: 'Tap the Settings gear (top right).',
         event: 'toolbar.settings.open',
         target: 'toolbar-settings',
       },
@@ -545,7 +545,7 @@ export const MOBILE_TUTORIAL_SECTIONS = [
   {
     id: 'finish',
     title: "You're ready!",
-    body: "You've learned the basics of NodeMind. Start building your ideas — everything stays on this device.",
+    body: "You've learned the basics of Noded. Start building your ideas — everything stays on this device.",
     target: null,
     tasks: [
       {

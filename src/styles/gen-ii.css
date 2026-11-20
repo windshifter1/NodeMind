@@ -1,0 +1,129 @@
+/* Gen II chrome. Layout may differ from earlier floating glass bars. */
+
+html, body, #root {
+  font-family: var(--font-body);
+}
+
+
+.nm-ws-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  height: 32px;
+  max-width: 11rem;
+  padding: 0 0.55rem;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  color: var(--nm-text-muted);
+  background: transparent;
+}
+
+.nm-ws-chip:hover {
+  color: var(--nm-text);
+  background: var(--nm-hover);
+}
+
+.nm-ws-chip--on {
+  color: var(--nm-text);
+  background: var(--nm-hover-strong);
+  border-color: var(--nm-border);
+}
+
+.nm-ws-chip span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.nm-toolbar .nm-toolbar__btn,
+.nm-appbar [data-onboarding='workspace-create'],
+.nm-appbar [data-onboarding='workspace-edit'] {
+  min-width: 28px;
+  min-height: 28px;
+}
+
+/* Solid primary actions use the accent. Tinted states stay translucent. */
+.bg-indigo-500,
+.hover\:bg-indigo-400:hover,
+.hover\:bg-indigo-500:hover {
+  background-color: var(--nm-accent) !important;
+  box-shadow: none !important;
+}
+
+.bg-indigo-500.text-white,
+button.bg-indigo-500,
+a.bg-indigo-500 {
+  color: var(--nm-accent-ink) !important;
+}
+
+.bg-indigo-500\/15,
+.bg-indigo-500\/20,
+.bg-indigo-500\/30,
+.bg-indigo-500\/35,
+.bg-indigo-500\/50,
+.hover\:bg-indigo-500\/50:hover {
+  background-color: color-mix(in srgb, var(--nm-accent) 18%, transparent) !important;
+  box-shadow: none !important;
+}
+
+[class*='text-indigo-'] {
+  color: var(--nm-accent);
+}
+
+.bg-indigo-500\/15[class*='text-indigo-'],
+.bg-indigo-500\/20[class*='text-indigo-'],
+.bg-indigo-500\/30[class*='text-indigo-'],
+.bg-indigo-500\/35[class*='text-indigo-'],
+.bg-indigo-500\/50[class*='text-indigo-'] {
+  color: var(--nm-accent) !important;
+}
+
+[class*='border-indigo-'] {
+  border-color: color-mix(in srgb, var(--nm-accent) 55%, transparent);
+}
+
+[class*='ring-indigo-'] {
+  --tw-ring-color: var(--nm-accent);
+}
+
+.bg-nm-chrome,
+.bg-nm-panel {
+  backdrop-filter: none !important;
+}
+
+.fixed .rounded-2xl,
+.fixed .rounded-xl {
+  border-radius: var(--nm-radius-panel);
+}
+
+.nm-mobile__ws-tab,
+.nm-mobile__ws-tab--on {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  border: 1px solid var(--nm-border);
+  color: var(--nm-text-secondary);
+  background: transparent;
+  box-shadow: none;
+}
+
+.nm-mobile__ws-tab--on {
+  color: var(--nm-accent-ink);
+  background: var(--nm-text);
+  border-color: var(--nm-text);
+}
+
+@media (max-width: 768px) {
+  .nm-mobile__btn,
+  .nm-mobile__ws-edit {
+    min-width: 44px !important;
+    min-height: 44px !important;
+  }
+
+  .nm-mobile__top-side {
+    flex-basis: 48px;
+    width: 48px;
+  }
+}

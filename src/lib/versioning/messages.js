@@ -2,7 +2,7 @@
 
 export function formatVersionReport({ version, build, commit, branch }) {
   return [
-    'NodeMind',
+    'Noded',
     `Version : ${version}`,
     `Build   : ${build}`,
     `Commit  : ${commit}`,

@@ -1,11 +1,15 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import NoteNode from './NoteNode';
+import NodeTypeMenu from './NodeTypeMenu';
+import { consumeNodePickerOpenSuppressed } from '@/lib/nodePickerGesture';
 import BinIcon from './BinIcon';
+import BackgroundDrawLayer from './BackgroundDrawLayer';
 import {
   TOP_BAR_HEIGHT,
   MIN_ZOOM,
   MAX_ZOOM,
   bezierPath,
+  bezierPathZoomStable,
   connectedNodePositionAtSocket,
   normalizeOrientation,
   nodeLayoutRect,
@@ -14,8 +18,12 @@ import {
   rectsIntersect,
   socketWorld,
 } from '@/lib/canvasConstants';
+import { planEdgeDisplayOffsets } from '@/lib/layout/edgeAware';
 import { emitTutorial } from '@/lib/tutorialEvents';
+import { graphPlotSeriesBySlot } from '@/lib/graphSlots';
 import useSpacePan from '@/hooks/useSpacePan';
+import { normalizeBackgroundArt } from '@/lib/backgroundArt';
+import { isDesktopPlatform } from '@/lib/onboarding';
 
 function clampZoom(z) {
   return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z));
@@ -46,13 +54,39 @@ export default function CanvasBoard({
   selectionArmed = false,
   onSelectionArmConsumed,
   darkNodes,
+  spawnNodeIds = null,
+  spawnRipples = null,
+  onSpawnRippleEnd = null,
   zoom,
   setZoom,
   pan,
   setPan,
   orientation,
+  heldConnection = null,
+  nodePicker = null,
+  onPickerClose,
+  onPickerSelect,
+  mathResults = null,
+  dataResults = null,
+  unitInboundNumberIds = null,
+  onSelectionMenu,
+  ghostSelections = null,
+  mathInputBlockedIds = null,
+  socketHint = null,
+  drawMode = false,
+  backgroundArt = null,
+  onBackgroundArtChange,
+  edgeAwareLayout = false,
+  edgeCurveFan = false,
+  smoothStrokes = false,
+  onBinVisibleChange,
 }) {
   const graphOrientation = normalizeOrientation(orientation);
+  const edgeDisplay = edgeCurveFan
+    ? planEdgeDisplayOffsets(edges, graphOrientation, nodes)
+    : { offsets: new Map() };
+  const [layoutEpoch, setLayoutEpoch] = useState(0);
+  const [isDesktop, setIsDesktop] = useState(() => isDesktopPlatform());
   const boardRef = useRef(null);
   const pointers = useRef(new Map());
   const panState = useRef({
@@ -79,6 +113,8 @@ export default function CanvasBoard({
   selectionArmedRef.current = selectionArmed;
   const selectedNodeIdsRef = useRef(selectedNodeIds);
   selectedNodeIdsRef.current = selectedNodeIds;
+  const pickerOpenRef = useRef(false);
+  pickerOpenRef.current = !!nodePicker;
   const nodeDragMovedRef = useRef(false);
   const dragReleaseRef = useRef(null);
   const draggingNodeRef = useRef(null);
@@ -95,6 +131,15 @@ export default function CanvasBoard({
   nodesRef.current = nodes;
   const edgesRef = useRef(edges);
   edgesRef.current = edges;
+  const mathResultsRef = useRef(mathResults);
+  mathResultsRef.current = mathResults;
+
+  // Only bump the layout epoch so edges redraw when Math nodes resize.
+  // Clearance / placement sorting runs once at selection-op creation (Canvas.jsx),
+  // not continuously as equation width changes.
+  const notifyLayoutChange = useCallback(() => {
+    setLayoutEpoch((n) => n + 1);
+  }, []);
 
   const [pending, setPending] = useState(null);
   const pendingRef = useRef(null);
@@ -130,10 +175,18 @@ export default function CanvasBoard({
     return () => mo.disconnect();
   }, []);
 
+  const binVisible = Boolean(draggingNode || tutorialBinVisible);
+
+  useEffect(() => {
+    onBinVisibleChange?.(binVisible);
+  }, [binVisible, onBinVisibleChange]);
+
   useEffect(() => {
     const mq = window.matchMedia?.('(hover: hover) and (pointer: fine)');
     const update = () => {
-      desktopSelection.current = mq?.matches || false;
+      const desktop = mq?.matches || false;
+      desktopSelection.current = desktop;
+      setIsDesktop(desktop);
     };
     update();
     if (!mq?.addEventListener) return undefined;
@@ -161,6 +214,9 @@ export default function CanvasBoard({
 
   /** Desktop always marquees on primary mouse; mobile only when Selection Mode is armed. */
   const shouldUseMarquee = (e) => {
+    if (drawMode && normalizeBackgroundArt(backgroundArt).tool === 'pan') {
+      return false;
+    }
     if (selectionArmedRef.current) {
       return e.pointerType !== 'mouse' ? e.button === 0 || e.button === -1 : e.button === 0;
     }
@@ -337,13 +393,39 @@ export default function CanvasBoard({
     };
   }, []);
 
-  const socketScreen = (node, type, overrides) => {
+  const socketPoint = (node, type, overrides, inputSlot = null) => {
     const override = overrides?.get?.(node.id);
     const x = override ? override.x : node.x;
     const y = override ? override.y : node.y;
     const overridden = { ...node, x, y };
-    const point = socketWorld(overridden, type, graphOrientation, nodeSizeForLayout(overridden));
+    return socketWorld(overridden, type, graphOrientation, nodeSizeForLayout(overridden), {
+      inputSlot,
+      edges: edgesRef.current,
+      seriesBySlot: graphPlotSeriesBySlot(mathResultsRef.current?.get?.(node.id)),
+    });
+  };
+
+  const socketScreen = (node, type, overrides, inputSlot = null) => {
+    const point = socketPoint(node, type, overrides, inputSlot);
     return { x: point.x * zoom + pan.x, y: point.y * zoom + pan.y };
+  };
+
+  const edgePath = (out, inp, reversed = false, lateral = 0) => {
+    if (edgeAwareLayout) {
+      // World-space cubic → screen: shape does not change with zoom.
+      return bezierPathZoomStable(
+        out.x,
+        out.y,
+        inp.x,
+        inp.y,
+        reversed,
+        graphOrientation,
+        lateral,
+        zoom,
+        pan
+      );
+    }
+    return bezierPath(out.x, out.y, inp.x, inp.y, reversed, graphOrientation, lateral);
   };
 
   const updateDraggedEdges = useCallback(
@@ -355,20 +437,29 @@ export default function CanvasBoard({
         const to = nodesRef.current.find((n) => n.id === edge.toNode);
         if (!from || !to) return;
         let out, inp;
-        if (edge.fromType === 'output') {
+        if (edgeAwareLayout) {
+          if (edge.fromType === 'output') {
+            out = socketPoint(from, 'output', overrideMap);
+            inp = socketPoint(to, 'input', overrideMap, edge.inputSlot || null);
+          } else {
+            out = socketPoint(to, 'output', overrideMap);
+            inp = socketPoint(from, 'input', overrideMap, edge.inputSlot || null);
+          }
+        } else if (edge.fromType === 'output') {
           out = socketScreen(from, 'output', overrideMap);
-          inp = socketScreen(to, 'input', overrideMap);
+          inp = socketScreen(to, 'input', overrideMap, edge.inputSlot || null);
         } else {
           out = socketScreen(to, 'output', overrideMap);
-          inp = socketScreen(from, 'input', overrideMap);
+          inp = socketScreen(from, 'input', overrideMap, edge.inputSlot || null);
         }
-        const d = bezierPath(out.x, out.y, inp.x, inp.y, false, graphOrientation);
+        const lateral = edgeCurveFan ? edgeDisplay.offsets.get(edge.id) || 0 : 0;
+        const d = edgePath(out, inp, false, lateral);
         boardRef.current
           ?.querySelectorAll(`[data-edge-id="${edge.id}"]`)
           .forEach((path) => path.setAttribute('d', d));
       });
     },
-    [graphOrientation, pan.x, pan.y, zoom]
+    [edgeAwareLayout, edgeCurveFan, edgeDisplay.offsets, graphOrientation, pan.x, pan.y, zoom]
   );
 
   const scheduleDragVisual = useCallback(
@@ -475,6 +566,7 @@ export default function CanvasBoard({
     (edgeId, e) => {
       if (!isPrimaryPointerStart(e) || shouldSuppressPrimaryPointer(e, 'down')) return;
       e.stopPropagation();
+      if (pickerOpenRef.current) onPickerClose?.();
 
       clearEdgeClickListeners();
       edgeClickRef.current = {
@@ -507,7 +599,7 @@ export default function CanvasBoard({
       window.addEventListener('pointerup', onFinish);
       window.addEventListener('pointercancel', onFinish);
     },
-    [clearEdgeClickListeners, finishEdgeClick, transferEdgeClickToCanvas]
+    [clearEdgeClickListeners, finishEdgeClick, onPickerClose, transferEdgeClickToCanvas]
   );
 
   // --- Background pan / click-to-add / pinch ---
@@ -545,6 +637,9 @@ export default function CanvasBoard({
         moved: false,
         suppressContextMenu: false,
         tutorialPanEmitted: false,
+        // Snapshot at gesture start so an empty-canvas tap closes the menu
+        // instead of opening a new one at the same spot.
+        pickerOpenAtStart: pickerOpenRef.current,
       };
       if (useMarquee) setMarqueeRect(null);
     } else if (pointers.current.size === 2) {
@@ -673,13 +768,23 @@ export default function CanvasBoard({
         emitTutorial('canvas.select.marquee');
       } else if (panState.current.button === 0 && !moved && !pinch.current.active) {
         const hasSelection = selectedNodeIdsRef.current.length > 0;
+        // Honour suppress if Escape/X closed the menu mid-gesture.
+        const pickerWasOpen =
+          panState.current.pickerOpenAtStart || consumeNodePickerOpenSuppressed();
         if (hasSelection) {
           onSelectionChange?.([]);
-        } else {
-          onSelectionChange?.([]);
+        }
+        // Empty-canvas tap closes the add-node menu; pan/zoom/UI must not.
+        if (pickerWasOpen) {
+          onPickerClose?.();
+        } else if (!hasSelection) {
           const w = screenToWorld(e.clientX, e.clientY);
-          onAddNode(w.x - nodeWidthForTitle('') / 2, w.y - TOP_BAR_HEIGHT / 2);
-          emitTutorial('canvas.node.create-click');
+          onAddNode(w.x - nodeWidthForTitle('') / 2, w.y - TOP_BAR_HEIGHT / 2, {
+            clientX: e.clientX,
+            clientY: e.clientY,
+            worldX: w.x,
+            worldY: w.y,
+          });
         }
       }
       panState.current.panning = false;
@@ -715,6 +820,7 @@ export default function CanvasBoard({
     const el = boardRef.current;
     if (!el) return;
     const handler = (e) => {
+      if (e.target?.closest?.('[data-graph-plot]')) return;
       e.preventDefault();
       const rect = el.getBoundingClientRect();
       const cx = e.clientX - rect.left;
@@ -736,6 +842,7 @@ export default function CanvasBoard({
   const selectNode = useCallback(
     (nodeId, e) => {
       if (e && !isPrimaryPointerStart(e)) return;
+      if (pickerOpenRef.current) onPickerClose?.();
       const shiftKey = e?.shiftKey;
       const currentSelection = selectedNodeIdsRef.current;
       // Selection mode (mobile) toggles membership like Shift on desktop.
@@ -757,7 +864,7 @@ export default function CanvasBoard({
       }
       onBringToFront(nodeId);
     },
-    [onBringToFront, onSelectionChange]
+    [onBringToFront, onPickerClose, onSelectionChange]
   );
 
   const startNodeDrag = useCallback(
@@ -767,6 +874,8 @@ export default function CanvasBoard({
       if (isSpacePanArmed()) return;
       const node = nodes.find((n) => n.id === nodeId);
       if (!node) return;
+      // Tapping/dragging a node dismisses the add-node menu.
+      if (pickerOpenRef.current) onPickerClose?.();
 
       const shiftKey = e.shiftKey;
       const currentSelection = selectedNodeIdsRef.current;
@@ -832,7 +941,7 @@ export default function CanvasBoard({
       draggingNodeRef.current = nextDrag;
       setDraggingNode(nextDrag);
     },
-    [nodes, onBringToFront, onSelectionChange, isSpacePanArmed]
+    [nodes, onBringToFront, onPickerClose, onSelectionChange, isSpacePanArmed]
   );
 
   const armNodeDrag = useCallback(
@@ -891,6 +1000,8 @@ export default function CanvasBoard({
 
     const onDown = (e) => {
       if (e.pointerType === 'mouse') return;
+      // Graph plot owns pinch/pan when the gesture is on the plot canvas.
+      if (e.target?.closest?.('[data-graph-plot]')) return;
       touchPointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
       if (touchPointers.current.size >= 2) beginPinch();
     };
@@ -1102,19 +1213,24 @@ export default function CanvasBoard({
 
   // --- Socket connection drag ---
   const startConnect = useCallback(
-    (nodeId, type, e) => {
+    (nodeId, type, e, inputSlot = null) => {
       if (e && (!isPrimaryPointerStart(e) || shouldSuppressPrimaryPointer(e, 'down'))) return;
       if (isSpacePanArmed()) return;
       const node = nodes.find((n) => n.id === nodeId);
       if (!node) return;
-      const point = socketWorld(node, type, graphOrientation, nodeSizeForLayout(node));
+      if (pickerOpenRef.current) onPickerClose?.();
+      const point = socketWorld(node, type, graphOrientation, nodeSizeForLayout(node), {
+        inputSlot,
+        edges: edgesRef.current,
+        seriesBySlot: graphPlotSeriesBySlot(mathResultsRef.current?.get?.(node.id)),
+      });
       const fx = point.x * zoomRef.current + panRef.current.x;
       const fy = point.y * zoomRef.current + panRef.current.y;
-      const p = { fromNode: nodeId, fromType: type, toX: fx, toY: fy };
+      const p = { fromNode: nodeId, fromType: type, inputSlot: inputSlot || null, toX: fx, toY: fy };
       pendingRef.current = p;
       setPending(p);
     },
-    [graphOrientation, nodes, isSpacePanArmed]
+    [graphOrientation, nodes, isSpacePanArmed, onPickerClose]
   );
 
   useEffect(() => {
@@ -1138,15 +1254,31 @@ export default function CanvasBoard({
         if (socketEl) {
           const toNode = socketEl.getAttribute('data-node-id');
           const toType = socketEl.getAttribute('data-socket-type');
+          const toSlot = socketEl.getAttribute('data-socket-slot') || null;
           if (toNode && toType && toNode !== cur.fromNode && toType !== cur.fromType) {
-            onAddEdge(cur.fromNode, cur.fromType, toNode, toType);
+            onAddEdge(cur.fromNode, cur.fromType, toNode, toType, {
+              fromSlot: cur.inputSlot || null,
+              toSlot,
+            });
             emitTutorial('canvas.edge.create');
           }
-        } else if (!overNode) {
+        } else if (!overNode && !pickerOpenRef.current) {
           const w = screenToWorld(e.clientX, e.clientY);
-          const pos = connectedNodePositionAtSocket(w, cur.fromType, graphOrientation);
-          onAddConnectedNode(pos.x, pos.y, cur.fromNode, cur.fromType);
-          emitTutorial('canvas.node.create-connected');
+          const fromNodeObj = nodesRef.current.find((n) => n.id === cur.fromNode);
+          const pos = connectedNodePositionAtSocket(
+            w,
+            cur.fromType,
+            graphOrientation,
+            '',
+            fromNodeObj || null
+          );
+          onAddConnectedNode(pos.x, pos.y, cur.fromNode, cur.fromType, {
+            clientX: e.clientX,
+            clientY: e.clientY,
+            worldX: w.x,
+            worldY: w.y,
+            inputSlot: cur.inputSlot || null,
+          });
         }
       }
       pendingRef.current = null;
@@ -1165,7 +1297,29 @@ export default function CanvasBoard({
   const draggingSet = draggingNode ? new Set(draggingNode.ids) : null;
   const cursor =
     spacePanCursor ||
+    (drawMode
+      ? (() => {
+          const tool = normalizeBackgroundArt(backgroundArt).tool;
+          if (tool === 'pan') return panState.current.panning ? 'grabbing' : 'grab';
+          if (tool === 'erase') return 'cell';
+          if (tool === 'select') return 'default';
+          return 'crosshair';
+        })()
+      : null) ||
     (marqueeRect ? 'crosshair' : panState.current.panning ? 'grabbing' : 'grab');
+  const dotSize = `${24 * zoom}px ${24 * zoom}px`;
+  const boardBackground = {
+    backgroundColor: 'var(--nm-canvas)',
+    backgroundImage: [
+      // Black / grey wash only — no accent hues.
+      'radial-gradient(1200px 700px at 50% -10%, var(--nm-canvas-glow-a), transparent 60%)',
+      'radial-gradient(900px 600px at 100% 100%, var(--nm-canvas-glow-b), transparent 55%)',
+      'radial-gradient(800px 500px at 0% 80%, var(--nm-canvas-glow-c), transparent 50%)',
+      'radial-gradient(circle, var(--nm-canvas-dot) 1px, transparent 1px)',
+    ].join(', '),
+    backgroundSize: `auto, auto, auto, ${dotSize}`,
+    backgroundPosition: `0 0, 0 0, 0 0, ${pan.x}px ${pan.y}px`,
+  };
 
   return (
     <div
@@ -1184,40 +1338,49 @@ export default function CanvasBoard({
       style={{
         touchAction: 'none',
         cursor,
-        backgroundColor: 'var(--nm-canvas)',
-        backgroundImage:
-          'radial-gradient(circle, var(--nm-canvas-dot) 1px, transparent 1px)',
-        backgroundSize: `${24 * zoom}px ${24 * zoom}px`,
-        backgroundPosition: `${pan.x}px ${pan.y}px`,
+        ...boardBackground,
       }}
     >
-      {nodes.length === 0 && (
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none px-6">
-          <p className="text-nm-text-subtle text-center text-sm sm:text-base max-w-md leading-relaxed select-none">
-            Tap empty canvas to add a note · drag sockets to connect · tap a line to delete
-          </p>
-        </div>
-      )}
+      <BackgroundDrawLayer
+        art={backgroundArt}
+        onChange={(next) => onBackgroundArtChange?.(next)}
+        enabled={drawMode}
+        pan={pan}
+        zoom={zoom}
+        spacePanArmed={isSpacePanArmed()}
+        smoothStrokes={smoothStrokes}
+      />
       {/* Edges layer (screen-space) */}
       <svg
         className="absolute inset-0"
         width={vp.w}
         height={vp.h}
-        style={{ pointerEvents: 'none' }}
+        style={{ pointerEvents: drawMode ? 'none' : 'none', zIndex: 1 }}
       >
         {edges.map((edge) => {
+          // layoutEpoch: recompute paths when Math nodes resize to fit equations
+          void layoutEpoch;
           const from = nodes.find((n) => n.id === edge.fromNode);
           const to = nodes.find((n) => n.id === edge.toNode);
           if (!from || !to) return null;
           let out, inp;
-          if (edge.fromType === 'output') {
+          if (edgeAwareLayout) {
+            if (edge.fromType === 'output') {
+              out = socketPoint(from, 'output');
+              inp = socketPoint(to, 'input', null, edge.inputSlot || null);
+            } else {
+              out = socketPoint(to, 'output');
+              inp = socketPoint(from, 'input', null, edge.inputSlot || null);
+            }
+          } else if (edge.fromType === 'output') {
             out = socketScreen(from, 'output');
-            inp = socketScreen(to, 'input');
+            inp = socketScreen(to, 'input', null, edge.inputSlot || null);
           } else {
             out = socketScreen(to, 'output');
-            inp = socketScreen(from, 'input');
+            inp = socketScreen(from, 'input', null, edge.inputSlot || null);
           }
-          const d = bezierPath(out.x, out.y, inp.x, inp.y, false, graphOrientation);
+          const lateral = edgeCurveFan ? edgeDisplay.offsets.get(edge.id) || 0 : 0;
+          const d = edgePath(out, inp, false, lateral);
           return (
             <g key={edge.id}>
               <path data-edge-id={edge.id} d={d} fill="none" stroke="var(--nm-edge)" strokeWidth={2.5} strokeLinecap="round" />
@@ -1234,14 +1397,21 @@ export default function CanvasBoard({
             </g>
           );
         })}
-        {pending &&
-          (() => {
-            const fn = nodes.find((n) => n.id === pending.fromNode);
-            if (!fn) return null;
-            const from = socketScreen(fn, pending.fromType);
+        {(() => {
+          const live = pending;
+          const held = !live ? heldConnection : null;
+          const source = live || held;
+          if (!source) return null;
+          const fn = nodes.find((n) => n.id === source.fromNode);
+          if (!fn) return null;
+          if (edgeAwareLayout) {
+            const from = socketPoint(fn, source.fromType, null, source.inputSlot || null);
+            const toX = live ? (live.toX - pan.x) / zoom : held.toWorldX;
+            const toY = live ? (live.toY - pan.y) / zoom : held.toWorldY;
+            if (!Number.isFinite(toX) || !Number.isFinite(toY)) return null;
             return (
               <path
-                d={bezierPath(from.x, from.y, pending.toX, pending.toY, pending.fromType === 'input', graphOrientation)}
+                d={edgePath(from, { x: toX, y: toY }, source.fromType === 'input')}
                 fill="none"
                 stroke="#818cf8"
                 strokeWidth={2.5}
@@ -1249,7 +1419,22 @@ export default function CanvasBoard({
                 strokeLinecap="round"
               />
             );
-          })()}
+          }
+          const from = socketScreen(fn, source.fromType, null, source.inputSlot || null);
+          const toX = live ? live.toX : held.toWorldX * zoom + pan.x;
+          const toY = live ? live.toY : held.toWorldY * zoom + pan.y;
+          if (!Number.isFinite(toX) || !Number.isFinite(toY)) return null;
+          return (
+            <path
+              d={bezierPath(from.x, from.y, toX, toY, source.fromType === 'input', graphOrientation)}
+              fill="none"
+              stroke="#818cf8"
+              strokeWidth={2.5}
+              strokeDasharray="6 6"
+              strokeLinecap="round"
+            />
+          );
+        })()}
       </svg>
 
       {/* Nodes layer (world-space, transformed) */}
@@ -1258,17 +1443,39 @@ export default function CanvasBoard({
         style={{
           transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
           transformOrigin: '0 0',
+          zIndex: 2,
+          pointerEvents: drawMode ? 'none' : 'auto',
         }}
       >
+        {(spawnRipples || []).map((ripple) => (
+          <React.Fragment key={ripple.key}>
+            <div
+              className="nm-liquid-ripple"
+              style={{ left: ripple.x, top: ripple.y }}
+              aria-hidden="true"
+            />
+            <div
+              className="nm-liquid-ripple nm-liquid-ripple--delay"
+              style={{ left: ripple.x, top: ripple.y }}
+              aria-hidden="true"
+              onAnimationEnd={() => onSpawnRippleEnd?.(ripple.key)}
+            />
+          </React.Fragment>
+        ))}
+
         {nodes.map((node) => (
           <NoteNode
             key={node.id}
             node={node}
-            pending={pending}
+            pending={pending || heldConnection}
             orientation={graphOrientation}
             darkNodes={darkNodes}
+            liquidSpawn={Boolean(spawnNodeIds?.has?.(node.id))}
             selected={selectedSet.has(node.id)}
             ghost={overBin && draggingSet?.has(node.id)}
+            mathResult={mathResults?.get?.(node.id) || null}
+            dataResult={dataResults?.get?.(node.id) || null}
+            hasInboundNumber={Boolean(unitInboundNumberIds?.has?.(node.id))}
             onUpdate={(patch) => onUpdateNode(node.id, patch)}
             onSelectNode={selectNode}
             onArmNodeDrag={armNodeDrag}
@@ -1276,9 +1483,64 @@ export default function CanvasBoard({
             onStartNodeDrag={startNodeDrag}
             onStartConnect={startConnect}
             onOpenEdit={onOpenEdit}
+            onLayoutChange={notifyLayoutChange}
+            onSelectionMenu={
+              onSelectionMenu
+                ? (payload) => onSelectionMenu(node.id, payload)
+                : undefined
+            }
+            ghostSelection={ghostSelections?.get?.(node.id) || null}
+            inputBlocked={Boolean(mathInputBlockedIds?.has?.(node.id))}
+            socketHint={socketHint?.nodeId === node.id ? socketHint : null}
+            zoom={zoom}
+            edges={edges}
           />
         ))}
+        {!nodePicker?.fixed && !nodePicker?.sheet && (
+          <NodeTypeMenu
+            key={nodePicker ? `${nodePicker.source}-${nodePicker.worldX}-${nodePicker.worldY}` : 'closed'}
+            open={!!nodePicker}
+            x={nodePicker?.worldX ?? 0}
+            y={nodePicker?.worldY ?? 0}
+            onClose={onPickerClose}
+            onSelect={onPickerSelect}
+            allowedMathKinds={nodePicker?.allowedMathKinds ?? null}
+            initialCategory={nodePicker?.initialCategory ?? 'text'}
+            hideValueSources={!!nodePicker?.hideValueSources}
+            valuesOnly={!!nodePicker?.valuesOnly}
+          />
+        )}
       </div>
+
+      {nodePicker?.sheet && (
+        <NodeTypeMenu
+          key={`sheet-${nodePicker.source}`}
+          open
+          sheet
+          onClose={onPickerClose}
+          onSelect={onPickerSelect}
+          allowedMathKinds={nodePicker?.allowedMathKinds ?? null}
+          initialCategory={nodePicker?.initialCategory ?? 'text'}
+          hideValueSources={!!nodePicker?.hideValueSources}
+          valuesOnly={!!nodePicker?.valuesOnly}
+        />
+      )}
+
+      {nodePicker?.fixed && !nodePicker?.sheet && (
+        <NodeTypeMenu
+          key={`fixed-${nodePicker.source}-${nodePicker.clientX}-${nodePicker.clientY}`}
+          open
+          fixed
+          x={nodePicker.clientX ?? 0}
+          y={nodePicker.clientY ?? 0}
+          onClose={onPickerClose}
+          onSelect={onPickerSelect}
+          allowedMathKinds={nodePicker?.allowedMathKinds ?? null}
+          initialCategory={nodePicker?.initialCategory ?? 'text'}
+          hideValueSources={!!nodePicker?.hideValueSources}
+          valuesOnly={!!nodePicker?.valuesOnly}
+        />
+      )}
 
       {marqueeRect && (
         <div
@@ -1292,22 +1554,24 @@ export default function CanvasBoard({
         />
       )}
 
-      {(draggingNode || tutorialBinVisible) && (
+      {binVisible && (
         <div
           ref={binRef}
           data-onboarding="delete-bin"
-          className="absolute z-50 rounded-2xl border bg-nm-bin backdrop-blur-md p-2 shadow-xl transition-all"
+          data-mobile-chrome={!isDesktop && !drawMode ? '' : undefined}
+          className={`nm-bin absolute z-50 overflow-visible border bg-nm-bin shadow-xl backdrop-blur-md ${
+            overBin ? 'is-hot' : ''
+          }`}
           style={{
             pointerEvents: 'none',
-            right: 'calc(1rem + var(--safe-right))',
-            bottom: 'calc(1rem + var(--safe-bottom))',
+            right: 'calc(12px + var(--safe-right))',
+            bottom: 'calc(12px + var(--safe-bottom))',
             borderColor: overBin ? '#ef4444' : 'var(--nm-border)',
             backgroundColor: overBin ? 'rgba(239,68,68,0.2)' : 'var(--nm-bin)',
             color: overBin ? '#ef4444' : 'var(--nm-text-secondary)',
-            transform: overBin ? 'scale(1.08)' : 'none',
           }}
         >
-          <span className="flex items-center justify-center" style={{ width: 38, height: 38 }}>
+          <span className="nm-dock-chip__inner transition-transform">
             <BinIcon open={overBin} size={18} />
           </span>
         </div>

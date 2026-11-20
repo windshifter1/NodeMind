@@ -1,19 +1,85 @@
-import React, { useRef, useEffect, useState } from 'react';
-import { ChevronDown, ChevronUp, Pencil, Pin, X } from 'lucide-react';
-import { nodeWidthForTitle, TOP_BAR_HEIGHT, SOCKET_RADIUS } from '@/lib/canvasConstants';
+import React, { useRef, useEffect, useLayoutEffect, useState, useCallback, useMemo } from 'react';
+import { ChevronDown, ChevronUp, Minus, Pin, SlidersHorizontal, X } from 'lucide-react';
+import {
+  MATH_NODE_MAX_WIDTH,
+  MATH_NODE_MIN_WIDTH,
+  MATH_NODE_PREVIEW_PAD_X,
+  nodeWidthForTitle,
+  TOP_BAR_HEIGHT,
+  SOCKET_RADIUS,
+} from '@/lib/canvasConstants';
 import { emitTutorial } from '@/lib/tutorialEvents';
+import {
+  displayNodeTitle,
+  getMathView,
+  isChartNode,
+  isChecklistNode,
+  isFileConverterNode,
+  isGeometryNode,
+  isGraphNode,
+  isLoadFileNode,
+  isMathNode,
+  isNodeBodyCollapsed,
+  isNoteNode,
+  isStatsNode,
+  isSubstituteNode,
+  isTableNode,
+  isUnitConvertNode,
+  MATH_VIEW,
+  mathViewLabel,
+  nextMathViewPatch,
+} from '@/lib/nodeTypes';
+import {
+  listSubstituteSlots,
+  substituteSlotOffsetY,
+} from '@/lib/substituteSlots';
+import { listGraphSlots, graphSocketOffsetY, graphPlotSeriesBySlot, measureGraphSlotCenterFromNode } from '@/lib/graphSlots';
+import MathNodeBody from './MathNodeBody';
+import ChecklistNodeBody from './bodies/ChecklistNodeBody';
+import UnitConvertNodeBody from './bodies/UnitConvertNodeBody';
+import TableNodeBody from './bodies/TableNodeBody';
+import ChartNodeBody from './bodies/ChartNodeBody';
+import StatsNodeBody from './bodies/StatsNodeBody';
+import LoadFileNodeBody from './bodies/LoadFileNodeBody';
+import FileConverterNodeBody from './bodies/FileConverterNodeBody';
+import GeometryNodeBody from './bodies/GeometryNodeBody';
 
 const DOUBLE_TAP_MS = 450;
 
-function selectionGlow(color) {
-  return `0 0 0 3px ${color}f2, 0 0 0 7px ${color}80, 0 0 24px 6px ${color}a6, 0 12px 36px rgba(0, 0, 0, 0.45)`;
+function selectionGlow() {
+  return '0 0 0 2px color-mix(in srgb, var(--nm-accent) 45%, transparent)';
 }
 
-function Socket({ type, color, nodeId, pending, orientation, onStartConnect }) {
-  const isTarget = pending && pending.fromNode !== nodeId && pending.fromType !== type;
+function Socket({
+  type,
+  color,
+  nodeId,
+  pending,
+  orientation,
+  onStartConnect,
+  inputBlocked = false,
+  inputSlot = null,
+  top = null,
+  dimmed = false,
+}) {
+  const pendingSlot = pending?.inputSlot || null;
+  const slotConflict =
+    type === 'input' &&
+    inputSlot &&
+    pending &&
+    pending.fromType === 'input' &&
+    pending.fromNode === nodeId &&
+    pendingSlot === inputSlot;
+  const isTarget =
+    pending &&
+    pending.fromNode !== nodeId &&
+    pending.fromType !== type &&
+    !(type === 'input' && inputBlocked) &&
+    !slotConflict;
   const HIT = 36;
   const OUT = 28;
-  const vertical = orientation === 'vertical';
+  const vertical = orientation === 'vertical' && top == null;
+  const topPx = top != null ? top : TOP_BAR_HEIGHT / 2;
   const hitStyle = vertical
     ? {
         width: HIT,
@@ -28,7 +94,7 @@ function Socket({ type, color, nodeId, pending, orientation, onStartConnect }) {
         height: HIT,
         left: type === 'input' ? -OUT : 'auto',
         right: type === 'output' ? -OUT : 'auto',
-        top: TOP_BAR_HEIGHT / 2,
+        top: topPx,
         transform: 'translateY(-50%)',
       };
   const visibleStyle = vertical
@@ -45,7 +111,7 @@ function Socket({ type, color, nodeId, pending, orientation, onStartConnect }) {
         height: SOCKET_RADIUS * 2,
         left: type === 'input' ? -SOCKET_RADIUS : 'auto',
         right: type === 'output' ? -SOCKET_RADIUS : 'auto',
-        top: TOP_BAR_HEIGHT / 2,
+        top: topPx,
         transform: 'translateY(-50%)',
       };
   return (
@@ -54,25 +120,31 @@ function Socket({ type, color, nodeId, pending, orientation, onStartConnect }) {
         data-socket
         data-node-id={nodeId}
         data-socket-type={type}
+        data-socket-slot={inputSlot || undefined}
         onPointerDown={(e) => {
           e.stopPropagation();
-          onStartConnect(nodeId, type, e);
+          onStartConnect(nodeId, type, e, inputSlot);
         }}
         className="absolute"
         style={{
           ...hitStyle,
           cursor: 'crosshair',
           zIndex: 20,
+          opacity: dimmed ? 0.45 : 1,
         }}
       />
       <div
+        data-socket-dot
         className="absolute rounded-full border-2 border-white transition-all"
         style={{
           ...visibleStyle,
           backgroundColor: color,
-          boxShadow: isTarget ? `0 0 0 5px ${color}66` : '0 1px 3px rgba(0,0,0,0.3)',
+          boxShadow: isTarget
+            ? `0 0 0 5px ${color}66`
+            : `0 0 10px ${color}66, 0 1px 3px rgba(0,0,0,0.3)`,
           pointerEvents: 'none',
           zIndex: 21,
+          opacity: dimmed ? 0.45 : 1,
         }}
       />
     </>
@@ -84,8 +156,11 @@ export default function NoteNode({
   pending,
   orientation,
   darkNodes,
+  liquidSpawn = false,
   selected,
   ghost,
+  mathResult = null,
+  dataResult = null,
   onUpdate,
   onSelectNode,
   onArmNodeDrag,
@@ -93,26 +168,120 @@ export default function NoteNode({
   onStartNodeDrag,
   onStartConnect,
   onOpenEdit,
+  onLayoutChange,
+  onSelectionMenu,
+  ghostSelection = null,
+  inputBlocked = false,
+  socketHint = null,
+  zoom = 1,
+  edges = [],
+  hasInboundNumber = false,
 }) {
+  const mathView = isMathNode(node) ? getMathView(node) : null;
+  const bodyCollapsed = isNodeBodyCollapsed(node);
+  const bodySlots = useMemo(() => {
+    if (mathView !== MATH_VIEW.FULL) return [];
+    if (isSubstituteNode(node)) return listSubstituteSlots(node, edges);
+    if (isGraphNode(node)) return listGraphSlots(node, edges);
+    return [];
+  }, [node, edges, mathView]);
+  const graphSeriesBySlot = useMemo(
+    () => (isGraphNode(node) ? graphPlotSeriesBySlot(mathResult) : new Map()),
+    [node, mathResult]
+  );
+  const slotOffsetY = (index) =>
+    isGraphNode(node)
+      ? graphSocketOffsetY(node, index, { edges, seriesBySlot: graphSeriesBySlot })
+      : substituteSlotOffsetY(index);
+  const [graphSlotTops, setGraphSlotTops] = useState({});
+  const graphSlotTopsRef = useRef({});
   const textareaRef = useRef(null);
   const titleInputRef = useRef(null);
   const lastTitleTapRef = useRef(0);
   const [editingTitle, setEditingTitle] = useState(false);
-  const [titleDraft, setTitleDraft] = useState(node.title || '');
+  const [titleDraft, setTitleDraft] = useState(() => displayNodeTitle(node));
+  const [mathPreviewWidth, setMathPreviewWidth] = useState(0);
+
+  const handleMathPreviewMetrics = useCallback(({ width }) => {
+    const next = Math.max(0, Number(width) || 0);
+    setMathPreviewWidth((prev) => (prev === next ? prev : next));
+  }, []);
+
+  const nodeWidth = useMemo(() => {
+    const titleWidth = nodeWidthForTitle(editingTitle ? titleDraft : displayNodeTitle(node));
+    if (!isMathNode(node) || bodyCollapsed) return titleWidth;
+    // Graph nodes are fixed at the 2× Math width.
+    if (isGraphNode(node)) return MATH_NODE_MAX_WIDTH;
+    const needed = mathPreviewWidth > 0 ? mathPreviewWidth + MATH_NODE_PREVIEW_PAD_X : 0;
+    return Math.min(
+      MATH_NODE_MAX_WIDTH,
+      Math.max(MATH_NODE_MIN_WIDTH, titleWidth, needed)
+    );
+  }, [editingTitle, titleDraft, node, mathPreviewWidth, bodyCollapsed]);
+
+  useLayoutEffect(() => {
+    if (!isGraphNode(node) || mathView !== MATH_VIEW.FULL || !bodySlots.length) {
+      if (Object.keys(graphSlotTopsRef.current).length) {
+        graphSlotTopsRef.current = {};
+        setGraphSlotTops({});
+      }
+      return;
+    }
+    const next = {};
+    bodySlots.forEach((slot) => {
+      const y = measureGraphSlotCenterFromNode(node.id, slot.id);
+      if (y != null) next[slot.id] = y;
+    });
+    const prev = graphSlotTopsRef.current;
+    const keys = Object.keys(next);
+    const same =
+      keys.length === Object.keys(prev).length &&
+      keys.every((id) => Math.abs((next[id] ?? 0) - (prev[id] ?? 0)) < 0.5);
+    if (same) return;
+    graphSlotTopsRef.current = next;
+    setGraphSlotTops(next);
+    onLayoutChange?.();
+  }, [
+    node.id,
+    mathView,
+    bodySlots,
+    node.graphSlotOpts,
+    node.graphExprs,
+    mathResult,
+    onLayoutChange,
+  ]);
+
+  useEffect(() => {
+    if (!isMathNode(node)) return undefined;
+    onLayoutChange?.();
+    return undefined;
+  }, [
+    nodeWidth,
+    node.kind,
+    mathView,
+    bodySlots.length,
+    node.graphSlotOpts,
+    node.graphExprs,
+    onLayoutChange,
+  ]);
 
   const autoResize = () => {
     const ta = textareaRef.current;
-    if (ta && !node.collapsed) {
+    if (ta && !bodyCollapsed) {
       ta.style.height = 'auto';
       ta.style.height = Math.max(64, ta.scrollHeight) + 'px';
     }
   };
 
-  useEffect(autoResize, [node.content, node.collapsed]);
+  useEffect(autoResize, [node.content, bodyCollapsed]);
 
   useEffect(() => {
-    if (!editingTitle) setTitleDraft(node.title || '');
-  }, [node.title, editingTitle]);
+    if (!editingTitle) setTitleDraft(displayNodeTitle(node));
+  }, [node.title, node.kind, editingTitle]);
+
+  useEffect(() => {
+    if (!isMathNode(node) || bodyCollapsed) setMathPreviewWidth(0);
+  }, [node.kind, bodyCollapsed]);
 
   useEffect(() => {
     if (!editingTitle) return undefined;
@@ -124,7 +293,7 @@ export default function NoteNode({
   }, [editingTitle]);
 
   const cancelTitleEdit = () => {
-    setTitleDraft(node.title || '');
+    setTitleDraft(displayNodeTitle(node));
     setEditingTitle(false);
   };
 
@@ -132,14 +301,14 @@ export default function NoteNode({
     if (!editingTitle) return;
     const next = titleDraft.trim();
     setEditingTitle(false);
-    if (next !== (node.title || '')) onUpdate({ title: next });
+    if (next !== (node.title || '').trim()) onUpdate({ title: next });
     emitTutorial('node.rename');
   };
 
   const beginTitleEdit = () => {
     lastTitleTapRef.current = 0;
     onCancelNodeDrag?.();
-    setTitleDraft(node.title || '');
+    setTitleDraft(displayNodeTitle(node));
     setEditingTitle(true);
   };
 
@@ -170,33 +339,64 @@ export default function NoteNode({
     onStartNodeDrag(node.id, e);
   };
 
+  const nodeRadius = 'var(--nm-radius-node, 1.1rem)';
+  const borderW = selected ? 3 : 1;
+
   return (
     <div
       data-note-node={node.id}
-      className="absolute rounded-xl shadow-2xl select-none"
+      data-liquid-spawn={liquidSpawn ? '1' : undefined}
+      className="absolute select-none overflow-visible"
       style={{
         left: node.x,
         top: node.y,
-        width: nodeWidthForTitle(editingTitle ? titleDraft : node.title),
+        width: nodeWidth,
         zIndex: node.z,
-        borderWidth: selected ? 3 : 2,
+        '--nm-node-accent': node.color,
+        borderWidth: borderW,
         borderStyle: 'solid',
-        borderColor: node.color,
-        backgroundColor: darkNodes ? '#424448' : '#f8fafc',
+        borderColor: selected ? 'var(--nm-accent)' : 'var(--nm-border)',
+        backgroundColor: 'var(--nm-node-bg)',
+        borderRadius: nodeRadius,
         opacity: ghost ? 0.3 : 1,
-        boxShadow: selected ? selectionGlow(node.color) : undefined,
+        boxShadow: selected ? selectionGlow() : 'var(--nm-node-shadow)',
+        backdropFilter: 'var(--nm-node-blur)',
+        WebkitBackdropFilter: 'var(--nm-node-blur)',
         transition:
           'left 250ms ease, top 250ms ease, opacity 180ms ease, width 250ms ease, box-shadow 180ms ease, border-color 180ms ease, border-width 180ms ease',
       }}
     >
-      <Socket
-        type="input"
-        color={node.color}
-        nodeId={node.id}
-        pending={pending}
-        orientation={orientation}
-        onStartConnect={onStartConnect}
-      />
+      {bodySlots.length > 0 ? (
+        bodySlots.map((slot, index) => (
+          <Socket
+            key={slot.id}
+            type="input"
+            color={node.color}
+            nodeId={node.id}
+            pending={pending}
+            orientation={orientation}
+            onStartConnect={onStartConnect}
+            inputBlocked={slot.connected}
+            inputSlot={slot.id}
+            top={
+              isGraphNode(node) && graphSlotTops[slot.id] != null
+                ? graphSlotTops[slot.id]
+                : TOP_BAR_HEIGHT + slotOffsetY(index)
+            }
+            dimmed={slot.greyed}
+          />
+        ))
+      ) : (
+        <Socket
+          type="input"
+          color={node.color}
+          nodeId={node.id}
+          pending={pending}
+          orientation={orientation}
+          onStartConnect={onStartConnect}
+          inputBlocked={inputBlocked}
+        />
+      )}
 
       <Socket
         type="output"
@@ -207,24 +407,78 @@ export default function NoteNode({
         onStartConnect={onStartConnect}
       />
 
+      {socketHint?.message && (
+        <div
+          key={socketHint.key || socketHint.message}
+          role="status"
+          className={`pointer-events-none absolute z-50 whitespace-nowrap rounded-md px-2 py-1 text-[11px] font-medium shadow-lg ${
+            darkNodes
+              ? 'bg-rose-500/95 text-white'
+              : 'bg-rose-600 text-white'
+          }`}
+          style={{
+            left: orientation === 'vertical' ? '50%' : -8,
+            top: orientation === 'vertical' ? -36 : TOP_BAR_HEIGHT / 2,
+            transform:
+              orientation === 'vertical' ? 'translate(-50%, -100%)' : 'translate(-100%, -50%)',
+            animation: 'nm-socket-hint 2.2s ease-out forwards',
+          }}
+        >
+          {socketHint.message}
+        </div>
+      )}
+
       <div
+        data-node-bar
         className="relative flex items-center gap-1 px-2"
         style={{
           height: TOP_BAR_HEIGHT,
           cursor: editingTitle ? 'text' : 'grab',
-          backgroundColor: node.color + '22',
-          borderBottom: `1px solid ${node.color}33`,
+          backgroundColor: 'var(--nm-header)',
+          boxShadow: `inset 3px 0 0 ${node.color}`,
+          borderBottom: bodyCollapsed ? 'none' : '1px solid var(--nm-border)',
+          // Match the card radius so the bar doesn’t square-poke rounded corners.
+          borderTopLeftRadius: 'inherit',
+          borderTopRightRadius: 'inherit',
+          borderBottomLeftRadius: bodyCollapsed ? 'inherit' : 0,
+          borderBottomRightRadius: bodyCollapsed ? 'inherit' : 0,
         }}
         onPointerDown={startDrag}
       >
         <button
           type="button"
           onPointerDown={(e) => e.stopPropagation()}
-          onClick={() => onUpdate({ collapsed: !node.collapsed })}
+          onClick={() => {
+            if (isMathNode(node)) {
+              onUpdate(nextMathViewPatch(node));
+              return;
+            }
+            onUpdate({ collapsed: !node.collapsed });
+          }}
           className={`relative z-[21] p-1 rounded-md active:scale-95 transition ${darkNodes ? 'text-zinc-300 hover:bg-white/10' : 'text-slate-600 hover:bg-black/10'}`}
-          title={node.collapsed ? 'Expand' : 'Collapse'}
+          title={
+            isMathNode(node)
+              ? `View: ${mathViewLabel(mathView)} — click for ${mathViewLabel(
+                  nextMathViewPatch(node).mathView
+                )}`
+              : node.collapsed
+                ? 'Expand'
+                : 'Collapse'
+          }
         >
-          {node.collapsed ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+          {isMathNode(node) ? (
+            mathView === MATH_VIEW.COLLAPSED ? (
+              <ChevronUp size={16} />
+            ) : mathView === MATH_VIEW.BASIC ? (
+              <Minus size={16} />
+            ) : (
+              <ChevronDown size={16} />
+            )
+          ) : node.collapsed ? (
+            <ChevronUp size={16} />
+          ) : (
+            <ChevronDown size={16} />
+          )}
         </button>
 
         {editingTitle ? (
@@ -247,9 +501,9 @@ export default function NoteNode({
                 }
               }}
               onPointerDown={(e) => e.stopPropagation()}
-              placeholder="Untitled"
-              className={`relative z-[21] flex-1 min-w-0 rounded border bg-white/90 px-1.5 py-0.5 text-sm font-medium outline-none dark:bg-black/20 ${darkNodes ? 'text-zinc-100 placeholder:text-zinc-500' : 'text-slate-800 placeholder:text-slate-400'}`}
-              style={{ fontSize: 14, borderColor: node.color }}
+              placeholder={displayNodeTitle(node)}
+              className="relative z-[21] min-w-0 flex-1 rounded border border-nm-border bg-nm-input px-1.5 py-0.5 text-sm font-medium text-nm-text outline-none placeholder:text-nm-text-muted"
+              style={{ fontSize: 14 }}
             />
             <button
               type="button"
@@ -268,11 +522,11 @@ export default function NoteNode({
           </>
         ) : (
           <span
-            className={`flex-1 truncate text-sm font-medium px-1 ${darkNodes ? 'text-zinc-100' : 'text-slate-800'}`}
+            className="flex-1 truncate px-1 text-sm font-medium text-nm-text"
             onPointerDown={handleTitlePointerDown}
             onDoubleClick={handleTitleDoubleClick}
           >
-            {node.title || 'Untitled'}
+            {displayNodeTitle(node)}
           </span>
         )}
 
@@ -294,12 +548,83 @@ export default function NoteNode({
           className={`relative z-[21] p-1 rounded-md active:scale-95 transition ${darkNodes ? 'text-zinc-300 hover:bg-white/10' : 'text-slate-600 hover:bg-black/10'}`}
           title="Edit colour & pin"
         >
-          <Pencil size={14} />
+          <SlidersHorizontal size={14} strokeWidth={1.75} />
         </button>
 
       </div>
 
-      {!node.collapsed && (
+      {!bodyCollapsed && isMathNode(node) && !isUnitConvertNode(node) && !isGeometryNode(node) && (
+        <MathNodeBody
+          node={node}
+          darkNodes={darkNodes}
+          result={mathResult}
+          onUpdate={onUpdate}
+          applicableModes={mathResult?.applicableModes}
+          applicableSelectionOps={mathResult?.applicableSelectionOps}
+          onPreviewMetrics={handleMathPreviewMetrics}
+          onSelectionMenu={onSelectionMenu}
+          ghostSelection={ghostSelection}
+          onSelectNode={onSelectNode}
+          zoom={zoom}
+          bodySlots={bodySlots}
+          basicView={mathView === MATH_VIEW.BASIC}
+        />
+      )}
+
+      {!bodyCollapsed && isUnitConvertNode(node) && (
+        <UnitConvertNodeBody
+          node={node}
+          darkNodes={darkNodes}
+          onUpdate={onUpdate}
+          dataResult={dataResult}
+          hasInboundNumber={hasInboundNumber}
+        />
+      )}
+
+      {!bodyCollapsed && isGeometryNode(node) && (
+        <GeometryNodeBody node={node} darkNodes={darkNodes} onUpdate={onUpdate} />
+      )}
+
+      {!bodyCollapsed && isChecklistNode(node) && (
+        <ChecklistNodeBody node={node} darkNodes={darkNodes} onUpdate={onUpdate} />
+      )}
+
+      {!bodyCollapsed && isTableNode(node) && (
+        <TableNodeBody node={node} darkNodes={darkNodes} onUpdate={onUpdate} />
+      )}
+
+      {!bodyCollapsed && isChartNode(node) && (
+        <ChartNodeBody
+          node={node}
+          darkNodes={darkNodes}
+          onUpdate={onUpdate}
+          dataResult={dataResult}
+        />
+      )}
+
+      {!bodyCollapsed && isStatsNode(node) && (
+        <StatsNodeBody
+          node={node}
+          darkNodes={darkNodes}
+          onUpdate={onUpdate}
+          dataResult={dataResult}
+        />
+      )}
+
+      {!bodyCollapsed && isLoadFileNode(node) && (
+        <LoadFileNodeBody node={node} darkNodes={darkNodes} onUpdate={onUpdate} />
+      )}
+
+      {!bodyCollapsed && isFileConverterNode(node) && (
+        <FileConverterNodeBody
+          node={node}
+          darkNodes={darkNodes}
+          onUpdate={onUpdate}
+          dataResult={dataResult}
+        />
+      )}
+
+      {!bodyCollapsed && isNoteNode(node) && (
         <textarea
           ref={textareaRef}
           value={node.content}

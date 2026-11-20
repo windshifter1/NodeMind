@@ -1,4 +1,9 @@
 import { analyseGraph } from './analysis.js';
+import {
+  reduceEdgeClutter,
+  separateOverlappingCorridors,
+  spreadSharedHubNeighbors,
+} from './edgeAware.js';
 import { boundsForPositions, buildGraphModel } from './graphModel.js';
 import { optimiseComponent, resolveCollisions } from './optimise.js';
 import { planRoutes } from './routing.js';
@@ -121,32 +126,61 @@ function packComponents(model, componentLayouts, orientation, settings, fixedIds
   return positions;
 }
 
+/** Size helper that never reads the live DOM — keeps /dev organise workspace-invariant. */
+function stableSizeFn(nodeSizeForLayout) {
+  return (node) => {
+    if (node && typeof node === 'object' && node.id != null) {
+      const { id: _id, x: _x, y: _y, z: _z, ...rest } = node;
+      return nodeSizeForLayout(rest);
+    }
+    return nodeSizeForLayout(node);
+  };
+}
+
 export function autoOrganiseGraph(nodes, edges, orientation, settings, centre, geometry) {
   if (!nodes.length) return { nodes, routes: new Map(), analyses: [] };
 
-  const model = buildGraphModel(nodes, edges, orientation, geometry.nodeSizeForLayout);
+  const edgeAware = !!geometry.edgeAwareLayout;
+  const edgeAwareMode = geometry.edgeAwareMode || (edgeAware ? 'curve-fan' : null);
+  const nodeSpread = edgeAwareMode === 'node-spread';
+  const nodeSizeForLayout = edgeAware
+    ? stableSizeFn(geometry.nodeSizeForLayout)
+    : geometry.nodeSizeForLayout;
+  const model = buildGraphModel(nodes, edges, orientation, nodeSizeForLayout);
   const analyses = analyseGraph(model);
   const layoutOptions = {
     preferredRootIds: geometry.preferredRootIds || [],
     fixedIds: geometry.fixedIds || [],
+    edgeAwareLayout: edgeAware,
+    // /dev experiments: same graph structure → same relative layout, independent
+    // of prior canvas positions / orientation history.
+    ignorePriorPositions: edgeAware,
   };
   const fixedIds = collectFixedIds(model, nodes, analyses, geometry);
+  const layoutSettings = edgeAware
+    ? {
+        ...settings,
+        // Extra lane room so connection corridors have space to separate.
+        horizontalSpacing: settings.horizontalSpacing * (nodeSpread ? 1.25 : 1.15),
+        verticalSpacing: settings.verticalSpacing * (nodeSpread ? 1.45 : 1.25),
+      }
+    : settings;
 
   const componentLayouts = analyses.map((analysis) => {
-    const initial = layoutByStrategy(model, analysis, orientation, settings, layoutOptions);
+    const initial = layoutByStrategy(model, analysis, orientation, layoutSettings, layoutOptions);
     return {
       analysis,
-      layout: optimiseComponent(model, analysis, initial, orientation, settings, fixedIds),
+      layout: optimiseComponent(model, analysis, initial, orientation, layoutSettings, fixedIds),
     };
   });
 
-  let positions = packComponents(model, componentLayouts, orientation, settings, fixedIds);
+  let positions = packComponents(model, componentLayouts, orientation, layoutSettings, fixedIds);
   const allIds = nodes.map((node) => node.id);
 
   const hasFixed = [...fixedIds].some((id) => positions.has(id));
   if (hasFixed) {
     alignToFixed(model, allIds, positions, fixedIds);
-    resolveCollisions(model, allIds, positions, settings, fixedIds);
+    resolveCollisions(model, allIds, positions, layoutSettings, fixedIds);
   } else {
     // Keep the cluster near where it already was instead of jumping to viewport centre.
     alignToPriorCentroid(model, allIds, positions);
@@ -160,6 +194,22 @@ export function autoOrganiseGraph(nodes, edges, orientation, settings, centre, g
         if (pos) positions.set(id, { x: pos.x + dx, y: pos.y + dy });
       });
     }
+  }
+
+  if (edgeAware) {
+    const hubOpts = { aggressive: nodeSpread };
+    analyses.forEach((analysis) => {
+      spreadSharedHubNeighbors(model, analysis, positions, orientation, layoutSettings, fixedIds, hubOpts);
+      if (nodeSpread) {
+        separateOverlappingCorridors(model, analysis, positions, orientation, layoutSettings, fixedIds);
+      }
+      reduceEdgeClutter(model, analysis, positions, orientation, layoutSettings, fixedIds);
+      if (nodeSpread) {
+        separateOverlappingCorridors(model, analysis, positions, orientation, layoutSettings, fixedIds);
+      }
+      spreadSharedHubNeighbors(model, analysis, positions, orientation, layoutSettings, fixedIds, hubOpts);
+    });
+    resolveCollisions(model, allIds, positions, layoutSettings, fixedIds);
   }
 
   const arranged = nodes.map((node) => ({ ...node, ...(positions.get(node.id) || {}) }));

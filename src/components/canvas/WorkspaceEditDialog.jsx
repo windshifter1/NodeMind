@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { X, ChevronDown, ChevronUp } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { SlidersHorizontal } from 'lucide-react';
 import {
   GRAPH_ORIENTATIONS,
   LAYOUT_DENSITIES,
@@ -9,11 +9,21 @@ import {
   normalizeLayoutSettings,
   normalizeOrientation,
 } from '@/lib/canvasConstants';
-import { WORKSPACE_ICONS, WORKSPACE_ICON_KEYS, WORKSPACE_COLORS } from '@/lib/workspaceIcons';
+import { WORKSPACE_COLORS, normalizeWorkspaceIconId } from '@/lib/workspaceIcons';
+import WorkspaceColourPicker from '@/components/shell/WorkspaceColourPicker';
+import WorkspaceIcon from '@/components/shell/WorkspaceIcon';
 import { isDesktopPlatform } from '@/lib/onboarding';
 import { emitTutorial } from '@/lib/tutorialEvents';
+import LucideIconPicker from '@/components/shell/LucideIconPicker';
+import {
+  SettingsDialogFrame,
+  SettingsFooter,
+  SettingsRow,
+  SettingsSection,
+  SettingsSegmented,
+} from '@/components/settings/SettingsChrome';
 
-function OrientationIcon({ orientation }) {
+function OrientationIcon({ orientation, colour, className = 'h-[15px] w-[15px] shrink-0' }) {
   const vertical = orientation === GRAPH_ORIENTATIONS.VERTICAL;
   const nodes = vertical
     ? [
@@ -28,7 +38,7 @@ function OrientationIcon({ orientation }) {
       ];
 
   return (
-    <svg viewBox="0 0 36 44" className="h-10 w-10" fill="none" aria-hidden="true">
+    <svg viewBox="0 0 36 44" className={className} fill="none" aria-hidden="true" style={{ color: colour }}>
       <path
         d={vertical ? 'M18 13V31' : 'M11 22H25'}
         stroke="currentColor"
@@ -42,42 +52,112 @@ function OrientationIcon({ orientation }) {
   );
 }
 
-function optionStyle(selected, colour) {
-  return {
-    backgroundColor: selected ? colour + '22' : 'var(--nm-option)',
-    borderColor: selected ? colour : 'var(--nm-border)',
-    color: selected ? 'var(--nm-text)' : 'var(--nm-option-text)',
-  };
-}
-
 export default function WorkspaceEditDialog({ workspace, open, onClose, onSave, onDelete, mode = 'edit' }) {
+  const [appearanceOpen, setAppearanceOpen] = useState(false);
+  const [customDensityOpen, setCustomDensityOpen] = useState(false);
   const [name, setName] = useState('');
   const [colour, setColour] = useState(WORKSPACE_COLORS[0]);
-  const [icon, setIcon] = useState('note');
+  const [icon, setIcon] = useState('sticky-note');
   const [orientation, setOrientation] = useState(GRAPH_ORIENTATIONS.HORIZONTAL);
-  const [layoutOnOrientationChange, setLayoutOnOrientationChange] = useState(LAYOUT_ON_ORIENTATION_CHANGE.PRESERVE);
+  const [layoutOnOrientationChange, setLayoutOnOrientationChange] = useState(
+    LAYOUT_ON_ORIENTATION_CHANGE.PRESERVE,
+  );
   const [layoutSettings, setLayoutSettings] = useState(() => normalizeLayoutSettings());
-  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const generalSectionRef = useRef(null);
+  const appearanceDrawerRef = useRef(null);
+  const densityDrawerRef = useRef(null);
+
+  const resetDrawers = () => {
+    setAppearanceOpen(false);
+    setCustomDensityOpen(false);
+  };
 
   useEffect(() => {
+    if (!open) {
+      resetDrawers();
+      return;
+    }
     if (workspace) {
       setName(workspace.name || '');
       setColour(workspace.colour || WORKSPACE_COLORS[0]);
-      setIcon(workspace.icon || 'note');
+      setIcon(normalizeWorkspaceIconId(workspace.icon));
       setOrientation(normalizeOrientation(workspace.orientation));
       setLayoutOnOrientationChange(normalizeLayoutOnOrientationChange(workspace.layoutOnOrientationChange));
       setLayoutSettings(normalizeLayoutSettings(workspace.layoutSettings));
     }
-    if (open) setAdvancedOpen(false);
   }, [workspace, open]);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const drawerEl = appearanceOpen
+      ? appearanceDrawerRef.current
+      : customDensityOpen
+        ? densityDrawerRef.current
+        : null;
+    if (!drawerEl) return undefined;
+
+    const scroller = drawerEl.closest('.nm-ws-edit-scroll');
+    if (!scroller) return undefined;
+
+    const scrollTargetEl =
+      appearanceOpen && generalSectionRef.current ? generalSectionRef.current : drawerEl;
+
+    const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+    const GLIDE_MS = 280;
+
+    const centerScrollForTarget = () => {
+      const scrollRect = scroller.getBoundingClientRect();
+      const blockRect = scrollTargetEl.getBoundingClientRect();
+      const blockTopInContent = scroller.scrollTop + (blockRect.top - scrollRect.top);
+      const max = Math.max(0, scroller.scrollHeight - scroller.clientHeight);
+      const pad = 12;
+      let target;
+      if (blockRect.height <= scroller.clientHeight - pad * 2) {
+        const centerY = blockTopInContent + blockRect.height / 2;
+        target = centerY - scroller.clientHeight / 2;
+      } else {
+        target = blockTopInContent - pad;
+      }
+      return Math.max(0, Math.min(target, max));
+    };
+
+    const easeGlide = (t) => 1 - (1 - t) ** 2.65;
+
+    if (reducedMotion) {
+      scroller.scrollTop = centerScrollForTarget();
+      return undefined;
+    }
+
+    const startScroll = scroller.scrollTop;
+    const t0 = performance.now();
+    let raf = 0;
+
+    const tick = (now) => {
+      const raw = Math.min(1, (now - t0) / GLIDE_MS);
+      const eased = easeGlide(raw);
+      const goal = centerScrollForTarget();
+      scroller.scrollTop = startScroll + (goal - startScroll) * eased;
+      if (raw < 1) raf = requestAnimationFrame(tick);
+    };
+
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [open, appearanceOpen, customDensityOpen]);
 
   if (!open || !workspace) return null;
 
   const updateLayoutSetting = (key, value) => {
-    setLayoutSettings((current) => normalizeLayoutSettings({ ...current, [key]: value }));
+    setLayoutSettings((current) =>
+      normalizeLayoutSettings({
+        ...current,
+        [key]: value,
+        density: LAYOUT_DENSITIES.CUSTOM,
+      }),
+    );
   };
 
   const close = () => {
+    resetDrawers();
     if (mode === 'edit') emitTutorial('workspace.edit.close');
     onClose();
   };
@@ -87,12 +167,13 @@ export default function WorkspaceEditDialog({ workspace, open, onClose, onSave, 
     const patch = {
       name: nextName,
       colour,
-      icon,
+      icon: normalizeWorkspaceIconId(icon),
       orientation,
       layoutOnOrientationChange,
       layoutSettings,
     };
     onSave(workspace.id, patch);
+    resetDrawers();
     if (mode === 'create') {
       emitTutorial('workspace.create.save');
       onClose();
@@ -102,157 +183,171 @@ export default function WorkspaceEditDialog({ workspace, open, onClose, onSave, 
     onClose();
   };
 
+  const toggleAppearance = () => {
+    setAppearanceOpen((open) => !open);
+    if (!appearanceOpen) setCustomDensityOpen(false);
+  };
+
+  const onDensityChange = (value) => {
+    if (value === LAYOUT_DENSITIES.CUSTOM) {
+      if (layoutSettings.density === LAYOUT_DENSITIES.CUSTOM && customDensityOpen) {
+        setCustomDensityOpen(false);
+        return;
+      }
+      setLayoutSettings((current) =>
+        normalizeLayoutSettings({ ...current, density: LAYOUT_DENSITIES.CUSTOM }),
+      );
+      setCustomDensityOpen(true);
+      setAppearanceOpen(false);
+      return;
+    }
+    setLayoutSettings(layoutSettingsForDensity(value));
+    setCustomDensityOpen(false);
+  };
+
+  const densityValue =
+    layoutSettings.density === LAYOUT_DENSITIES.CUSTOM
+      ? LAYOUT_DENSITIES.CUSTOM
+      : layoutSettings.density;
+
+  const pageTitle = mode === 'create' ? 'New canvas' : 'Canvas Settings';
+
   return (
-    <div
-      className="fixed inset-0 z-[210] flex items-center justify-center"
-      style={{
-        paddingTop: 'calc(1rem + var(--safe-top))',
-        paddingRight: 'calc(1rem + var(--safe-right))',
-        paddingBottom: 'calc(1rem + var(--safe-bottom))',
-        paddingLeft: 'calc(1rem + var(--safe-left))',
-      }}
-    >
-      <div className="absolute inset-0 bg-nm-overlay backdrop-blur-md" onClick={close} />
-      <div
-        className="relative w-full max-w-sm max-h-[88vh] rounded-2xl bg-nm-panel border border-nm-border shadow-2xl flex flex-col overflow-hidden"
-        onPointerDown={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center gap-2 px-3 sm:px-4 py-3 border-b border-nm-border bg-nm-header">
-          <h2 className="text-sm font-semibold text-nm-text">{mode === 'create' ? 'New workspace' : 'Edit workspace'}</h2>
-          <div className="flex-1" />
-          <button
-            onClick={close}
-            className="p-2 rounded-lg text-nm-text-faint hover:text-nm-text hover:bg-nm-hover transition active:scale-95"
+    <SettingsDialogFrame open onClose={close} panelClassName="nm-ws-edit-panel max-w-lg">
+      <header className="nm-ws-edit-chrome">
+        <h2 className="nm-ws-edit-chrome__title">{pageTitle}</h2>
+      </header>
+
+      <div className="nm-ws-edit-scroll nm-scrollbar">
+        <div ref={generalSectionRef} className="nm-ws-edit-general">
+          <h3 className="nm-ws-edit-section__title">General</h3>
+          <div className="nm-ws-edit-top-row">
+            <button
+              type="button"
+              className={`nm-ws-edit-card nm-ws-edit-card--appearance ${appearanceOpen ? 'is-on' : ''}`}
+              style={{ borderColor: appearanceOpen ? colour : undefined }}
+              aria-label="Canvas colour and icon"
+              aria-expanded={appearanceOpen}
+              onClick={toggleAppearance}
+            >
+              <span
+                className="nm-ws-edit-appearance__colour"
+                style={{ backgroundColor: colour }}
+                aria-hidden
+              />
+              <span
+                className="nm-ws-edit-appearance__icon"
+                style={{
+                  backgroundColor: `${colour}18`,
+                  color: colour,
+                }}
+              >
+                <WorkspaceIcon icon={icon} colour={colour} size={20} strokeWidth={1.75} />
+              </span>
+            </button>
+
+            <div className="nm-ws-edit-card nm-ws-edit-card--name">
+              <input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && save()}
+                placeholder="Untitled"
+                autoFocus={isDesktopPlatform()}
+                className="nm-ws-edit-name-input"
+                aria-label="Canvas name"
+              />
+            </div>
+          </div>
+
+          <div
+            ref={appearanceDrawerRef}
+            className={`nm-ws-edit-card nm-ws-edit-glide ${appearanceOpen ? 'is-open' : ''}`}
+            aria-hidden={!appearanceOpen}
           >
-            <X size={18} />
-          </button>
+            <div className="nm-ws-edit-glide__inner nm-ws-edit-appearance-panel">
+              <WorkspaceColourPicker value={colour} onChange={setColour} compact />
+              <div className="nm-ws-edit-appearance-panel__divider" role="separator" />
+              <LucideIconPicker
+                value={icon}
+                onChange={setIcon}
+                accentColour={colour}
+                fullWidth
+                compact
+              />
+            </div>
+          </div>
         </div>
 
-        <div className="overflow-auto px-4 sm:px-5 py-4">
-          <label className="text-sm font-medium text-nm-label">Name</label>
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && save()}
-            placeholder="Untitled"
-            autoFocus={isDesktopPlatform()}
-            className="w-full mt-1 mb-4 rounded-lg border border-nm-border bg-nm-input px-3 py-2 text-nm-text placeholder:text-nm-text-muted outline-none focus:border-indigo-400 focus:bg-nm-hover"
-            style={{ fontSize: 16 }}
-          />
+        <hr className="nm-ws-edit-section-divider" />
 
-          <label className="text-sm font-medium text-nm-label">Colour</label>
-          <div className="flex flex-wrap gap-2 mt-2 mb-4">
-            {WORKSPACE_COLORS.map((c) => (
-              <button
-                key={c}
-                onClick={() => setColour(c)}
-                className="w-8 h-8 rounded-full border-2 transition-transform shadow-sm"
-                style={{
-                  backgroundColor: c,
-                  borderColor: colour === c ? '#818cf8' : 'var(--nm-border-strong)',
-                  transform: colour === c ? 'scale(1.12)' : 'none',
-                }}
-              />
-            ))}
+        <div className="nm-ws-edit-layout">
+          <h3 className="nm-ws-edit-section__title">Layout</h3>
+          <div className="nm-ws-edit-layout-stack">
+          <div className="nm-ws-edit-card nm-ws-edit-card--flat">
+            <SettingsSection>
+              <SettingsRow label="Direction">
+                <SettingsSegmented
+                  accentColour={colour}
+                  options={[
+                    {
+                      value: GRAPH_ORIENTATIONS.HORIZONTAL,
+                      label: 'Horizontal',
+                      icon: ({ active, accentColour: accent }) => (
+                        <OrientationIcon
+                          orientation={GRAPH_ORIENTATIONS.HORIZONTAL}
+                          colour={active ? accent : undefined}
+                        />
+                      ),
+                    },
+                    {
+                      value: GRAPH_ORIENTATIONS.VERTICAL,
+                      label: 'Vertical',
+                      icon: ({ active, accentColour: accent }) => (
+                        <OrientationIcon
+                          orientation={GRAPH_ORIENTATIONS.VERTICAL}
+                          colour={active ? accent : undefined}
+                        />
+                      ),
+                    },
+                  ]}
+                  value={orientation}
+                  onChange={setOrientation}
+                />
+              </SettingsRow>
+              <SettingsRow label="On orientation change">
+                <SettingsSegmented
+                  accentColour={colour}
+                  options={[
+                    { value: LAYOUT_ON_ORIENTATION_CHANGE.PRESERVE, label: 'Preserve' },
+                    { value: LAYOUT_ON_ORIENTATION_CHANGE.AUTO, label: 'Auto' },
+                  ]}
+                  value={layoutOnOrientationChange}
+                  onChange={setLayoutOnOrientationChange}
+                />
+              </SettingsRow>
+              <SettingsRow label="Density">
+                <SettingsSegmented
+                  accentColour={colour}
+                  options={[
+                    { value: LAYOUT_DENSITIES.COMPACT, label: 'Compact' },
+                    { value: LAYOUT_DENSITIES.DEFAULT, label: 'Default' },
+                    { value: LAYOUT_DENSITIES.SPACIOUS, label: 'Spacious' },
+                    { value: LAYOUT_DENSITIES.CUSTOM, label: 'Custom' },
+                  ]}
+                  value={densityValue}
+                  onChange={onDensityChange}
+                />
+              </SettingsRow>
+            </SettingsSection>
           </div>
 
-          <label className="text-sm font-medium text-nm-label">Icon</label>
-          <div className="grid grid-cols-5 gap-2 mt-2 mb-5">
-            {WORKSPACE_ICON_KEYS.map((k) => {
-              const Icon = WORKSPACE_ICONS[k];
-              const selected = icon === k;
-              return (
-                <button
-                  key={k}
-                  onClick={() => setIcon(k)}
-                  className="h-10 rounded-lg flex items-center justify-center border transition hover:bg-nm-hover"
-                  style={{
-                    backgroundColor: selected ? colour + '22' : 'var(--nm-option)',
-                    borderColor: selected ? colour : 'var(--nm-border)',
-                    color: selected ? colour : 'var(--nm-option-text)',
-                  }}
-                >
-                  <Icon size={20} />
-                </button>
-              );
-            })}
-          </div>
-
-          <label className="text-sm font-medium text-nm-label">Orientation</label>
-          <div className="grid grid-cols-2 gap-2 mt-2 mb-5">
-            {[
-              { value: GRAPH_ORIENTATIONS.HORIZONTAL, label: 'Horizontal' },
-              { value: GRAPH_ORIENTATIONS.VERTICAL, label: 'Vertical' },
-            ].map((option) => {
-              const selected = orientation === option.value;
-              return (
-                <button
-                  key={option.value}
-                  onClick={() => setOrientation(option.value)}
-                  className="rounded-xl border px-3 py-3 text-left transition hover:bg-nm-hover"
-                  style={optionStyle(selected, colour)}
-                >
-                  <div className="flex items-center gap-3">
-                    <OrientationIcon orientation={option.value} />
-                    <span className="text-sm font-medium">{option.label}</span>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-
-          <button
-            type="button"
-            onClick={() => setAdvancedOpen((open) => !open)}
-            className="w-full flex items-center justify-between rounded-xl border border-nm-border bg-nm-input px-4 py-3.5 text-sm font-medium text-nm-text hover:bg-nm-hover transition"
+          <div
+            ref={densityDrawerRef}
+            className={`nm-ws-edit-card nm-ws-edit-glide ${customDensityOpen ? 'is-open' : ''}`}
+            aria-hidden={!customDensityOpen}
           >
-            <span>Advanced settings</span>
-            {advancedOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-          </button>
-
-          {advancedOpen && (
-            <div className="mt-3 mb-5">
-              <label className="text-sm font-medium text-nm-label">Layout on Orientation Change</label>
-              <div className="grid grid-cols-2 gap-2 mt-2 mb-5">
-                {[
-                  { value: LAYOUT_ON_ORIENTATION_CHANGE.PRESERVE, label: 'Preserve Original Layout' },
-                  { value: LAYOUT_ON_ORIENTATION_CHANGE.AUTO, label: 'Auto Organise' },
-                ].map((option) => {
-                  const selected = layoutOnOrientationChange === option.value;
-                  return (
-                    <button
-                      key={option.value}
-                      onClick={() => setLayoutOnOrientationChange(option.value)}
-                      className="rounded-xl border px-3 py-3 text-left text-sm font-medium transition hover:bg-nm-hover"
-                      style={optionStyle(selected, colour)}
-                    >
-                      {option.label}
-                    </button>
-                  );
-                })}
-              </div>
-
-              <label className="text-sm font-medium text-nm-label">Auto Organise Layout</label>
-              <div className="grid grid-cols-3 gap-2 mt-2 mb-3">
-                {[
-                  { value: LAYOUT_DENSITIES.COMPACT, label: 'Compact' },
-                  { value: LAYOUT_DENSITIES.DEFAULT, label: 'Default' },
-                  { value: LAYOUT_DENSITIES.SPACIOUS, label: 'Spacious' },
-                ].map((option) => {
-                  const selected = layoutSettings.density === option.value;
-                  return (
-                    <button
-                      key={option.value}
-                      onClick={() => setLayoutSettings(layoutSettingsForDensity(option.value))}
-                      className="rounded-lg border px-2 py-2 text-xs font-medium transition hover:bg-nm-hover"
-                      style={optionStyle(selected, colour)}
-                    >
-                      {option.label}
-                    </button>
-                  );
-                })}
-              </div>
-              <div className="grid grid-cols-3 gap-2">
+            <div className="nm-ws-edit-glide__inner nm-ws-edit-density-panel">
+              <div className="grid w-full grid-cols-3 gap-2">
                 {[
                   { key: 'horizontalSpacing', label: 'Horizontal' },
                   { key: 'verticalSpacing', label: 'Vertical' },
@@ -266,47 +361,57 @@ export default function WorkspaceEditDialog({ workspace, open, onClose, onSave, 
                       step="10"
                       value={layoutSettings[field.key]}
                       onChange={(e) => updateLayoutSetting(field.key, e.target.value)}
-                      className="mt-1 w-full rounded-lg border border-nm-border bg-nm-input px-2 py-1.5 text-sm text-nm-text outline-none focus:border-indigo-400"
+                      className="nm-settings-input mt-1 w-full max-w-none"
                     />
                   </label>
                 ))}
               </div>
             </div>
-          )}
-
-          <div className="flex justify-between items-center mt-5">
-            {mode === 'edit' ? (
-              <button
-                onClick={() => {
-                  if (window.confirm('Delete this workspace and all its content?')) {
-                    onDelete(workspace.id);
-                    close();
-                  }
-                }}
-                className="text-sm text-red-500 hover:text-red-400 font-medium transition"
-              >
-                Delete workspace
-              </button>
-            ) : (
-              <span />
-            )}
-            <div className="flex gap-2">
-              <button
-                onClick={close}
-                className="px-4 py-2 rounded-lg text-sm font-medium text-nm-text-faint hover:text-nm-text hover:bg-nm-hover transition"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={save}
-                className="px-4 py-2 rounded-lg text-sm font-medium bg-indigo-500 text-white hover:bg-indigo-400 transition active:scale-95"
-              >
-                Save
-              </button>
-            </div>
+          </div>
           </div>
         </div>
       </div>
-    </div>
+
+      <SettingsFooter
+        leading={
+          mode === 'edit' ? (
+            <button
+              type="button"
+              onClick={() => {
+                onDelete?.(workspace);
+                close();
+              }}
+              className="text-sm font-medium text-rose-500 hover:text-rose-400"
+            >
+              Delete canvas
+            </button>
+          ) : (
+            <span className="inline-flex items-center gap-1 text-xs text-nm-text-muted">
+              <SlidersHorizontal size={14} />
+              Layout defaults apply to this canvas only
+            </span>
+          )
+        }
+        trailing={
+          <>
+            <button type="button" onClick={close} className="nm-settings-segmented__btn">
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={save}
+              className="nm-settings-segmented__btn is-on"
+              style={{
+                borderColor: colour,
+                backgroundColor: colour,
+                color: '#fff',
+              }}
+            >
+              Save
+            </button>
+          </>
+        }
+      />
+    </SettingsDialogFrame>
   );
 }

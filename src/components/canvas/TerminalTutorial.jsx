@@ -54,7 +54,7 @@ export default function TerminalTutorial({
       onPointerDown={(e) => e.stopPropagation()}
     >
       <div
-        className="mx-auto w-full max-w-md rounded-2xl border border-nm-border bg-nm-panel p-3 shadow-lg sm:p-4"
+        className="mx-auto w-full max-w-md rounded-lg border border-nm-border bg-nm-panel p-3 sm:p-4"
         style={{
           boxShadow:
             step.highlight === 'input' || step.highlight === 'output'

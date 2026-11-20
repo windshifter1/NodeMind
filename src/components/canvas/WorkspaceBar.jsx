@@ -1,22 +1,11 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Plus, Pencil } from 'lucide-react';
-import { WORKSPACE_ICONS } from '@/lib/workspaceIcons';
-import { isDesktopPlatform } from '@/lib/onboarding';
+import { Plus, SlidersHorizontal } from 'lucide-react';
+import WorkspaceIcon from '@/components/shell/WorkspaceIcon';
 import { emitTutorial } from '@/lib/tutorialEvents';
-
-function workspaceGlowShadow(colour, active) {
-  if (!active) {
-    return 'inset 0 0 0 0 transparent, inset 0 0 0 0 transparent, inset 0 0 0 0 transparent, 0 0 0 0 transparent';
-  }
-  return `inset 0 0 0 1px rgba(255,255,255,0.32), inset 0 0 0 2px ${colour}f5, inset 0 0 0 4px ${colour}80, 0 0 10px 1px ${colour}77`;
-}
 
 const WORKSPACE_BTN =
   'flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-xl outline-none transition active:scale-95';
 
-const ICON_SIZE = 16;
-const TAB_SIZE = 38;
-const TAB_SIZE_ACTIVE = 30;
 const SCROLL_THUMB_MIN = 24;
 
 function clamp(value, min, max) {
@@ -253,12 +242,8 @@ function WorkspaceScrollStrip({
 }
 
 function WorkspaceTab({ workspace: w, isActive, buttonRef, onSelect, onPointerDown, onPointerUp, onPointerLeave, onMouseEnter, onMouseLeave }) {
-  const Icon = WORKSPACE_ICONS[w.icon] || WORKSPACE_ICONS.note;
-  const tabSize = isActive ? TAB_SIZE_ACTIVE : TAB_SIZE;
-  const iconScale = tabSize / TAB_SIZE;
-
   return (
-    <div className="relative flex h-[38px] w-[38px] shrink-0 items-center justify-center">
+    <div className="relative flex h-8 shrink-0 items-center justify-center">
       <button
         ref={buttonRef}
         onClick={onSelect}
@@ -267,22 +252,10 @@ function WorkspaceTab({ workspace: w, isActive, buttonRef, onSelect, onPointerDo
         onPointerLeave={onPointerLeave}
         onMouseEnter={onMouseEnter}
         onMouseLeave={onMouseLeave}
-        className={`nm-workspace-icon-btn absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-xl outline-none ${
-          isActive ? '' : 'opacity-80 hover:opacity-100'
-        }`}
-        style={{
-          width: tabSize,
-          height: tabSize,
-          backgroundColor: isActive ? w.colour : `${w.colour}26`,
-          color: isActive ? '#ffffff' : w.colour,
-          boxShadow: workspaceGlowShadow(w.colour, isActive),
-        }}
+        className={`nm-ws-chip ${isActive ? 'nm-ws-chip--on' : ''}`}
       >
-        <Icon
-          size={ICON_SIZE}
-          className="nm-workspace-icon-glyph shrink-0"
-          style={{ transform: `scale(${iconScale})` }}
-        />
+        <WorkspaceIcon icon={w.icon} colour={w.colour} size={14} strokeWidth={1.75} />
+        <span>{w.name}</span>
       </button>
     </div>
   );
@@ -291,19 +264,9 @@ function WorkspaceTab({ workspace: w, isActive, buttonRef, onSelect, onPointerDo
 export default function WorkspaceBar({ workspaces, activeId, onSelect, onCreate, onEdit }) {
   const [shownId, setShownId] = useState(null);
   const [tooltipPos, setTooltipPos] = useState(null);
-  const [isDesktop, setIsDesktop] = useState(() => isDesktopPlatform());
   const holdTimer = useRef(null);
   const suppressMouse = useRef(false);
   const buttonRefs = useRef(new Map());
-
-  useEffect(() => {
-    const mq = window.matchMedia?.('(hover: hover) and (pointer: fine)');
-    if (!mq) return undefined;
-    const update = () => setIsDesktop(mq.matches);
-    update();
-    mq.addEventListener?.('change', update);
-    return () => mq.removeEventListener?.('change', update);
-  }, []);
 
   const clearHold = () => {
     if (holdTimer.current) {
@@ -368,14 +331,7 @@ export default function WorkspaceBar({ workspaces, activeId, onSelect, onCreate,
     <>
       <div
         data-onboarding="workspace-bar"
-        className="absolute left-1/2 z-50 flex w-max -translate-x-1/2 items-end gap-1.5 overflow-visible rounded-2xl border border-nm-border bg-nm-chrome px-2 pb-1.5 pt-2 shadow-xl backdrop-blur-md"
-        style={{
-          bottom: 'calc(1rem + var(--safe-bottom))',
-          // Mobile: keep clear of the bottom-right bin; desktop can use more width.
-          maxWidth: isDesktop
-            ? 'min(70vw, calc(100% - 2rem - var(--safe-left) - var(--safe-right)))'
-            : 'min(50vw, calc(100% - 2rem - var(--safe-left) - var(--safe-right)))',
-        }}
+        className="relative z-50 flex min-w-0 flex-1 items-center gap-1 overflow-visible"
       >
         <button
           data-onboarding="workspace-create"
@@ -414,7 +370,7 @@ export default function WorkspaceBar({ workspaces, activeId, onSelect, onCreate,
           title="Edit current workspace"
           className={`${WORKSPACE_BTN} text-nm-text-secondary hover:bg-nm-hover hover:text-nm-text`}
         >
-          <Pencil size={16} />
+          <SlidersHorizontal size={16} strokeWidth={1.75} />
         </button>
       </div>
 

@@ -1,8 +1,17 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Download, Upload, Trash2, Plus, Copy, Terminal, Share2, Wrench, Settings, Home, SquareDashed } from 'lucide-react';
+import {
+  Trash2,
+  Terminal,
+  Share2,
+  Save,
+  Wrench,
+  Home,
+  SquareDashed,
+  Paintbrush,
+} from 'lucide-react';
 import { emitTutorial } from '@/lib/tutorialEvents';
 import { useTutorialHighlight } from '@/hooks/useTutorialHighlight';
-
+import { normalizeBackgroundArt } from '@/lib/backgroundArt';
 function AutoOrganiseAllIcon({ size = 15 }) {
   return (
     <svg
@@ -61,12 +70,12 @@ function ToolbarButton({
       title={title}
       disabled={disabled}
       data-selection-arm-button={selectionArmButton ? '' : undefined}
-      className={`p-2 sm:p-3 rounded-xl transition active:scale-95 ${
+      className={`nm-toolbar__btn inline-flex shrink-0 items-center justify-center rounded-md p-1.5 transition ${
         disabled
-          ? 'text-nm-text-subtle cursor-not-allowed'
+          ? 'cursor-not-allowed text-nm-text-subtle'
           : active
-            ? 'text-indigo-100 bg-indigo-500/35 shadow-[0_0_0_1px_rgba(165,180,252,0.55),0_0_18px_rgba(99,102,241,0.55)]'
-            : 'text-nm-text-secondary hover:text-nm-text hover:bg-nm-hover'
+            ? 'bg-nm-hover-strong text-nm-text'
+            : 'text-nm-text-secondary hover:bg-nm-hover hover:text-nm-text'
       } ${className}`}
     >
       {children}
@@ -133,13 +142,14 @@ function ToolbarGroup({ icon: Icon, title, options, dataOnboarding }) {
   return (
     <div
       ref={groupRef}
-      className="relative"
+      className="nm-toolbar-glide-cluster shrink-0"
       data-onboarding={dataOnboarding}
       onMouseEnter={() => canHover.current && !clickOnlyOpen && setHoverOpen(true)}
       onMouseLeave={() => canHover.current && !clickOnlyOpen && setHoverOpen(false)}
     >
       <ToolbarButton
         title={title}
+        active={open}
         onClick={() => {
           setClickedOpen((value) => {
             const next = !value;
@@ -156,32 +166,27 @@ function ToolbarGroup({ icon: Icon, title, options, dataOnboarding }) {
       >
         <Icon size={16} />
       </ToolbarButton>
-      <div
-        aria-hidden={!open}
-        className={`absolute top-full left-1/2 w-56 -translate-x-1/2 overflow-hidden rounded-2xl border border-nm-border bg-nm-chrome backdrop-blur-md shadow-xl transition-all duration-200 ease-out ${
-          open
-            ? 'visible max-h-64 opacity-100 translate-y-0 pointer-events-auto'
-            : 'invisible max-h-0 opacity-0 -translate-y-1 pointer-events-none'
-        }`}
-      >
-        <div className="flex flex-col gap-1 p-2">
-          {options.map(({ label, icon: OptionIcon, action, disabled = false, title: optionTitle, tutorialEvent }) => (
-            <button
-              key={label}
-              onClick={() => !disabled && run(action, tutorialEvent)}
-              disabled={disabled}
-              title={optionTitle || label}
-              tabIndex={open && !disabled ? 0 : -1}
-              className={`flex items-center gap-2 rounded-xl px-3 py-2 text-left text-sm transition active:scale-[0.98] ${
-                disabled
-                  ? 'text-nm-text-subtle cursor-not-allowed'
-                  : 'text-nm-text-secondary hover:text-nm-text hover:bg-nm-hover'
-              }`}
-            >
-              <OptionIcon size={15} />
-              <span>{label}</span>
-            </button>
-          ))}
+      <div className={`nm-toolbar-glide ${open ? 'is-open' : ''}`} aria-hidden={!open}>
+        <div className="nm-toolbar-glide__inner">
+          <div className="nm-toolbar-glide__row" role="menu">
+            {options.map(({ label, icon: OptionIcon, action, disabled = false, title: optionTitle, tutorialEvent }) => (
+              <button
+                key={label}
+                type="button"
+                role="menuitem"
+                onClick={() => !disabled && run(action, tutorialEvent)}
+                disabled={disabled}
+                title={optionTitle || label}
+                tabIndex={open && !disabled ? 0 : -1}
+                className={`nm-toolbar__btn nm-toolbar-glide__item ${
+                  disabled ? 'is-disabled' : ''
+                }`}
+              >
+                <OptionIcon size={16} />
+              </button>
+            ))}
+          </div>
+          <div className="nm-toolbar-glide__underline" aria-hidden="true" />
         </div>
       </div>
     </div>
@@ -189,10 +194,7 @@ function ToolbarGroup({ icon: Icon, title, options, dataOnboarding }) {
 }
 
 export default function Toolbar({
-  onExport,
-  onImport,
   onClear,
-  onTextExport,
   onOpenTerminal,
   onAutoOrganise,
   onOrganiseSelected,
@@ -201,12 +203,16 @@ export default function Toolbar({
   onToggleSelectionArm,
   zoom,
   onRecenter,
-  onAddNodeCenter,
-  onOpenSettings,
+  drawMode = false,
+  onToggleDrawMode,
+  backgroundArt,
+  onBackgroundArtChange,
+  onOpenShare,
+  onOpenSave,
 }) {
-  const fileRef = useRef(null);
   const canOrganiseSelected = selectedCount >= 2;
   const [showMobileSelection, setShowMobileSelection] = useState(false);
+  const bg = normalizeBackgroundArt(backgroundArt);
 
   useEffect(() => {
     const mq = window.matchMedia?.('(hover: hover) and (pointer: fine)');
@@ -217,26 +223,31 @@ export default function Toolbar({
     return () => mq.removeEventListener('change', update);
   }, []);
 
+  const patchBg = (patch) => onBackgroundArtChange?.({ ...bg, ...patch });
+
+  const chromeClass =
+    'nm-toolbar relative z-50 flex min-w-0 flex-wrap items-center justify-end gap-0.5';
+
   return (
     <>
       <div
         data-onboarding="toolbar"
-        className="absolute left-1/2 z-50 flex max-w-[min(96vw,calc(100%-2rem-var(--safe-left)-var(--safe-right)))] -translate-x-1/2 items-center gap-1 rounded-2xl border border-nm-border bg-nm-chrome px-2 py-2 shadow-xl backdrop-blur-md sm:gap-2 sm:px-3 sm:py-2.5"
-        style={{ top: 'calc(1rem + var(--safe-top))' }}
+        className={chromeClass}
       >
-        <span data-onboarding="toolbar-add" className="inline-flex">
-          <ToolbarButton
-            onClick={() => {
-              onAddNodeCenter();
-              emitTutorial('toolbar.node.create');
-            }}
-            title="Add note"
-          >
-            <Plus size={16} />
-          </ToolbarButton>
-        </span>
-        <div className="w-px h-6 bg-nm-divider mx-1" />
-        <span data-onboarding="toolbar-recenter" className="inline-flex">
+        <ToolbarButton
+          active={drawMode}
+          onClick={() => {
+            if (!drawMode) patchBg({ tool: 'pen' });
+            onToggleDrawMode?.();
+          }}
+          title={drawMode ? 'Draw mode (tools on canvas)' : 'Draw on canvas background'}
+          className="shrink-0"
+          data-onboarding="toolbar-draw"
+        >
+          <Paintbrush size={16} strokeWidth={1.75} />
+        </ToolbarButton>
+        <div className="mx-0.5 h-6 w-px shrink-0 bg-nm-divider sm:mx-1" />
+        <span data-onboarding="toolbar-recenter" className="inline-flex shrink-0">
           <ToolbarButton
             onClick={() => {
               onRecenter();
@@ -247,9 +258,8 @@ export default function Toolbar({
             <Home size={16} />
           </ToolbarButton>
         </span>
-        <span className="hidden sm:inline text-xs text-nm-text-muted w-10 text-center tabular-nums">{Math.round(zoom * 100)}%</span>
         {showMobileSelection && (
-          <span data-onboarding="toolbar-selection" className="inline-flex">
+          <span data-onboarding="toolbar-selection" className="inline-flex shrink-0">
             <ToolbarButton
               data-selection-arm-button
               active={selectionArmed}
@@ -264,7 +274,7 @@ export default function Toolbar({
             </ToolbarButton>
           </span>
         )}
-        <div className="w-px h-6 bg-nm-divider mx-1" />
+        <div className="mx-0.5 hidden h-6 w-px shrink-0 bg-nm-divider sm:mx-1 sm:block" />
         <ToolbarGroup
           icon={Wrench}
           title="Tools"
@@ -288,32 +298,27 @@ export default function Toolbar({
             },
           ]}
         />
-        <ToolbarButton onClick={onOpenTerminal} title="Terminal"><Terminal size={16} /></ToolbarButton>
-        <ToolbarGroup
-          icon={Share2}
-          title="Import and export"
-          options={[
-            { label: 'Copy', icon: Copy, action: onTextExport },
-            { label: 'Import', icon: Upload, action: () => fileRef.current && fileRef.current.click() },
-            { label: 'Export', icon: Download, action: onExport },
-          ]}
-        />
-        <ToolbarButton onClick={onClear} title="Clear all"><Trash2 size={16} /></ToolbarButton>
-        <div className="w-px h-6 bg-nm-divider mx-1" />
-        <span data-onboarding="toolbar-settings" className="inline-flex">
-          <ToolbarButton
-            onClick={() => {
-              onOpenSettings();
-              emitTutorial('toolbar.settings.open');
-            }}
-            title="Settings"
-          >
-            <Settings size={16} />
-          </ToolbarButton>
-        </span>
-        <input ref={fileRef} type="file" accept="application/json" className="hidden" onChange={onImport} />
+        <ToolbarButton onClick={onOpenTerminal} title="Terminal">
+          <Terminal size={16} />
+        </ToolbarButton>
+        <ToolbarButton
+          onClick={() => onOpenShare?.()}
+          title="Share"
+          className="shrink-0"
+        >
+          <Share2 size={16} />
+        </ToolbarButton>
+        <ToolbarButton
+          onClick={() => onOpenSave?.()}
+          title="Save"
+          className="shrink-0"
+        >
+          <Save size={16} />
+        </ToolbarButton>
+        <ToolbarButton onClick={onClear} title="Clear all">
+          <Trash2 size={16} />
+        </ToolbarButton>
       </div>
-
     </>
   );
 }

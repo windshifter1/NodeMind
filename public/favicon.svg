@@ -1,27 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none" role="img" aria-label="NodeMind">
-  <defs>
-    <linearGradient id="nm-bg" x1="96" y1="48" x2="416" y2="464" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#141826"/>
-      <stop offset="100%" stop-color="#080a12"/>
-    </linearGradient>
-    <linearGradient id="nm-node" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#c7d2fe"/>
-      <stop offset="100%" stop-color="#6366f1"/>
-    </linearGradient>
-  </defs>
-
-  <!-- Maskable safe zone: mark stays inside central ~80% -->
-  <rect width="512" height="512" rx="112" fill="url(#nm-bg)"/>
-
-  <path
-    d="M256 152V272M256 272L168 368M256 272L344 368"
-    stroke="#a5b4fc"
-    stroke-width="36"
-    stroke-linecap="round"
-    stroke-linejoin="round"
-  />
-  <circle cx="168" cy="368" r="56" fill="url(#nm-node)"/>
-  <circle cx="344" cy="368" r="56" fill="url(#nm-node)"/>
-  <circle cx="256" cy="152" r="64" fill="#e0e7ff"/>
-  <circle cx="256" cy="152" r="24" fill="#1e1b4b" fill-opacity="0.45"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" role="img" aria-label="Noded">
+  <rect width="32" height="32" rx="7" fill="#0c0d12"/>
+  <path d="M16 8.5v8.2M16 16.7 9.2 23.2M16 16.7l6.8 6.5" stroke="#f4f4f5" stroke-width="1.6" stroke-linecap="round"/>
+  <circle cx="16" cy="8.2" r="2.1" fill="#f4f4f5"/>
+  <circle cx="9" cy="23.6" r="2.1" fill="#f4f4f5"/>
+  <circle cx="23" cy="23.6" r="2.1" fill="#f4f4f5"/>
 </svg>

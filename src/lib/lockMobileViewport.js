@@ -72,8 +72,17 @@ function measureLayoutSize() {
   let width = Math.max(innerW, inset.width || 0);
 
   if (isStandalonePwa()) {
-    height = Math.max(height, Math.round(screenHeightForOrientation() || 0));
-    width = Math.max(width, Math.round(screenWidthForOrientation() || 0));
+    const vvLayoutH = vv ? Math.round(vv.height + vv.offsetTop) : 0;
+    const vvLayoutW = vv ? Math.round(vv.width + vv.offsetLeft) : 0;
+    if (vvLayoutH > 0) height = Math.max(height, vvLayoutH);
+    if (vvLayoutW > 0) width = Math.max(width, vvLayoutW);
+    // screen.* can exceed the visible layout and causes a false keyboard inset (bottom gap).
+    if (height < innerH * 0.9) {
+      height = Math.max(height, Math.round(screenHeightForOrientation() || 0));
+    }
+    if (width < innerW * 0.9) {
+      width = Math.max(width, Math.round(screenWidthForOrientation() || 0));
+    }
   } else if (isMobileLike()) {
     // Grow with a larger visual viewport (chrome retracted); never shrink to vv (keyboard).
     if (vvH > height) height = vvH;
@@ -118,7 +127,54 @@ export function applyAppFrameHeight() {
     root.style.setProperty('--vv-width', `${width}px`);
   }
 
+  applySafeAreaInsets();
+  applyKeyboardInset(height);
   pinScroll();
+}
+
+/** When env(safe-area-*) undershoots in standalone, match visualViewport offsets. */
+function applySafeAreaInsets() {
+  if (!isMobileLike()) return;
+  const root = document.documentElement;
+  const vv = window.visualViewport;
+  if (!vv) return;
+
+  const top = Math.max(0, Math.round(vv.offsetTop));
+  const left = Math.max(0, Math.round(vv.offsetLeft));
+  if (top >= 20) {
+    root.style.setProperty('--safe-top', `${top}px`);
+  }
+  if (left >= 8) {
+    root.style.setProperty('--safe-left', `${left}px`);
+  }
+}
+
+function setKeyboardOpenClass(open) {
+  document.documentElement.classList.toggle('nm-keyboard-open', open);
+}
+
+/** Lift floating mobile chrome with the software keyboard (iOS visualViewport). */
+function applyKeyboardInset(layoutHeight) {
+  const root = document.documentElement;
+  const vv = window.visualViewport;
+  if (!vv || !isMobileLike()) {
+    root.style.setProperty('--nm-keyboard-inset', '0px');
+    setKeyboardOpenClass(false);
+    return;
+  }
+  const frameBase = layoutHeight || lockedHeight || Math.round(window.innerHeight || 0);
+  const keyboardOpen = isKeyboardLikelyOpen(frameBase);
+  if (!keyboardOpen) {
+    root.style.setProperty('--nm-keyboard-inset', '0px');
+    setKeyboardOpenClass(false);
+    return;
+  }
+
+  const layoutBottom = Math.round(vv.height + vv.offsetTop);
+  const frame = Math.min(frameBase, layoutBottom + 8);
+  const inset = Math.max(0, Math.round(frame - layoutBottom));
+  root.style.setProperty('--nm-keyboard-inset', `${inset}px`);
+  setKeyboardOpenClass(inset > 12);
 }
 
 export function lockMobileViewport() {

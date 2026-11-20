@@ -89,7 +89,10 @@ function resolvePrimaryAvoidBox(highlightTarget) {
   const target = readTargetBox(highlightTarget);
   if (!highlightTarget || highlightTarget === 'canvas') return target;
   if (String(highlightTarget).startsWith('toolbar')) {
-    return readTargetBox('toolbar') || target;
+    const toolbar = readTargetBox('toolbar');
+    // Mobile settings live in the top bar, not the bottom nav — avoid the gear itself.
+    if (toolbar && target && overlaps(target, toolbar)) return toolbar;
+    return target || toolbar;
   }
   if (String(highlightTarget).startsWith('workspace')) {
     return readTargetBox('workspace-bar') || target;
@@ -99,10 +102,21 @@ function resolvePrimaryAvoidBox(highlightTarget) {
 
 function readChromeAvoidBoxes(highlightTarget) {
   const avoid = [];
+  const ht = String(highlightTarget || '');
   const toolbar = readTargetBox('toolbar');
   const workspace = readTargetBox('workspace-bar');
-  if (toolbar && !String(highlightTarget || '').startsWith('toolbar')) avoid.push(toolbar);
-  if (workspace && !String(highlightTarget || '').startsWith('workspace')) avoid.push(workspace);
+  const mobileTop = readTargetBox('mobile-top');
+  if (toolbar && !ht.startsWith('toolbar')) avoid.push(toolbar);
+  if (workspace && !ht.startsWith('workspace')) avoid.push(workspace);
+  // Keep the coach off the mobile top bar unless spotlighting a control there.
+  if (
+    mobileTop &&
+    ht !== 'mobile-top' &&
+    ht !== 'toolbar-settings' &&
+    ht !== 'workspace-bar'
+  ) {
+    avoid.push(mobileTop);
+  }
   return avoid;
 }
 
@@ -244,7 +258,7 @@ function InteractiveTutorial({ open, onClose, platform }) {
   const finish = useCallback(() => {
     completeOnboarding();
     setVisible(false);
-    window.setTimeout(() => onClose?.(), 180);
+    onClose?.();
   }, [onClose]);
 
   const measure = useCallback(() => {
@@ -309,7 +323,11 @@ function InteractiveTutorial({ open, onClose, platform }) {
   );
 
   useEffect(() => {
-    if (!open) return undefined;
+    if (!open) {
+      delete document.body.dataset.tutorialActive;
+      return undefined;
+    }
+    document.body.dataset.tutorialActive = platform;
     acknowledgeOnboardingReplay();
     setSectionIndex(0);
     setTaskIndex(0);
@@ -317,8 +335,11 @@ function InteractiveTutorial({ open, onClose, platform }) {
     setBodyExpanded(false);
     advancingRef.current = false;
     const t = window.setTimeout(() => setVisible(true), 40);
-    return () => window.clearTimeout(t);
-  }, [open]);
+    return () => {
+      window.clearTimeout(t);
+      delete document.body.dataset.tutorialActive;
+    };
+  }, [open, platform]);
 
   useEffect(() => {
     if (!open || !isFinish || !currentTask || !section) return;
@@ -443,7 +464,7 @@ function InteractiveTutorial({ open, onClose, platform }) {
     <div
       ref={cardRef}
       data-onboarding-tour
-      className="pointer-events-auto fixed z-[230] rounded-2xl border border-nm-border bg-nm-chrome p-3 shadow-xl backdrop-blur-md transition-[top,left,opacity,transform,width] duration-300 ease-out"
+      className="pointer-events-auto fixed z-[230] rounded-lg border border-nm-border bg-nm-panel p-3 shadow-sm transition-[top,left,opacity,transform,width] duration-300 ease-out"
       role="dialog"
       aria-modal={isWelcome}
       aria-labelledby="nm-onboarding-title"

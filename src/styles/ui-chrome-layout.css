@@ -1,0 +1,30 @@
+/* Chrome placement is shared across every UI style. Styles may restyle, not reposition.
+   Mobile FAB chrome (nm-mobile_*) owns its own placement — do not override it. */
+
+[data-onboarding='toolbar']:not([data-mobile-chrome]) {
+  position: static;
+}
+
+[data-onboarding='delete-bin'] {
+  position: absolute !important;
+  right: calc(12px + var(--safe-right)) !important;
+  bottom: calc(12px + var(--safe-bottom)) !important;
+  z-index: 50;
+}
+
+/* Mobile: keep the bin above the FAB bottom nav. */
+[data-onboarding='delete-bin'][data-mobile-chrome] {
+  bottom: calc(4.75rem + var(--safe-bottom)) !important;
+}
+
+[data-onboarding-tour] {
+  background-color: color-mix(in srgb, var(--nm-page) 78%, var(--nm-panel));
+}
+
+/* Hit target only — never paint the enlarged socket pad. */
+[data-socket] {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+}

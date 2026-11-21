@@ -12,66 +12,44 @@ import {
   Paintbrush,
   X,
 } from 'lucide-react';
-import { createPortal } from 'react-dom';
 import { emitTutorial } from '@/lib/tutorialEvents';
 import { normalizeBackgroundArt } from '@/lib/backgroundArt';
-import { useSheetDragDismiss } from '@/hooks/useSheetDragDismiss';
-import { glassPressClasses, glassPressState, useGlassPress } from '@/hooks/useGlassPress';
+import {
+  LiquidGlassButton,
+  LiquidGlassIos26Button,
+  LiquidGlassSheet,
+} from '@/lib/liquid-glass';
 import './mobileChrome.css';
 
-function ChromeButton({
-  children,
-  title,
-  active = false,
-  primary = false,
-  className = '',
-  onClick,
-  disabled = false,
-  'data-onboarding': dataOnboarding,
-  'data-mobile-chrome': dataMobileChrome,
-  'data-selection-arm-button': selectionArmButton,
-}) {
-  const { pressed, pressProps } = useGlassPress({ disabled });
-  const isChrome = className.includes('nm-mobile__chrome');
-
+function LgOrb({ title, active = false, className = '', onClick, disabled, icon, children, ...rest }) {
   return (
-    <button
+    <LiquidGlassIos26Button
       type="button"
       title={title}
       aria-label={title}
       disabled={disabled}
       onClick={disabled ? undefined : onClick}
-      data-onboarding={dataOnboarding}
-      data-mobile-chrome={dataMobileChrome != null ? '' : undefined}
-      data-selection-arm-button={selectionArmButton ? '' : undefined}
-      className={glassPressClasses(
-        'nm-mobile__btn',
-        active ? 'nm-mobile__btn--active' : '',
-        primary ? 'nm-mobile__btn--primary' : '',
-        glassPressState({ pressed, glass: isChrome, solid: primary }),
-        className,
-      )}
-      {...pressProps}
-    >
-      {children}
-    </button>
+      size="sm"
+      icon={icon ?? children}
+      className={`nm-mobile__btn nm-mobile__orb !min-h-0 !min-w-0 !p-0 !shadow-none ${
+        active ? 'nm-mobile__btn--active' : ''
+      } ${className}`}
+      {...rest}
+    />
   );
 }
 
-function SplitChromeButton({ children, onClick }) {
-  const { pressed, pressProps } = useGlassPress();
+function SplitChromeButton({ title, icon, onClick }) {
   return (
-    <button
+    <LiquidGlassIos26Button
       type="button"
-      className={glassPressClasses(
-        'nm-mobile__split-btn',
-        glassPressState({ pressed, segment: true }),
-      )}
+      title={title}
+      aria-label={title}
+      size="sm"
       onClick={onClick}
-      {...pressProps}
-    >
-      {children}
-    </button>
+      icon={icon}
+      className="nm-mobile__split-btn !min-h-0 !min-w-0 !rounded-none !border-0 !p-0 !shadow-none"
+    />
   );
 }
 
@@ -119,56 +97,46 @@ function AutoOrganiseSelectedIcon({ size = 18 }) {
 }
 
 function MoreSheet({ open, onClose, title, children }) {
-  const { sheetRef, backdropRef, handleProps } = useSheetDragDismiss(onClose, { open });
-  if (!open) return null;
-  const sheetUi = (
-    <>
-      <button
-        ref={backdropRef}
-        type="button"
-        className="nm-mobile__sheet-backdrop"
-        aria-label="Close sheet"
-        onClick={onClose}
-      />
-      <div
-        ref={sheetRef}
-        className="nm-mobile__sheet nm-mobile__chrome"
-        role="dialog"
-        aria-label={title}
-      >
-        <div className="nm-mobile__sheet-handle-hit" {...handleProps}>
-          <div className="nm-mobile__sheet-handle" />
-        </div>
+  return (
+    <LiquidGlassSheet
+      isOpen={open}
+      onClose={onClose}
+      variant="compact"
+      className="nm-mobile__sheet nm-mobile__chrome !max-w-none"
+      header={
         <div className="nm-mobile__sheet-head">
           <p className="nm-mobile__sheet-title">{title}</p>
-          <ChromeButton title="Close" onClick={onClose} className="nm-mobile__sheet-close">
-            <X size={16} />
-          </ChromeButton>
+          <LiquidGlassIos26Button
+            type="button"
+            title="Close"
+            aria-label="Close"
+            size="sm"
+            onClick={onClose}
+            icon={<X size={16} />}
+            className="nm-mobile__sheet-close !min-h-0 !min-w-0 !p-2 !shadow-none"
+          />
         </div>
-        <div className="nm-mobile__sheet-grid">{children}</div>
-      </div>
-    </>
+      }
+    >
+      <div className="nm-mobile__sheet-grid !px-0 !pb-0">{children}</div>
+    </LiquidGlassSheet>
   );
-  return typeof document !== 'undefined' ? createPortal(sheetUi, document.body) : sheetUi;
 }
 
 function SheetItem({ icon: Icon, label, onClick, disabled = false, dataOnboarding }) {
-  const { pressed, pressProps } = useGlassPress({ disabled });
   return (
-    <button
+    <LiquidGlassButton
       type="button"
-      className={glassPressClasses(
-        'nm-mobile__sheet-item',
-        glassPressState({ pressed, tile: true }),
-      )}
-      onClick={onClick}
+      variant="ghost"
+      fullWidth
       disabled={disabled}
+      onClick={onClick}
       data-onboarding={dataOnboarding}
-      {...pressProps}
+      icon={<Icon size={18} />}
+      className="nm-mobile__sheet-item !justify-start !rounded-2xl"
     >
-      <Icon size={18} />
-      <span>{label}</span>
-    </button>
+      {label}
+    </LiquidGlassButton>
   );
 }
 
@@ -232,112 +200,117 @@ export default function MobileChrome({
 
   const patchBg = (patch) => onBackgroundArtChange?.({ ...bg, ...patch });
 
+  const iconBtnClass =
+    'nm-mobile__btn !min-h-0 !min-w-0 !p-2.5 !rounded-2xl !shadow-none';
+
   return (
     <>
       <div className="nm-mobile__top" data-mobile-chrome data-onboarding="mobile-top">
         <div className="nm-mobile__cluster">
-          <ChromeButton
+          <LgOrb
             title="Menu"
-            className="nm-mobile__orb nm-mobile__chrome"
+            className="nm-mobile__chrome"
             onClick={() => onOpenSidebar?.()}
             data-mobile-chrome
             data-onboarding="workspace-bar"
-          >
-            <PanelLeft size={18} strokeWidth={1.75} />
-          </ChromeButton>
+            icon={<PanelLeft size={18} strokeWidth={1.75} />}
+          />
 
           <div className="nm-mobile__split nm-mobile__chrome" role="group" aria-label="Save and share">
-            <SplitChromeButton onClick={() => onOpenSave?.()}>
-              <Save size={14} strokeWidth={1.75} />
-              Save
-            </SplitChromeButton>
+            <SplitChromeButton
+              title="Save"
+              icon={<Save size={16} strokeWidth={1.75} />}
+              onClick={() => onOpenSave?.()}
+            />
             <span className="nm-mobile__split-div" aria-hidden="true" />
-            <SplitChromeButton onClick={() => onOpenShare?.()}>
-              <Share2 size={14} strokeWidth={1.75} />
-              Share
-            </SplitChromeButton>
+            <SplitChromeButton
+              title="Share"
+              icon={<Share2 size={16} strokeWidth={1.75} />}
+              onClick={() => onOpenShare?.()}
+            />
           </div>
         </div>
 
         <div className="nm-mobile__top-end" data-onboarding="toolbar-recenter">
-          <ChromeButton
+          <LgOrb
             title="Recenter"
-            className="nm-mobile__orb nm-mobile__chrome"
+            className="nm-mobile__chrome"
             onClick={() => {
               onRecenter();
               emitTutorial('toolbar.recenter');
             }}
-          >
-            <Home size={18} strokeWidth={1.75} />
-          </ChromeButton>
+            icon={<Home size={18} strokeWidth={1.75} />}
+          />
         </div>
       </div>
 
-      <div
-        data-onboarding="toolbar"
-        data-mobile-chrome
-        className="nm-mobile__dock"
-      >
+      <div data-onboarding="toolbar" data-mobile-chrome className="nm-mobile__dock">
         <div className="nm-mobile__composer nm-mobile__chrome">
-          <ChromeButton
+          <LiquidGlassIos26Button
+            type="button"
             title="Add node"
-            primary
-            className="nm-mobile__composer-add"
-            data-onboarding="toolbar-add"
+            aria-label="Add node"
+            size="sm"
             onClick={() => {
               setMoreSheetOpen(false);
               onAddNodeCenter();
             }}
-          >
-            <Plus size={20} strokeWidth={2.25} />
-          </ChromeButton>
+            data-onboarding="toolbar-add"
+            icon={<Plus size={20} strokeWidth={2.25} />}
+            className="nm-mobile__composer-add nm-mobile__btn nm-mobile__btn--primary !min-h-0 !min-w-0 !p-0 !shadow-none"
+          />
 
           <div className="nm-mobile__composer-tools">
-            <ChromeButton
+            <LiquidGlassIos26Button
+              type="button"
               title="Draw"
-              active={drawMode}
+              size="sm"
               onClick={() => {
                 if (!drawMode) patchBg({ tool: 'pen' });
                 if (selectionArmed) onToggleSelectionArm?.();
                 onToggleDrawMode?.();
                 setMoreSheetOpen(false);
               }}
-            >
-              <Paintbrush size={18} strokeWidth={1.75} />
-            </ChromeButton>
-            <ChromeButton
+              icon={<Paintbrush size={18} strokeWidth={1.75} />}
+              className={`${iconBtnClass} ${drawMode ? 'nm-mobile__btn--active' : ''}`}
+            />
+            <LiquidGlassIos26Button
+              type="button"
               title="Tools"
-              active={moreSheetOpen}
+              size="sm"
               data-onboarding="toolbar-tools"
               onClick={() => {
                 if (moreSheetOpen) closeMoreSheet();
                 else openMoreSheet({ fromTools: true });
               }}
-            >
-              <Wrench size={18} strokeWidth={1.75} />
-            </ChromeButton>
-            <ChromeButton
+              icon={<Wrench size={18} strokeWidth={1.75} />}
+              className={`${iconBtnClass} ${moreSheetOpen ? 'nm-mobile__btn--active' : ''}`}
+            />
+            <LiquidGlassIos26Button
+              type="button"
               title="Terminal"
+              size="sm"
               onClick={() => {
                 onOpenTerminal();
                 setMoreSheetOpen(false);
               }}
-            >
-              <Terminal size={18} strokeWidth={1.75} />
-            </ChromeButton>
-            <ChromeButton
+              icon={<Terminal size={18} strokeWidth={1.75} />}
+              className={iconBtnClass}
+            />
+            <LiquidGlassIos26Button
+              type="button"
               data-selection-arm-button
               data-onboarding="toolbar-selection"
               title={selectionArmed ? 'Selection Mode armed — drag on canvas' : 'Selection Mode'}
-              active={selectionArmed}
+              size="sm"
               onClick={() => {
                 const next = !selectionArmed;
                 onToggleSelectionArm();
                 if (next) emitTutorial('toolbar.selection.arm');
               }}
-            >
-              <SquareDashed size={18} />
-            </ChromeButton>
+              icon={<SquareDashed size={18} />}
+              className={`${iconBtnClass} ${selectionArmed ? 'nm-mobile__btn--active' : ''}`}
+            />
           </div>
         </div>
       </div>

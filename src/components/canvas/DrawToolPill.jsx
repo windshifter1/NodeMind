@@ -9,26 +9,20 @@ import {
 } from 'lucide-react';
 import { normalizeBackgroundArt, PEN_WIDTH_PRESETS } from '@/lib/backgroundArt';
 import { addBackgroundImage } from '@/lib/backgroundArtImages';
-import { glassPressClasses, glassPressState, useGlassPress } from '@/hooks/useGlassPress';
+import { LiquidGlassIos26Button } from '@/lib/liquid-glass';
 
 function PillButton({ active, title, onClick, children }) {
-  const { pressed, pressProps } = useGlassPress();
   return (
-    <button
+    <LiquidGlassIos26Button
       type="button"
       title={title}
       aria-label={title}
       aria-pressed={active}
       onClick={onClick}
-      className={glassPressClasses(
-        'nm-draw-pill__btn',
-        active ? 'is-on' : '',
-        glassPressState({ pressed }),
-      )}
-      {...pressProps}
-    >
-      {children}
-    </button>
+      size="sm"
+      icon={children}
+      className={`nm-draw-pill__btn !min-h-0 !min-w-0 !p-2.5 !shadow-none ${active ? 'is-on' : ''}`}
+    />
   );
 }
 

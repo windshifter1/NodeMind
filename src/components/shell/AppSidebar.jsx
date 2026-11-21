@@ -14,23 +14,23 @@ import {
 import { PRODUCT_NAME } from '@/lib/brand';
 import WorkspaceIcon from '@/components/shell/WorkspaceIcon';
 import { emitTutorial } from '@/lib/tutorialEvents';
-import { glassPressClasses, glassPressState, useGlassPress } from '@/hooks/useGlassPress';
+import {
+  LiquidGlassButton,
+  LiquidGlassIos26Button,
+  MobileSearchBar,
+} from '@/lib/liquid-glass';
 
 const LONG_PRESS_MS = 420;
 
 function PushSidebarSearchToggle({ searchOpen, onToggle }) {
-  const { pressed, pressProps } = useGlassPress();
   return (
     <button
       type="button"
-      className={glassPressClasses(
-        'nm-sidebar__search-btn',
-        glassPressState({ pressed, glass: true }),
-      )}
+      className="nm-sidebar__search-btn"
       title={searchOpen ? 'Close search' : 'Search canvases'}
       aria-label={searchOpen ? 'Close search' : 'Search canvases'}
+      aria-expanded={searchOpen}
       onClick={onToggle}
-      {...pressProps}
     >
       {searchOpen ? <X size={18} strokeWidth={1.75} /> : <Search size={18} strokeWidth={1.75} />}
     </button>
@@ -38,47 +38,39 @@ function PushSidebarSearchToggle({ searchOpen, onToggle }) {
 }
 
 function PushSidebarNew({ onClick }) {
-  const { pressed, pressProps } = useGlassPress();
   return (
-    <button
+    <LiquidGlassButton
       type="button"
-      className={glassPressClasses(
-        'nm-sidebar__new',
-        glassPressState({ pressed, solid: true }),
-      )}
+      variant="primary"
+      size="md"
+      fullWidth
       data-onboarding="workspace-create"
       title="New canvas"
       onClick={onClick}
-      {...pressProps}
+      icon={<Plus size={18} strokeWidth={2.25} />}
+      className="nm-sidebar__new nm-sidebar__new--solid !justify-center"
     >
-      <Plus size={18} strokeWidth={2.25} />
-      <span>New canvas</span>
-    </button>
+      New canvas
+    </LiquidGlassButton>
   );
 }
 
 function PushSidebarSettingsOrb({ onClick }) {
-  const { pressed, pressProps } = useGlassPress();
   return (
-    <button
+    <LiquidGlassIos26Button
       type="button"
-      className={glassPressClasses(
-        'nm-sidebar__settings-orb',
-        glassPressState({ pressed, glass: true }),
-      )}
+      size="sm"
       data-onboarding="toolbar-settings"
       title="Settings"
       aria-label="Settings"
       onClick={onClick}
-      {...pressProps}
-    >
-      <Settings size={18} strokeWidth={1.75} />
-    </button>
+      icon={<Settings size={18} strokeWidth={1.75} />}
+      className="nm-sidebar__settings-orb !min-h-0 !min-w-0 !p-2.5 !shadow-none"
+    />
   );
 }
 
 function PushWorkspaceRow({ ws, active, onSelect, onEdit, onDelete, onCloseDrawer }) {
-  const { pressed, pressProps } = useGlassPress();
   const timerRef = useRef(0);
   const longPressRef = useRef(false);
   const [menu, setMenu] = useState(null);
@@ -98,28 +90,29 @@ function PushWorkspaceRow({ ws, active, onSelect, onEdit, onDelete, onCloseDrawe
   return (
     <>
       <div className={`nm-sidebar__row ${active ? 'nm-sidebar__row--on' : ''}`}>
-        <button
+        <LiquidGlassButton
           type="button"
-          className={glassPressClasses(
-            'nm-sidebar__item',
-            active ? 'nm-sidebar__item--on' : '',
-            glassPressState({ pressed }),
-          )}
+          variant="ghost"
+          fullWidth
+          fluid
+          motionPress
+          splashSize={88}
+          tapScale={0.97}
           title={ws.name}
-          {...pressProps}
+          className={`nm-sidebar__item nm-sidebar__item--liquid !justify-start !rounded-2xl ${
+            active ? 'nm-sidebar__item--on' : ''
+          }`}
+          icon={<WorkspaceIcon icon={ws.icon} colour={ws.colour} size={16} strokeWidth={1.75} />}
           onPointerDown={(event) => {
-            pressProps.onPointerDown?.(event);
             longPressRef.current = false;
             clearTimer();
             const { clientX, clientY } = event;
             timerRef.current = window.setTimeout(() => openMenuAt(clientX, clientY), LONG_PRESS_MS);
           }}
-          onPointerUp={(event) => {
-            pressProps.onPointerUp?.(event);
+          onPointerUp={() => {
             clearTimer();
           }}
-          onPointerCancel={(event) => {
-            pressProps.onPointerCancel?.(event);
+          onPointerCancel={() => {
             clearTimer();
           }}
           onClick={() => {
@@ -136,9 +129,8 @@ function PushWorkspaceRow({ ws, active, onSelect, onEdit, onDelete, onCloseDrawe
             openMenuAt(event.clientX, event.clientY);
           }}
         >
-          <WorkspaceIcon icon={ws.icon} colour={ws.colour} size={16} strokeWidth={1.75} />
-          <span>{ws.name}</span>
-        </button>
+          {ws.name}
+        </LiquidGlassButton>
       </div>
       {menu ? (
         <WorkspaceGlassMenu
@@ -164,9 +156,6 @@ function PushWorkspaceRow({ ws, active, onSelect, onEdit, onDelete, onCloseDrawe
 }
 
 function WorkspaceGlassMenu({ x, y, name, onRename, onDelete, onClose }) {
-  const { pressed: renamePressed, pressProps: renamePress } = useGlassPress();
-  const { pressed: deletePressed, pressProps: deletePress } = useGlassPress();
-
   useEffect(() => {
     const close = (event) => {
       if (event.target instanceof Element && event.target.closest('.nm-sidebar__glass-menu')) return;
@@ -187,29 +176,32 @@ function WorkspaceGlassMenu({ x, y, name, onRename, onDelete, onClose }) {
       style={{ left, top }}
       onPointerDown={(event) => event.stopPropagation()}
     >
-      <button
+      <LiquidGlassButton
         type="button"
         role="menuitem"
-        className={glassPressClasses('nm-sidebar__glass-menu-item', glassPressState({ pressed: renamePressed }))}
+        variant="ghost"
+        fullWidth
+        fluid={false}
+        motionPress={false}
+        className="nm-sidebar__glass-menu-item !justify-start"
         onClick={onRename}
-        {...renamePress}
+        icon={<Pencil size={16} strokeWidth={1.75} />}
       >
-        <Pencil size={16} strokeWidth={1.75} />
         Rename
-      </button>
-      <button
+      </LiquidGlassButton>
+      <LiquidGlassButton
         type="button"
         role="menuitem"
-        className={glassPressClasses(
-          'nm-sidebar__glass-menu-item nm-sidebar__glass-menu-item--danger',
-          glassPressState({ pressed: deletePressed }),
-        )}
+        variant="danger"
+        fullWidth
+        fluid={false}
+        motionPress={false}
+        className="nm-sidebar__glass-menu-item nm-sidebar__glass-menu-item--danger !justify-start"
         onClick={onDelete}
-        {...deletePress}
+        icon={<Trash2 size={16} strokeWidth={1.75} />}
       >
-        <Trash2 size={16} strokeWidth={1.75} />
         Delete
-      </button>
+      </LiquidGlassButton>
     </div>
   );
 
@@ -275,9 +267,27 @@ export default function AppSidebar({
       searchInputRef.current?.blur();
       return undefined;
     }
-    const id = window.setTimeout(() => searchInputRef.current?.focus(), 20);
+    const id = window.setTimeout(() => {
+      const el = searchInputRef.current;
+      el?.focus();
+      el?.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' });
+    }, 80);
     return () => window.clearTimeout(id);
   }, [searchOpen]);
+
+  useEffect(() => {
+    if (!push || !searchOpen) return undefined;
+    const vv = window.visualViewport;
+    const onVv = () => {
+      searchInputRef.current?.scrollIntoView?.({ block: 'nearest' });
+    };
+    vv?.addEventListener('resize', onVv);
+    vv?.addEventListener('scroll', onVv);
+    return () => {
+      vv?.removeEventListener('resize', onVv);
+      vv?.removeEventListener('scroll', onVv);
+    };
+  }, [push, searchOpen]);
 
   const railCollapsed = collapsed && !isDrawer;
   const filtered = useMemo(() => {
@@ -343,17 +353,20 @@ export default function AppSidebar({
         {push ? (
           <div className={`nm-sidebar__search-slot ${searchOpen ? 'is-open' : ''}`}>
             <div className="nm-sidebar__search-slot-inner">
-              <div className="nm-sidebar__search">
-                <Search size={16} strokeWidth={1.75} aria-hidden />
-                <input
-                  ref={searchInputRef}
-                  type="search"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Search canvases"
-                  aria-label="Search canvases"
-                />
-              </div>
+              <MobileSearchBar
+                inputRef={searchInputRef}
+                className="nm-sidebar__mobile-search"
+                placeholder="Search canvases"
+                aria-label="Search canvases"
+                value={query}
+                onChange={setQuery}
+                showCancelButton
+                autoFocus={searchOpen}
+                onCancel={() => {
+                  setQuery('');
+                  setSearchOpen(false);
+                }}
+              />
             </div>
           </div>
         ) : null}

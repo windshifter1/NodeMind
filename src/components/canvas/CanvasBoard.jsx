@@ -80,6 +80,8 @@ export default function CanvasBoard({
   edgeCurveFan = false,
   smoothStrokes = false,
   onBinVisibleChange,
+  mobileComposerNodeId = null,
+  onRequestMobileComposer,
 }) {
   const graphOrientation = normalizeOrientation(orientation);
   const edgeDisplay = edgeCurveFan
@@ -1483,6 +1485,8 @@ export default function CanvasBoard({
             onStartNodeDrag={startNodeDrag}
             onStartConnect={startConnect}
             onOpenEdit={onOpenEdit}
+            onRequestMobileComposer={onRequestMobileComposer}
+            mobileComposerActive={mobileComposerNodeId === node.id}
             onLayoutChange={notifyLayoutChange}
             onSelectionMenu={
               onSelectionMenu

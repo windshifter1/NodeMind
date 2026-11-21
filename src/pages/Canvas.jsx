@@ -3,6 +3,7 @@ import CanvasBoard from '@/components/canvas/CanvasBoard';
 import Toolbar from '@/components/canvas/Toolbar';
 import DrawToolPill from '@/components/canvas/DrawToolPill';
 import MobileChrome from '@/components/canvas/MobileChrome';
+import MobileNodeComposer from '@/components/canvas/MobileNodeComposer';
 import AppSidebar from '@/components/shell/AppSidebar';
 import NewNodeDock from '@/components/shell/NewNodeDock';
 import NodeEditDialog from '@/components/canvas/NodeEditDialog';
@@ -18,6 +19,7 @@ import NearbyOfferDialog from '@/components/canvas/NearbyOfferDialog';
 import SelectionOpMenu from '@/components/canvas/SelectionOpMenu';
 import MathsCreditDialog from '@/components/canvas/MathsCreditDialog';
 import OnboardingTour from '@/components/onboarding/OnboardingTour';
+import { NodedLiquidGlassProvider } from '@/lib/liquid-glass';
 import { useWorkspaces } from '@/hooks/useWorkspaces';
 import { useNearbyShare } from '@/hooks/useNearbyShare';
 import {
@@ -170,6 +172,7 @@ function CanvasReady({
     }
   });
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [mobileNodeComposer, setMobileNodeComposer] = useState(null);
   const socketHintTimerRef = useRef(null);
   const hadCreditOpRef = useRef(null);
   const knownNodeIdsRef = useRef(null);
@@ -541,6 +544,22 @@ function CanvasReady({
       clientY: anchor?.clientY ?? window.innerHeight / 2,
     });
   const updateNode = (id, patch) => dispatch({ type: 'UPDATE_NODE', id, patch });
+
+  const closeMobileNodeComposer = useCallback(() => setMobileNodeComposer(null), []);
+
+  const openMobileNodeComposer = useCallback((nodeId, field = 'content') => {
+    setMobileNodeComposer({ nodeId, field });
+    setSelectedNodeIds([nodeId]);
+  }, []);
+
+  const mobileComposerNode = useMemo(() => {
+    if (!mobileNodeComposer?.nodeId) return null;
+    return active.nodes.find((n) => n.id === mobileNodeComposer.nodeId) ?? null;
+  }, [active.nodes, mobileNodeComposer?.nodeId]);
+
+  useEffect(() => {
+    if (mobileNodeComposer && !mobileComposerNode) setMobileNodeComposer(null);
+  }, [mobileNodeComposer, mobileComposerNode]);
   const deleteNode = (id) => dispatch({ type: 'DELETE_NODE', id });
   const deleteNodes = (ids) => {
     if (!ids?.length) return;
@@ -980,7 +999,7 @@ function CanvasReady({
     />
   );
 
-  return (
+  const shell = (
     <div className={`nm-shell${!isDesktop && mobileSidebarOpen ? ' nm-shell--menu-open' : ''}`}>
       <AppSidebar
         workspaces={state.workspaces}
@@ -1108,6 +1127,8 @@ function CanvasReady({
         }
         smoothStrokes={smoothStrokes}
         onBinVisibleChange={setBinVisible}
+        mobileComposerNodeId={mobileNodeComposer?.nodeId ?? null}
+        onRequestMobileComposer={!isDesktop ? openMobileNodeComposer : undefined}
       />
       <SelectionOpMenu
         open={!!selectionMenu}
@@ -1359,7 +1380,29 @@ function CanvasReady({
         onTutorialStart={beginTerminalTutorialWorkspace}
         onTutorialEnd={endTerminalTutorialWorkspace}
       />
+
+      {!isDesktop ? (
+        <MobileNodeComposer
+          open={Boolean(mobileComposerNode)}
+          node={mobileComposerNode}
+          initialField={mobileNodeComposer?.field ?? 'content'}
+          onUpdate={(patch) => {
+            if (mobileComposerNode) updateNode(mobileComposerNode.id, patch);
+          }}
+          onOpenEdit={(id) => {
+            setEditingNodeId(id);
+            closeMobileNodeComposer();
+          }}
+          onClose={closeMobileNodeComposer}
+        />
+      ) : null}
       </div>
     </div>
+  );
+
+  return !isDesktop ? (
+    <NodedLiquidGlassProvider>{shell}</NodedLiquidGlassProvider>
+  ) : (
+    shell
   );
 }

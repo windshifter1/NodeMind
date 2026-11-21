@@ -9,6 +9,8 @@ import '@/styles/gen-ii.css'
 import '@/styles/shell.css'
 import '@/styles/motion.css'
 import '@/styles/glassPress.css'
+import '@/styles/liquid-glass.css'
+import '@/styles/liquid-glass-search.css'
 import {
   applyA11yContrast,
   applyA11yFont,

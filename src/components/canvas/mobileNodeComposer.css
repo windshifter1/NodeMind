@@ -1,0 +1,87 @@
+.nm-mobile-node-composer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: var(--nm-keyboard-inset, 0px);
+  z-index: 55;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+  padding: 0 calc(0.5rem + var(--safe-right)) calc(0.35rem + var(--safe-bottom))
+    calc(0.5rem + var(--safe-left));
+  transition: bottom var(--nm-ios-keyboard, 250ms cubic-bezier(0.32, 0.72, 0, 1));
+}
+
+.nm-mobile-node-composer__sheet {
+  pointer-events: auto;
+  width: min(100%, 28rem);
+  border-radius: 1.35rem;
+  padding: 0.55rem 0.65rem 0.7rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  box-shadow:
+    0 12px 40px oklch(0 0 0 / 0.35),
+    inset 0 1px 0 color-mix(in srgb, white 18%, transparent);
+}
+
+.nm-mobile-node-composer__handle {
+  width: 2.25rem;
+  height: 0.22rem;
+  margin: 0.1rem auto 0.15rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--nm-text) 22%, transparent);
+}
+
+.nm-mobile-node-composer__chips {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.nm-mobile-node-composer__title {
+  flex: 1;
+  min-width: 0;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--nm-border) 70%, transparent);
+  background: color-mix(in srgb, var(--nm-input, #1a1a1a) 55%, transparent);
+  padding: 0.4rem 0.75rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--nm-text);
+  outline: none;
+}
+
+.nm-mobile-node-composer__title::placeholder {
+  color: var(--nm-text-muted);
+  font-weight: 500;
+}
+
+.nm-mobile-node-composer__edit {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.nm-mobile-node-composer__body {
+  width: 100%;
+  resize: none;
+  border: none;
+  outline: none;
+  background: transparent;
+  min-height: 4.5rem;
+  max-height: 38vh;
+  font-size: 1rem;
+  line-height: 1.45;
+  color: var(--nm-text);
+  padding: 0.15rem 0.35rem 0.25rem;
+}
+
+.nm-mobile-node-composer__body::placeholder {
+  color: var(--nm-text-muted);
+}
+
+html.nm-node-composer-open .nm-mobile__dock {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+}

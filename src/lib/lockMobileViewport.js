@@ -104,6 +104,7 @@ function pinScroll() {
 
 export function applyAppFrameHeight() {
   const root = document.documentElement;
+  root.classList.toggle('nm-standalone-pwa', isStandalonePwa());
   const { height: measuredH, width: measuredW } = measureLayoutSize();
   const keyboardOpen =
     isMobileLike() && lockedHeight >= 80 && isKeyboardLikelyOpen(lockedHeight);
@@ -132,20 +133,29 @@ export function applyAppFrameHeight() {
   pinScroll();
 }
 
-/** When env(safe-area-*) undershoots in standalone, match visualViewport offsets. */
+/** When env(safe-area-*) undershoots in standalone, nudge from visualViewport (not offsetTop — that duplicates inset). */
 function applySafeAreaInsets() {
-  if (!isMobileLike()) return;
+  if (!isMobileLike() || !isStandalonePwa()) return;
   const root = document.documentElement;
   const vv = window.visualViewport;
   if (!vv) return;
 
-  const top = Math.max(0, Math.round(vv.offsetTop));
-  const left = Math.max(0, Math.round(vv.offsetLeft));
-  if (top >= 20) {
-    root.style.setProperty('--safe-top', `${top}px`);
+  const envTop = Number.parseFloat(getComputedStyle(root).getPropertyValue('--safe-top')) || 0;
+  const layoutH = Math.round(vv.height + vv.offsetTop);
+  const screenH = Math.round(screenHeightForOrientation() || layoutH);
+  const missingTop = Math.max(0, screenH - layoutH);
+
+  if (envTop < 12 && missingTop >= 20 && missingTop < 80) {
+    root.style.setProperty('--safe-top', `${missingTop}px`);
+  } else if (envTop >= 12) {
+    root.style.removeProperty('--safe-top');
   }
-  if (left >= 8) {
+
+  const left = Math.max(0, Math.round(vv.offsetLeft));
+  if (left >= 8 && left < 48) {
     root.style.setProperty('--safe-left', `${left}px`);
+  } else {
+    root.style.removeProperty('--safe-left');
   }
 }
 

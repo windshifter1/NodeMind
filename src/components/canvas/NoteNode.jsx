@@ -168,6 +168,8 @@ export default function NoteNode({
   onStartNodeDrag,
   onStartConnect,
   onOpenEdit,
+  onRequestMobileComposer,
+  mobileComposerActive = false,
   onLayoutChange,
   onSelectionMenu,
   ghostSelection = null,
@@ -308,6 +310,10 @@ export default function NoteNode({
   const beginTitleEdit = () => {
     lastTitleTapRef.current = 0;
     onCancelNodeDrag?.();
+    if (onRequestMobileComposer) {
+      onRequestMobileComposer(node.id, 'title');
+      return;
+    }
     setTitleDraft(displayNodeTitle(node));
     setEditingTitle(true);
   };
@@ -630,9 +636,17 @@ export default function NoteNode({
           value={node.content}
           onChange={(e) => onUpdate({ content: e.target.value })}
           onInput={autoResize}
-          onPointerDown={(e) => e.stopPropagation()}
+          readOnly={Boolean(onRequestMobileComposer) || mobileComposerActive}
+          tabIndex={onRequestMobileComposer ? -1 : undefined}
+          onPointerDown={(e) => {
+            e.stopPropagation();
+            if (onRequestMobileComposer) {
+              e.preventDefault();
+              onRequestMobileComposer(node.id, 'content');
+            }
+          }}
           placeholder="Write your thoughts…"
-          className={`w-full resize-none outline-none bg-transparent text-sm p-3 leading-relaxed ${darkNodes ? 'text-zinc-200 placeholder:text-zinc-500' : 'text-slate-700 placeholder:text-slate-400'}`}
+          className={`w-full resize-none outline-none bg-transparent text-sm p-3 leading-relaxed ${darkNodes ? 'text-zinc-200 placeholder:text-zinc-500' : 'text-slate-700 placeholder:text-slate-400'}${mobileComposerActive ? ' opacity-60' : ''}`}
           style={{ minHeight: 64 }}
         />
       )}
